@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Eingabe</title>
+    <style>
+        /* Grundlegende Stilrichtlinien für das gesamte Popup */
+        body {
+            width: 450px;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        /* Allgemeiner Stil für die Schaltflächen */
+        button {
+            padding: 8px 15px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        /* Unterscheidende Stile für verschiedene Schaltflächen */
+        #submitButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #recommendCaseButton {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        #updateDataButton {
+            background-color: #FFC107;
+            color: black;
+            font-size: 0.8em;
+        }
+
+        /* Feedback-Paragraphenstil */
+        #feedback {
+            color: red;
+            margin-top: 20px;
+        }
+
+        /* Anpassung des Abstands zwischen den Elementen */
+        p {
+            margin-bottom: 10px;
+        }
+
+        /* Stil für die Container */
+        #inputContainer, #feedbackContainer {
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f7f7f7; /* leicht grauer Hintergrund */
+            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+        }
+      
+        #feedbackContainer {
+            border: 2px solid #2196F3; /* Blauer Rahmen */
+        }
+
+        #tagsContainer {
+            padding: 5px;
+            border-radius: 10px;    
+            background-color: #f7f7f7; /* leicht grauer Hintergrund */
+            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+            border: 2px solid #FFC107; /* Gelber Rahmen */
+        }
+
+        /* Stil für das Suchfeld */
+        #searchInput {
+            width: 90%;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Stil für die Ergebnisliste */
+        #resultsList {
+            max-height: 170px;  /* Begrenzt die Höhe der Liste */
+            width: 95%;
+            overflow-y: auto;  /* Fügt einen Scroll-Balken hinzu, wenn die Liste die maximale Höhe überschreitet */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Stil für jedes Ergebniselement in der Liste */
+        .resultItem {
+            padding: 8px 12px;
+            cursor: pointer;  /* Ändert den Mauszeiger zu einem Zeiger, wenn er über einem Element schwebt, was anzeigt, dass es anklickbar ist */
+            border-bottom: 1px solid #eee;  /* Fügt eine Trennlinie zwischen den Elementen hinzu */
+            font-size: 13px;
+        }
+
+        /* Ändert den Hintergrund des Elements, wenn der Mauszeiger darüber schwebt */
+        .resultItem:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Entfernt die Trennlinie für das letzte Element in der Liste */
+        .resultItem:last-child {
+            border-bottom: none;
+        }
+    </style>
+    
+    <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
+    <style>
+        #buttonContainer {
+        position: flex;
+        right: 10px;
+        display: flex;
+        gap: 10px; 
+        margin-top: 30px;
+        }
+
+        #updateDataButton, #settingsButton {
+        border: none;
+        border-radius: 50%;
+        background-color: transparent;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: background-color 0.3s;
+        }
+
+        #updateDataButton:hover, #settingsButton:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+
+</head>
+
+<body>
+    <p id="feedback"></p>
+    <div id="feedbackContainer">
+        <!-- Eingabefeld für die Suche und die Erbenisliste -->
+        <input type="text" id="searchInput" placeholder="Fall suchen...">
+        <div id="resultsList"></div>
+
+        <p id="customizableLabel">kein Vorschlag</p>
+        <button id="recommendCaseButton">In Akte speichern</button>
+        <button id="saveAttachmentsButton">Nur Anhang speichern</button>
+    </div>
+
+    <div id="tagsContainer">
+        <p>Etiketten:</p>
+        <select id="tagsSelect" multiple size="5" style="width: 100%;"></select>
+    </div>
+
+    
+
+    <div id="buttonContainer">
+        <button id="updateDataButton">↺</button>
+        <button id="settingsButton">&#9881;</button>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+
+</html>
