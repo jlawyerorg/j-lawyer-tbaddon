@@ -1,4 +1,4 @@
-{/* <one line to give the program's name and a brief idea of what it does.>
+{/* j-Lawyer Thunderbird Extension - saves Messages to j-Lawyer Server Cases.
 Copyright (C) 2023, Maximilian Steinert
 
 This program is free software: you can redistribute it and/or modify
