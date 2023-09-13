@@ -21,3 +21,7 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 
 - Klick auf den Einstellungen Button im Add-On. Eingabe des Nutzernamens, Passwort und der Serveradresse (diese steht auch in der Titelleiste des j-Lawyer Clients)
 - Daten vom Server laden - Klick auf das Pfeil Icon in der Erweiterung (dies ist vor der ersten Nutzung erforderlich, um eine Aktensuche zu ermöglichen und jedes Mal dann, wenn sicher der Aktenbestand geändert hat und neue Mails zu "neuen Akten" gespeichert werden sollen)
+
+
+## Disclaimer:
+- die Erweiterung befindet sich in einem frühen Stadium. Wer Lust hat, sich zu beteiligen, kann dies durch Testen und Melden von Bugs oder Anregungen tun. Bitte dazu das Ticket System nutzen.   
