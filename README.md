@@ -13,7 +13,7 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 - **Fall suchen und Ergebnisliste**: Ein Suchfeld, um nach einem bestimmten Fall zu suchen. Die Suchergebnisse basierend auf dem eingegebenen Suchbegriff werden angezeigt.
 - **Daten aktualisieren**: Button zum Aktualisieren der Daten, falls neue Akten angelegt seit letzter Nutzung der Extension.
 - **Etiketten anbringen**: Eine oder mehrere Etiketten an dem Dokument anbringen.
-- **Schlagwort/Tag an versandter und gespeicherter Messagt anbringen**: das Schlagwort "veraktet" wird angefügt. So ist direkt klar, welche Nachricht schon an den Server übermittelt wurde. 
+- **Schlagwort/Tag an versandter und gespeicherter Message anbringen**: das Schlagwort "veraktet" wird angefügt. So ist direkt klar, welche Nachricht schon an den Server übermittelt wurde. 
 
 ## Installation
 - Das letzte Release herunterladen (j-Lawyer-Thunderbird.xpi). 
