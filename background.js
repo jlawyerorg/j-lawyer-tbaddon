@@ -53,6 +53,8 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
 
+    addTagToMessage(messageData, 'veraktet', '#000080'); 
+
     let rawMessage = await messenger.messages.getRaw(messageData.id);
 
     // Der Inhalt der Message wird zu Base64 codiert
@@ -204,6 +206,8 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
     rawMessage = await messenger.messages.getRaw(lastMessageData.messages[0].id);
+    
+    addTagToMessage(lastMessageData.messages[0], 'veraktet', '#000080');
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(rawMessage);
@@ -399,6 +403,24 @@ function uint8ArrayToBase64(uint8Array) {
     });
     return btoa(binaryString);
 }
+
+
+async function addTagToMessage(message, tagName, tagColor) {
+    // Alle vorhandenen Tags abrufen
+    const existingTags = await browser.messages.listTags();
+
+    // Überprüfen, ob der Tag bereits existiert
+    let tag = existingTags.find(t => t.tag === tagName);
+
+    // Wenn der Tag nicht existiert, wird er erstellt
+    if (!tag) {
+        tag = await browser.messages.createTag('xksj', tagName,tagColor);
+    }
+
+    // Tag wird der Nachricht hinzugefügt
+    await browser.messages.update(message.id, {tags: [tag.key]});
+}
+
 
 
 // Empfangen der Nachrichten vom Popup
