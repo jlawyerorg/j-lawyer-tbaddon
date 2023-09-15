@@ -414,7 +414,7 @@ async function addTagToMessage(message, tagName, tagColor) {
 
     // Wenn der Tag nicht existiert, wird er erstellt
     if (!tag) {
-        tag = await browser.messages.createTag('xksj', tagName,tagColor);
+        tag = await browser.messages.createTag(tagName, tagName,tagColor);
     }
 
     // Tag wird der Nachricht hinzugefügt
