@@ -21,7 +21,10 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 
 <img width="397" alt="Screen2" src="https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/976805db-ff94-425e-a710-43c40f568fd8">
 
-- Klick auf den Einstellungen Button im Add-On. Eingabe des Nutzernamens, Passwort und der Serveradresse (diese steht auch in der Titelleiste des j-Lawyer Clients)
+- Klick auf den Einstellungen Button im Add-On. Eingabe des Nutzernamens, Passwort und der Serveradresse (diese steht auch in der Titelleiste des j-Lawyer Clients). http:// oder https:// müssen ebenfalls Teil der Serveradresse sein! 
+
+![Bildschirmfoto vom 2023-09-20 07-38-09](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/a2b2c2b4-bdec-4b14-b94a-ab15f33676e3)
+
 
 - Daten vom Server laden - Klick auf das Pfeil Icon in der Erweiterung (dies ist vor der ersten Nutzung erforderlich, um eine Aktensuche zu ermöglichen und jedes Mal dann, wenn sicher der Aktenbestand geändert hat und neue Mails zu "neuen Akten" gespeichert werden sollen)
   
