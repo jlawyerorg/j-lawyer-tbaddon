@@ -41,7 +41,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     const today = getCurrentDateFormatted();
 
     // Dateinamen erstellen
-    fileName = today + "_" + messageData.subject + ".eml";
+    fileName = today + "_" + messageData.author + messageData.subject + ".eml";
     fileName = fileName.replace("/", "_");
 
     // den Payload erstellen
