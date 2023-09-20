@@ -71,6 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
                     type: "case",
+                    source:  "popup_menu_bundle_save",
                     content: currentSelectedCase.fileNumber,
                     username: result.username,
                     password: result.password,
@@ -108,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
-                getCases(result.username, result.password, result.serverAddress).then(data => {
+                getCasesFromSelection(result.username, result.password, result.serverAddress).then(data => {
                     const casesRaw = data;
                     browser.storage.local.set({
                         cases: casesRaw
@@ -150,7 +151,7 @@ browser.runtime.onMessage.addListener((message) => {
 
 
 
-function getCases(username, password, serverAddress) {
+function getCasesFromSelection(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();

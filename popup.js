@@ -70,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function() {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
                     type: "case",
+                    source: "popup",
                     content: currentSelectedCase.fileNumber, 
                     username: result.username,
                     password: result.password,
@@ -147,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Code, um die options.html in einem neuen Tab zu öffnen
+    // die options.html in einem neuen Tab öffnen
     const settingsButton = document.getElementById("settingsButton");
     if (settingsButton) {
         settingsButton.addEventListener("click", function() {
@@ -196,7 +197,7 @@ async function findFileNumberInRawMessage() {
         console.log("Matching ID: " + item.id);
         console.log("Matching Name: " + item.name);
 
-        // aktualisieren des Label "Recommended Case" mit dem gefundenen Aktenzeichen
+        // Aktualisieren des Label "Recommended Case" mit dem gefundenen Aktenzeichen
         const customizableLabel = document.getElementById("customizableLabel");
         customizableLabel.textContent = item.name + ": " + item.fileNumber;
 
@@ -214,7 +215,7 @@ function getDisplayedMessageFromActiveTab() {
     return browser.mailTabs.query({active: true, currentWindow: true})
     .then((tabs) => {
         if (tabs.length === 0) {
-            // Wenn kein aktiver mailTab gefunden wird, versuchen Sie, den aktiven Tab im Fenster abzurufen
+            // Wenn kein aktiver mailTab gefunden wird, wird versucht, den aktiven Tab im Fenster abzurufen
             return browser.tabs.query({active: true, currentWindow: true});
         }
         return tabs;

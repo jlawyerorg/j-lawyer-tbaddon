@@ -20,6 +20,7 @@ let messagesToSaveObjects = null;
 let menu_documentUploadedId = null;
 let menu_lastMessageData = null;
 let documentsToTag = null;
+let documentCounter = 0;
 
 //  ************************* ZUORDNEN MENU ************************* 
 
@@ -60,14 +61,14 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 //  **************************************************
 
 
-async function sendEmailToServer(singleMessageFromSelection, caseId, username, password, serverAddress) {
+async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId, username, password, serverAddress) {
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
     
     messageId = singleMessageFromSelection.id;
     
     // Der Nachricht wird der Tag "veraktet" hinzugefügt
-    addTagToMessage(messageId, 'veraktet', '#000080');
+    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
 
     let rawMessage = await messenger.messages.getRaw(messageId);
 
@@ -78,8 +79,10 @@ async function sendEmailToServer(singleMessageFromSelection, caseId, username, p
     const today = getCurrentDateFormatted();
 
     // Dateinamen erstellen
-    fileName = today + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + ".eml";
+    fileName = today + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + documentCounter + ".eml";
     fileName = fileName.replace("/", "_");
+
+    documentCounter++;
 
     // den Payload erstellen
     const payload = {
@@ -113,7 +116,7 @@ async function sendEmailToServer(singleMessageFromSelection, caseId, username, p
             // Überprüfen, ob documentTags nicht leer ist
             if (result.selectedTags && result.selectedTags.length > 0) {
                 for (let documentTag of result.selectedTags) {
-                    setDocumentTag(result.username, result.password, result.serverAddress, documentTag); 
+                    setDocumentTagFromSelection(result.username, result.password, result.serverAddress, documentTag); 
                 }
             }
         });
@@ -125,8 +128,40 @@ async function sendEmailToServer(singleMessageFromSelection, caseId, username, p
 }
 
 
+// async function validateDocument(documentName, caseId, username, password, serverAddress) {
+//     const url = serverAddress + '/j-lawyer-io/rest/v7/cases/' + caseId + '/document/validate';
+    
+//     const payload = {
+//         caseId: caseId,
+//         documentName: documentName
+//     };
 
-function getCases(username, password, serverAddress) {
+//     const headers = new Headers();
+//     headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+//     headers.append('Content-Type', 'application/json');
+
+//     fetch(url, {
+//         method: 'PUT',
+//         headers: headers,
+//         body: JSON.stringify(payload)
+//     }).then(response => {
+//         if (!response.ok) {
+//             throw new Error('Datei existiert bereits');
+//         }
+//         return response.json();
+//     }).then(data => {
+//         console.log(data);
+//         return data;
+        
+//     }).catch(error => {
+//         console.log('Error:', error);
+//         browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
+//     });
+// }
+
+
+
+function getCasesFromSelection(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();
@@ -145,7 +180,7 @@ function getCases(username, password, serverAddress) {
 }
 
 
-function findIdByFileNumber(data, fileNumber) {
+function findIdByFileNumberFromSelection(data, fileNumber) {
     for (let item of data) {
         if (item.fileNumber === fileNumber) {
             return item.id;
@@ -219,7 +254,7 @@ function getCurrentDateFormatted() {
 
 
 
-function setDocumentTag(username, password, serverAddress, documentTag) {
+function setDocumentTagFromSelection(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
     headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
@@ -256,7 +291,7 @@ function uint8ArrayToBase64(uint8Array) {
 }
 
 
-async function addTagToMessage(messageId, tagName, tagColor) {
+async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
     // Alle vorhandenen Tags abrufen
     const existingTags = await browser.messages.listTags();
 
@@ -276,7 +311,7 @@ async function addTagToMessage(messageId, tagName, tagColor) {
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener(async (message) => {
-    if (message.type === "fileNumber" || message.type === "case") {
+    if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup_menu_bundle_save")) {
         
         for (const key in messagesToSaveObjects.messages) {
             
@@ -284,18 +319,19 @@ browser.runtime.onMessage.addListener(async (message) => {
                 const fileNumber = String(message.content);
                 console.log("Single Selected Message Key:", key, "Value:", messagesToSaveObjects.messages[key].id);
 
-                getCases(result.username, result.password, result.serverAddress).then(data => {
-                    const caseId = findIdByFileNumber(data, fileNumber);
+                getCasesFromSelection(result.username, result.password, result.serverAddress).then(data => {
+                    const caseId = findIdByFileNumberFromSelection(data, fileNumber);
                     
                     if (caseId) {
                         singleMessageFromSelection = messagesToSaveObjects.messages[key];
-                        sendEmailToServer(singleMessageFromSelection, caseId, result.username, result.password, result.serverAddress);
+                        sendEmailToServerFromSelection(singleMessageFromSelection, caseId, result.username, result.password, result.serverAddress);
                     } else {
                         console.log('Keine übereinstimmende ID gefunden');
                     }
                 });
             });
         }
+        documentCounter = 0;
     }
 });
 

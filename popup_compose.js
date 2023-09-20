@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function() {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
                     type: "saveToCaseAfterSend",
+                    source: "popup_compose",
                     content: currentSelectedCase.fileNumber, 
                     username: result.username,
                     password: result.password,
