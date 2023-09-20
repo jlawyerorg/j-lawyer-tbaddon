@@ -22,35 +22,11 @@ let selectedIndex = -1; // Tastaturnavigation durch Suchergebnisse
 let currentMessageToSaveID = null;  // Speichert die ID der Nachricht, die gespeichert werden soll
 
 
-// Event-Listener für die Tastaturnavigation durch Suchergebnisse
-document.addEventListener("keydown", function (event) {
-    const resultsElements = document.querySelectorAll(".resultItem");
-    if (resultsElements.length === 0) return;
-
-    if (event.key === "ArrowDown") {
-        if (selectedIndex >= 0) {
-            resultsElements[selectedIndex].classList.remove("selected");
-        }
-        selectedIndex = (selectedIndex + 1) % resultsElements.length;
-        resultsElements[selectedIndex].classList.add("selected");
-    } else if (event.key === "ArrowUp") {
-        if (selectedIndex >= 0) {
-            resultsElements[selectedIndex].classList.remove("selected");
-        }
-        selectedIndex = (selectedIndex - 1 + resultsElements.length) % resultsElements.length;
-        resultsElements[selectedIndex].classList.add("selected");
-    } else if (event.key === "Enter" && selectedIndex >= 0) {
-        resultsElements[selectedIndex].click();
-    }
-});
-
-
 document.addEventListener("DOMContentLoaded", function () {
     const recommendCaseButton = document.getElementById("recommendCaseButton");
     const feedback = document.getElementById("feedback");
     const customizableLabel = document.getElementById("customizableLabel");
     const updateDataButton = document.getElementById("updateDataButton");
-    const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
 
 
     fillTagsList();
@@ -105,7 +81,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
         updateDataButton.addEventListener("click", function () {
-            fillTagsList();
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
@@ -149,6 +124,28 @@ browser.runtime.onMessage.addListener((message) => {
 });
 
 
+// Event-Listener für die Tastaturnavigation durch Suchergebnisse
+document.addEventListener("keydown", function (event) {
+    const resultsElements = document.querySelectorAll(".resultItem");
+    if (resultsElements.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+        if (selectedIndex >= 0) {
+            resultsElements[selectedIndex].classList.remove("selected");
+        }
+        selectedIndex = (selectedIndex + 1) % resultsElements.length;
+        resultsElements[selectedIndex].classList.add("selected");
+    } else if (event.key === "ArrowUp") {
+        if (selectedIndex >= 0) {
+            resultsElements[selectedIndex].classList.remove("selected");
+        }
+        selectedIndex = (selectedIndex - 1 + resultsElements.length) % resultsElements.length;
+        resultsElements[selectedIndex].classList.add("selected");
+    } else if (event.key === "Enter" && selectedIndex >= 0) {
+        resultsElements[selectedIndex].click();
+    }
+});
+
 
 
 function getCasesFromSelection(username, password, serverAddress) {
@@ -190,7 +187,6 @@ function getTags(username, password, serverAddress) {
         .then(data => {
             const valuesArray = data.map(item => item.value);
             console.log("Tags heruntergeladen: " + valuesArray);
-            // let tagsList = JSON.stringify(valuesArray)
             browser.storage.local.set({ 'documentTags': valuesArray });
             return valuesArray;
         });
