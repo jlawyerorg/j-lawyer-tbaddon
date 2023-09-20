@@ -430,7 +430,7 @@ async function addTagToMessage(message, tagName, tagColor) {
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener(async (message) => {
-    if (message.type === "fileNumber" || message.type === "case") {
+    if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup")) {
         console.log("Das gewählte Aktenzeichen: " + message.content);
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
@@ -448,7 +448,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         });
     }
 
-    if (message.type === "saveAttachments") {
+    if ((message.type === "saveAttachments") && (message.source === "popup"))  {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
@@ -466,7 +466,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         });
     }
 
-    if (message.type === "saveToCaseAfterSend") {
+    if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
 
         extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
 
