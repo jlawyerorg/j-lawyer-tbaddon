@@ -25,6 +25,8 @@ document.getElementById("saveButton").addEventListener("click", function() {
       username: username,
       password: password,
       serverAddress: serverAddress,
+  }).then(() => {  // Nach dem erfolgreichen Speichern wird der Button-Text geändert => Usability
+      document.getElementById("saveButton").value = "Login gespeichert";
   });
 });
 

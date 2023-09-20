@@ -3,11 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Eingabe</title>
+    <title>Nachrichten Zuordnung - Mehrere Nachrichten</title>
     <style>
         /* Grundlegende Stilrichtlinien für das gesamte Popup */
         body {
-            width: 450px;
             font-family: Arial, sans-serif;
             margin: 20px;
         }
@@ -26,7 +25,13 @@
             opacity: 0.8;
         }
 
-        #recommendCaseButtonAfterSend {
+        /* Unterscheidende Stile für verschiedene Schaltflächen */
+        #submitButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #recommendCaseButton {
             background-color: #2196F3;
             color: white;
         }
@@ -50,20 +55,29 @@
 
         /* Stil für die Container */
         #inputContainer, #feedbackContainer {
+            width: 95%;
             padding: 15px;
             border-radius: 10px;
             background-color: #f7f7f7; /* leicht grauer Hintergrund */
             margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
         }
-
+      
         #feedbackContainer {
             border: 2px solid #2196F3; /* Blauer Rahmen */
         }
 
+        #tagsContainer {
+            width: 95%;
+            padding: 15px;
+            border-radius: 10px;    
+            background-color: #f7f7f7; /* leicht grauer Hintergrund */
+            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+            border: 2px solid #FFC107; /* Gelber Rahmen */
+        }
 
         /* Stil für das Suchfeld */
         #searchInput {
-            width: 90%;
+            width: 95%;
             padding: 8px 12px;
             margin-bottom: 10px;
             border: 1px solid #ccc;
@@ -97,16 +111,8 @@
         .resultItem:last-child {
             border-bottom: none;
         }
-
-        #tagsContainer {
-            padding: 5px;
-            border-radius: 10px;    
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-            border: 2px solid #FFC107; /* Gelber Rahmen */
-        }
     </style>
-   
+    
     <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
     <style>
         #buttonContainer {
@@ -141,12 +147,13 @@
 <body>
     
     <div id="feedbackContainer">
-        <!-- Eingabefeld für die Suche und die Erbenisliste -->
+        <!-- Eingabefeld für die Suche und die Erbenisliste -->                      
         <input type="text" id="searchInput" placeholder="Fall suchen...">
         <div id="resultsList"></div>
 
         <p id="customizableLabel">kein Vorschlag</p>
-        <button id="recommendCaseButtonAfterSend">Nach dem Senden in Akte speichern</button>
+        <button id="recommendCaseButton">In Akte speichern</button>
+        <button id="saveAttachmentsButton">Nur Anhang speichern</button>
     </div>
 
     <div id="tagsContainer">
@@ -160,8 +167,8 @@
         <button id="updateDataButton">↺</button>
         <button id="settingsButton">&#9881;</button>
     </div>
-
-    <script src="popup_compose.js"></script>
+    
+    <script src="popup_menu_bundle_save.js"></script>
 </body>
 
 </html>
