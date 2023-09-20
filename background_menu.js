@@ -27,7 +27,7 @@ let documentCounter = 0;
 // Erstellt einen Kontextmenüeintrag für ausgewählte Nachrichten
 browser.menus.create({
     id: "mehrere_messages_zuordnen",
-    title: "mehrere Messages zuordnen",
+    title: "Nachrichten an j-Lawyer senden...",
     contexts: ["message_list"]
 });
 
