@@ -18,6 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 let messagesToSaveIds = null; 
 let messagesToSaveObjects = null;
 let menu_documentUploadedId = null;
+let menu_lastMessageData = null;
+let documentsToTag = null;
 
 //  ************************* ZUORDNEN MENU ************************* 
 
@@ -55,14 +57,7 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 });
 
 
-
-
 //  **************************************************
-
-let menu_lastMessageData = null;
-let documentsToTag = null;
-
-
 
 
 async function sendEmailToServer(singleMessageFromSelection, caseId, username, password, serverAddress) {
@@ -245,7 +240,7 @@ function setDocumentTag(username, password, serverAddress, documentTag) {
         body: JSON.stringify(payload)
     }).then(response => {
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error('Network error' + response.status + response.statusText);
         }
         return response.json();
     });
