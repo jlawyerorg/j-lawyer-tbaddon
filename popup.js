@@ -97,6 +97,7 @@ document.addEventListener("DOMContentLoaded", function() {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
                     type: "saveAttachments",
+                    source: "popup",
                     content: currentSelectedCase.fileNumber, 
                     username: result.username,
                     password: result.password,
