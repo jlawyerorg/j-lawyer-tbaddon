@@ -20,29 +20,6 @@ let lastMessageData = null;
 let extensionUsed = false;
 
 
-function getDisplayedMessageFromActiveTab() {
-    return browser.mailTabs.query({active: true, currentWindow: true})
-    .then((tabs) => {
-        if (tabs.length === 0) {
-            // Wenn kein aktiver mailTab gefunden wird, den aktiven Tab im Fenster abrufen
-            return browser.tabs.query({active: true, currentWindow: true});
-        }
-        return tabs;
-    })
-    .then((tabs) => {
-        if (tabs.length === 0) {
-            throw new Error("Kein aktiver Tab gefunden.");
-        }
-        let currentTabId = tabs[0].id;
-        return browser.messageDisplay.getDisplayedMessage(currentTabId);
-    })
-    .then((message) => {
-        if (!message) {
-            throw new Error("Keine Nachricht im aktiven Tab angezeigt.");
-        }
-        return message;
-    });
-}
 
 
 
@@ -53,7 +30,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
 
-    addTagToMessage(messageData, 'veraktet', '#000080'); 
+    addTagToMessage(messageData, 'veraktet', '#000080');
 
     let rawMessage = await messenger.messages.getRaw(messageData.id);
 
@@ -94,7 +71,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
         documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
         browser.runtime.sendMessage({ type: "success" });
-        
+
 
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
             // Überprüfen, ob documentTags nicht leer ist
@@ -109,12 +86,12 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             console.log("selectedTags: " + result.selectedTags);
         }
         );
-        
+
     }).catch(error => {
         console.log('Error:', error);
         browser.runtime.sendMessage({ type: "error", content: error.messageData });
     });
-    
+
 }
 
 
@@ -137,12 +114,12 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
         );
         let content = await file.text();
         console.log("ContentType: " + att.contentType);
-        
+
         // Der Inhalt der Message wird zu Base64 codiert
         let buffer = await file.arrayBuffer();
         let uint8Array = new Uint8Array(buffer);
         const emailContentBase64 = uint8ArrayToBase64(uint8Array);
-        
+
         // Das Datum ermitteln, um es dem Dateinamen voranzustellen
         const today = getCurrentDateFormatted();
 
@@ -177,7 +154,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
             browser.runtime.sendMessage({ type: "success" });
-        
+
             browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
                 // Überprüfen, ob documentTags nicht leer ist
                 if (result.selectedTags && result.selectedTags.length > 0) {
@@ -197,16 +174,16 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             console.log('Error:', error);
             browser.runtime.sendMessage({ type: "error", content: error.messageData });
         });
-    }  
+    }
 }
 
 async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, password, serverAddress) {
     console.log("Es wird versucht, die Email in der Akte zu speichern");
-    
+
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
     rawMessage = await messenger.messages.getRaw(lastMessageData.messages[0].id);
-    
+
     addTagToMessage(lastMessageData.messages[0], 'veraktet', '#000080');
 
     // Der Inhalt der Message wird zu Base64 codiert
@@ -245,8 +222,8 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
     }).then(data => {
         documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
-        console.log("E-Mail wurde erfolgreich gespeichert");  
-        
+        console.log("E-Mail wurde erfolgreich gespeichert");
+
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
             // Überprüfen, ob documentTags nicht leer ist
             if (result.selectedTags && result.selectedTags.length > 0) {
@@ -259,38 +236,66 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
             }
         });
         browser.storage.local.remove("selectedTags");
-            browser.storage.local.get("selectedTags").then(result => {
-                console.log("selectedTags: " + result.selectedTags);
-            }
+        browser.storage.local.get("selectedTags").then(result => {
+            console.log("selectedTags: " + result.selectedTags);
+        }
         );
 
     }).catch(error => {
         console.log('Error:', error);
         browser.runtime.sendMessage({ type: "error", content: error.message });
-    }); 
+    });
     browser.storage.local.remove(caseIdToSaveToAfterSend);
     console.log("caseIdToSaveToAfterSend wurde gelöscht");
     extensionUsed = false;
-    console.log("extensionUsed wurde wieder auf false gesetzt");  
+    console.log("extensionUsed wurde wieder auf false gesetzt");
 }
 
 
+function getDisplayedMessageFromActiveTab() {
+    return browser.mailTabs.query({ active: true, currentWindow: true })
+        .then((tabs) => {
+            if (tabs.length === 0) {
+                // Wenn kein aktiver mailTab gefunden wird, den aktiven Tab im Fenster abrufen
+                return browser.tabs.query({ active: true, currentWindow: true });
+            }
+            return tabs;
+        })
+        .then((tabs) => {
+            if (tabs.length === 0) {
+                throw new Error("Kein aktiver Tab gefunden.");
+            }
+            let currentTabId = tabs[0].id;
+            return browser.messageDisplay.getDisplayedMessage(currentTabId);
+        })
+        .then((message) => {
+            if (!message) {
+                throw new Error("Keine Nachricht im aktiven Tab angezeigt.");
+            }
+            return message;
+        });
+}
+
+
+
+
+
 function getCases(username, password, serverAddress) {
-  const url = serverAddress +'/j-lawyer-io/rest/v1/cases/list';
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
-  const headers = new Headers();
-  headers.append('Authorization', 'Basic ' + btoa(''+username+':'+ password+''));
-  headers.append('Content-Type', 'application/json');
+    const headers = new Headers();
+    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
 
-  return fetch(url, {
-    method: 'GET',
-    headers: headers
-  }).then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  });
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
 }
 
 
@@ -300,7 +305,7 @@ function findIdByFileNumber(data, fileNumber) {
             return item.id;
         }
     }
-    return null;  
+    return null;
 }
 
 
@@ -311,7 +316,7 @@ function findCaseBySubject(data, subject) {
             return item.name;
         }
     }
-    return null;  
+    return null;
 }
 
 
@@ -329,13 +334,13 @@ async function messageToBase64(rawMessage) {
         // Datei als Base64 lesen
         return new Promise((resolve, reject) => {
             let reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 // Base64-String ohne den Anfangsteil "data:..." extrahieren
                 let base64Message = event.target.result.split(',')[1];
                 console.log(base64Message);
                 resolve(base64Message);
             };
-            reader.onerror = function(error) {
+            reader.onerror = function (error) {
                 console.error("Fehler beim Lesen der Datei:", error);
                 reject(error);
             };
@@ -352,9 +357,9 @@ async function messageToBase64(rawMessage) {
 
 function getCurrentDateFormatted() {
     const currentDate = new Date();
-    
+
     const year = currentDate.getFullYear();
-    
+
     // Die getMonth() Methode gibt einen Wert zwischen 0 (für Januar) und 11 (für Dezember) zurück. 
     // Daher ist 1 hinzufügen, um den korrekten Monat zu erhalten.
     let month = currentDate.getMonth() + 1;
@@ -362,37 +367,37 @@ function getCurrentDateFormatted() {
 
     let day = currentDate.getDate();
     day = day < 10 ? '0' + day : day;  // Fügt eine führende Null hinzu, wenn der Tag kleiner als 10 ist
-    
+
     return `${year}-${month}-${day}`;
 }
 
 
 
 function setDocumentTag(username, password, serverAddress, documentTag) {
-  
-  const headers = new Headers();
-  headers.append('Authorization', 'Basic ' + btoa(''+username+':'+ password+''));
-  headers.append('Content-Type', 'application/json');
-  
-  const id = documentUploadedId;
 
-  const url = serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + id + "/tags";
+    const headers = new Headers();
+    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
 
-  // den Payload erstellen
-  const payload = {
-    name: documentTag
-  };
+    const id = documentUploadedId;
 
-  fetch(url, {
-    method: 'PUT',
-    headers: headers,
-    body: JSON.stringify(payload)
-  }).then(response => {
-      if (!response.ok) {
-          throw new Error('Network response was not ok');
-      }
-      return response.json();
-  });
+    const url = serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + id + "/tags";
+
+    // den Payload erstellen
+    const payload = {
+        name: documentTag
+    };
+
+    fetch(url, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(payload)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
 }
 
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
@@ -414,98 +419,98 @@ async function addTagToMessage(message, tagName, tagColor) {
 
     // Wenn der Tag nicht existiert, wird er erstellt
     if (!tag) {
-        tag = await browser.messages.createTag(tagName, tagName,tagColor);
+        tag = await browser.messages.createTag(tagName, tagName, tagColor);
     }
 
     // Tag wird der Nachricht hinzugefügt
-    await browser.messages.update(message.id, {tags: [tag.key]});
+    await browser.messages.update(message.id, { tags: [tag.key] });
 }
 
 
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener(async (message) => {
-  if (message.type === "fileNumber" || message.type === "case") {  
-    console.log("Das eingegeben Aktenzeichen: " + message.content);
+    if (message.type === "fileNumber" || message.type === "case") {
+        console.log("Das gewählte Aktenzeichen: " + message.content);
 
-    browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-      const fileNumber = String(message.content); 
+        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            const fileNumber = String(message.content);
 
-      getCases(result.username, result.password, result.serverAddress).then(data => {
-        const caseId = findIdByFileNumber(data, fileNumber);
+            getCases(result.username, result.password, result.serverAddress).then(data => {
+                const caseId = findIdByFileNumber(data, fileNumber);
 
-        if (caseId) {
-          sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
-        } else {
-          console.log('Keine übereinstimmende ID gefunden');
-        }
-      });
-    });
-  }
-
-  if (message.type === "saveAttachments") {
-    console.log("Das eingegebene Aktenzeichen: " + message.content);
-
-    browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-        const fileNumber = String(message.content); 
-
-        getCases(result.username, result.password, result.serverAddress).then(data => {
-            const caseId = findIdByFileNumber(data, fileNumber);
-
-            if (caseId) {
-                sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
-            } else {
-                console.log('Keine übereinstimmende ID gefunden');
-            }
+                if (caseId) {
+                    sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
+                } else {
+                    console.log('Keine übereinstimmende ID gefunden');
+                }
+            });
         });
-    });
-  }
+    }
 
-  if (message.type === "saveToCaseAfterSend") {  
-    
-    extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
+    if (message.type === "saveAttachments") {
+        console.log("Das eingegebene Aktenzeichen: " + message.content);
 
-    console.log("Aktenzeichen: " + message.content);
+        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            const fileNumber = String(message.content);
 
-    browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-      const fileNumber = String(message.content); 
+            getCases(result.username, result.password, result.serverAddress).then(data => {
+                const caseId = findIdByFileNumber(data, fileNumber);
 
-      getCases(result.username, result.password, result.serverAddress).then(data => {
-        const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
-        browser.storage.local.set({caseIdToSaveToAfterSend: caseIdToSaveToAfterSend});
-        console.log("caseIdToSaveToAfterSend: " + caseIdToSaveToAfterSend);
-      });
-    });
-    }    
+                if (caseId) {
+                    sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
+                } else {
+                    console.log('Keine übereinstimmende ID gefunden');
+                }
+            });
+        });
+    }
+
+    if (message.type === "saveToCaseAfterSend") {
+
+        extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
+
+        console.log("Aktenzeichen: " + message.content);
+
+        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            const fileNumber = String(message.content);
+
+            getCases(result.username, result.password, result.serverAddress).then(data => {
+                const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
+                browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+                console.log("caseIdToSaveToAfterSend: " + caseIdToSaveToAfterSend);
+            });
+        });
+    }
 });
 
 
 
 // Das Speichern von Nachrichten, die gesendet wurden
 messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
-    
+
     if (extensionUsed == false) {
         console.log("jLawyer-Extension wurde nicht genutzt")
         return;
     }
     else {
-   
+
         console.log("Nachricht SendInfo:", sendInfo);
         console.log("Nachricht wurde gesendet");
-        
+
         lastMessageData = sendInfo;
 
         // Nachrichten-ID abrufen
         console.log("Nachrichten-Id:", sendInfo.messages[0].id);
-        lastSentMessageId = sendInfo.messages[0].id;       
-        
+        lastSentMessageId = sendInfo.messages[0].id;
+
         // speichert E-Mail nach dem Senden in der Akte
         await browser.storage.local.get(["caseIdToSaveToAfterSend", "username", "password", "serverAddress"]).then(result => {
             sendEmailToServerAfterSend(result.caseIdToSaveToAfterSend, result.username, result.password, result.serverAddress);
-        });  
+        });
     }
 });
-  
 
 
- 
+
+

@@ -359,15 +359,28 @@ function getConsecutiveMatchCount(str, query) {
 
 // Füllen der Tagsliste
 function fillTagsList() {
-    
     browser.storage.local.get("documentTags").then(result => {
         const tagsSelect = document.getElementById("tagsSelect");
+
+        // Funktion, um zu prüfen, ob ein Tag bereits in der Liste vorhanden ist
+        function isTagInList(tag) {
+            for (let i = 0; i < tagsSelect.options.length; i++) {
+                if (tagsSelect.options[i].value === tag) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         if (result.documentTags && result.documentTags.length > 0) {
             result.documentTags.forEach(tag => {
-                const option = document.createElement("option");
-                option.value = tag;
-                option.text = tag;
-                tagsSelect.appendChild(option);
+                // Nur hinzufügen, wenn der Tag noch nicht in der Liste ist
+                if (!isTagInList(tag)) {
+                    const option = document.createElement("option");
+                    option.value = tag;
+                    option.text = tag;
+                    tagsSelect.appendChild(option);
+                }
             });
         }
     });

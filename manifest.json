@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-Lawyer-Thunderbird-Extension",
-  "version": "0.9.7.1",
+  "version": "0.9.7.2",
   "description": "Sendet E-Mails an einen j-Lawyer-Server",
   "permissions": [
     "activeTab",
@@ -10,10 +10,11 @@
     "compose",
     "storage", 
     "<all_urls>",
-    "messagesTags"
+    "messagesTags",
+    "menus"
   ],
   "background": {
-    "scripts": ["background.js"],
+    "scripts": ["background.js", "background_menu.js"],
     "persistent": false
   },
   "options_ui": {
@@ -37,7 +38,7 @@
       "32": "icons/icon-32.png"
     },
     "default_title": "Email an j-Lawyer senden"
-  }, 
+  },
   "applications": {
     "gecko": {
       "id": "steinert@steinertstrafrecht.com"

@@ -15,59 +15,95 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 
 
-let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
+//  ************************* ZUORDNEN DIALOG *************************
 
-document.addEventListener("DOMContentLoaded", function() {
-    const recommendCaseButtonAfterSend = document.getElementById("recommendCaseButtonAfterSend"); 
+let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
+let selectedIndex = -1; // Tastaturnavigation durch Suchergebnisse
+let currentMessageToSaveID = null;  // Speichert die ID der Nachricht, die gespeichert werden soll
+
+
+// Event-Listener für die Tastaturnavigation durch Suchergebnisse
+document.addEventListener("keydown", function (event) {
+    const resultsElements = document.querySelectorAll(".resultItem");
+    if (resultsElements.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+        if (selectedIndex >= 0) {
+            resultsElements[selectedIndex].classList.remove("selected");
+        }
+        selectedIndex = (selectedIndex + 1) % resultsElements.length;
+        resultsElements[selectedIndex].classList.add("selected");
+    } else if (event.key === "ArrowUp") {
+        if (selectedIndex >= 0) {
+            resultsElements[selectedIndex].classList.remove("selected");
+        }
+        selectedIndex = (selectedIndex - 1 + resultsElements.length) % resultsElements.length;
+        resultsElements[selectedIndex].classList.add("selected");
+    } else if (event.key === "Enter" && selectedIndex >= 0) {
+        resultsElements[selectedIndex].click();
+    }
+});
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const recommendCaseButton = document.getElementById("recommendCaseButton");
     const feedback = document.getElementById("feedback");
-    const customizableLabel = document.getElementById("customizableLabel"); 
+    const customizableLabel = document.getElementById("customizableLabel");
     const updateDataButton = document.getElementById("updateDataButton");
-    const settingsButton = document.getElementById("settingsButton");
+    const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
+
 
     fillTagsList();
 
+    // Setzt den Fokus auf das Suchfeld
     document.getElementById("searchInput").focus();
-    
-    // Code für den recommendCaseButtonAfterSend
-    if (recommendCaseButtonAfterSend && customizableLabel) {
-        recommendCaseButtonAfterSend.addEventListener("click", function() {
-            
+
+    // Code für den recommendCaseButton
+    if (recommendCaseButton && customizableLabel) {
+        recommendCaseButton.addEventListener("click", function () {
+
             if (!currentSelectedCase) {
                 feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
                 feedback.style.color = "red";
                 return;
             }
-    
+
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
-                    type: "saveToCaseAfterSend",
-                    content: currentSelectedCase.fileNumber, 
+                    type: "case",
+                    content: currentSelectedCase.fileNumber,
                     username: result.username,
                     password: result.password,
                     serverAddress: result.serverAddress
+
                 });
-    
-                feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
-                feedback.style.color = "green";
+
+                // Setzt Feedback zurück, während auf eine Antwort gewartet wird
+                feedback.textContent = "Speichern...";
+                feedback.style.color = "blue";
             });
-            
+            feedback.textContent = "An empfohlene Akte gesendet!";
+            feedback.style.color = "green";
         });
     }
+
 
     // Speichern der ausgewählten Etiketten in "selectedTags"
     const tagsSelect = document.getElementById("tagsSelect");
     let selectedTags = [];
-    tagsSelect.addEventListener("change", function() {
+    tagsSelect.addEventListener("change", function () {
         selectedTags = Array.from(tagsSelect.selectedOptions).map(option => option.value);
         console.log("Ausgewählte Tags:", selectedTags);
         browser.storage.local.set({
             selectedTags: selectedTags
         });
     });
-   
+
+
+
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
-        updateDataButton.addEventListener("click", function() {
+        updateDataButton.addEventListener("click", function () {
             fillTagsList();
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
@@ -85,14 +121,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 fillTagsList();
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green";
-            });            
+            });
         });
     }
 
     // Code, um die options.html in einem neuen Tab zu öffnen
+    const settingsButton = document.getElementById("settingsButton");
     if (settingsButton) {
-        settingsButton.addEventListener("click", function() {
-            browser.tabs.create({url: "options.html"});
+        settingsButton.addEventListener("click", function () {
+            browser.tabs.create({ url: "options.html" });
         });
     }
 
@@ -114,52 +151,54 @@ browser.runtime.onMessage.addListener((message) => {
 
 
 function getCases(username, password, serverAddress) {
-    const url = serverAddress +'/j-lawyer-io/rest/v1/cases/list';
-  
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
+
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa(''+username+':'+ password+''));
+    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
-  
+
     return fetch(url, {
-      method: 'GET',
-      headers: headers
+        method: 'GET',
+        headers: headers
     }).then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
     });
 }
 
 
 function getTags(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v7/configuration/optiongroups/document.tags';
-  
+
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa(''+username+':'+ password+''));
+    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
-  
+
     return fetch(url, {
         method: 'GET',
         headers: headers
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        const valuesArray = data.map(item => item.value);
-        console.log("Tags heruntergeladen: " + valuesArray);
-        // let tagsList = JSON.stringify(valuesArray)
-        browser.storage.local.set({'documentTags': valuesArray});
-        return valuesArray;
-    });
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const valuesArray = data.map(item => item.value);
+            console.log("Tags heruntergeladen: " + valuesArray);
+            // let tagsList = JSON.stringify(valuesArray)
+            browser.storage.local.set({ 'documentTags': valuesArray });
+            return valuesArray;
+        });
 }
 
+
+
 // Event-Listener für die Suche
-document.getElementById("searchInput").addEventListener("input", function() {
+document.getElementById("searchInput").addEventListener("input", function () {
     const query = this.value.trim();
     if (query) {
         searchCases(query);
@@ -167,6 +206,7 @@ document.getElementById("searchInput").addEventListener("input", function() {
         document.getElementById("resultsList").innerHTML = "";
     }
 });
+
 
 
 // Funktion zum Suchen von Fällen
@@ -185,7 +225,7 @@ async function searchCases(query) {
             matchLength: getConsecutiveMatchCount(item.name, query)
         };
     }).filter(item => item.matchLength > 0) // (Optional) Nur Ergebnisse mit einer Mindestübereinstimmungslänge anzeigen
-    .sort((a, b) => b.matchLength - a.matchLength);
+        .sort((a, b) => b.matchLength - a.matchLength);
 
     let resultsHTML = "";
     results.forEach(item => {
@@ -196,15 +236,16 @@ async function searchCases(query) {
 
     // Event-Listener für das Klicken auf ein Ergebniselement
     document.querySelectorAll(".resultItem").forEach(item => {
-        item.addEventListener("click", function() {
+        item.addEventListener("click", function () {
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
                 name: this.textContent.split(" (")[0],
                 fileNumber: this.textContent.split("(")[1].split(")")[0]
             };
-            document.getElementById("resultsList").style.display = "none";
             console.log("Ausgewählter Fall:", currentSelectedCase);
-            
+
+            document.getElementById("resultsList").style.display = "none";
+
             // aktualisieren des Label "Recommended Case" mit der gefundenen Akte
             const customizableLabel = document.getElementById("customizableLabel");
             customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name;
@@ -229,6 +270,7 @@ function getConsecutiveMatchCount(str, query) {
     }
     return maxCount;
 }
+
 
 // Füllen der Tagsliste
 function fillTagsList() {
