@@ -152,7 +152,9 @@ function getCasesFromSelection(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     return fetch(url, {
@@ -171,7 +173,9 @@ function getTags(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v7/configuration/optiongroups/document.tags';
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     return fetch(url, {

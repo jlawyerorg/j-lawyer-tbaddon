@@ -53,9 +53,11 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
         id: "",
         version: 0
     };
-
+    
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     fetch(url, {
@@ -138,7 +140,9 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
         };
 
         const headers = new Headers();
-        headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
         headers.append('Content-Type', 'application/json');
 
         fetch(url, {
@@ -207,8 +211,10 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
     };
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-    headers.append('Content-Type', 'application/json; charset=UTF-8');
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
 
     fetch(url, {
         method: 'PUT',
@@ -284,7 +290,9 @@ function getCases(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     return fetch(url, {
@@ -376,7 +384,9 @@ function getCurrentDateFormatted() {
 function setDocumentTag(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     const id = documentUploadedId;

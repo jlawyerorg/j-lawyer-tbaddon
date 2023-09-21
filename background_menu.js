@@ -95,7 +95,9 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     };
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     fetch(url, {
@@ -165,7 +167,9 @@ function getCasesFromSelection(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     return fetch(url, {
@@ -257,7 +261,9 @@ function getCurrentDateFormatted() {
 function setDocumentTagFromSelection(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     const id = menu_documentUploadedId;
