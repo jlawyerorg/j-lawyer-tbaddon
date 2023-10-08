@@ -67,8 +67,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     
     messageId = singleMessageFromSelection.id;
     
-    // Der Nachricht wird der Tag "veraktet" hinzugefügt
-    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
+    
 
     let rawMessage = await messenger.messages.getRaw(messageId);
 
@@ -84,15 +83,76 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
 
     documentCounter++;
 
-    // den Payload erstellen
-    const payload = {
-        base64content: emailContentBase64,
-        caseId: caseId,
-        fileName: fileName,
-        folderId: "",
-        id: "",
-        version: 0
-    };
+    // get documents in case
+    let fileNamesArray = [];
+
+    try {
+        fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
+        console.log("Empfangene Dateinamen: ", fileNamesArray);
+    } catch (error) {
+        console.error("Ein Fehler ist aufgetreten: ", error);
+    }
+    
+    // check if fileName already exists
+    if (fileNamesArray.includes(fileName)) {
+        console.log("Datei existiert schon in der Akte");
+        browser.runtime.sendMessage({ type: "error", content: "Datei existiert schon in der Akte" });
+        return;
+    } else {
+
+    
+
+        // den Payload erstellen
+        const payload = {
+            base64content: emailContentBase64,
+            caseId: caseId,
+            fileName: fileName,
+            folderId: "",
+            id: "",
+            version: 0
+        };
+
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+        headers.append('Content-Type', 'application/json');
+
+        fetch(url, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(payload)
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Datei existiert eventuell schon');
+            }
+            return response.json();
+        }).then(data => {
+            menu_documentUploadedId = data.id;
+            console.log("Dokument ID: " + data.id);
+            browser.runtime.sendMessage({ type: "success" });
+
+            // Der Nachricht wird der Tag "veraktet" hinzugefügt
+            addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
+
+            browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
+                // Überprüfen, ob documentTags nicht leer ist
+                if (result.selectedTags && result.selectedTags.length > 0) {
+                    for (let documentTag of result.selectedTags) {
+                        setDocumentTagFromSelection(result.username, result.password, result.serverAddress, documentTag); 
+                    }
+                }
+            });
+        }).catch(error => {
+            console.log('Error:', error);
+            browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
+        });
+    }
+}
+
+
+async function getFilesInCase(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId + '/documents';
 
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
@@ -100,35 +160,20 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
-    fetch(url, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify(payload)
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
     }).then(response => {
         if (!response.ok) {
-            throw new Error('Datei existiert eventuell schon');
+            throw new Error('Network response was not ok');
         }
         return response.json();
-    }).then(data => {
-        menu_documentUploadedId = data.id;
-        console.log("Dokument ID: " + data.id);
-        browser.runtime.sendMessage({ type: "success" });
-
-        browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
-            // Überprüfen, ob documentTags nicht leer ist
-            if (result.selectedTags && result.selectedTags.length > 0) {
-                for (let documentTag of result.selectedTags) {
-                    setDocumentTagFromSelection(result.username, result.password, result.serverAddress, documentTag); 
-                }
-            }
-        });
-    }).catch(error => {
-        console.log('Error:', error);
-        browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
+    })
+    .then(data => {
+        const valuesArray = data.map(item => item.name);
+        return valuesArray;
     });
-
 }
-
 
 // async function validateDocument(documentName, caseId, username, password, serverAddress) {
 //     const url = serverAddress + '/j-lawyer-io/rest/v7/cases/' + caseId + '/document/validate';
