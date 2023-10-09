@@ -17,6 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 
 
 let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
+let caseMetaData = {};  // Speichert die Metadaten des aktuell ausgewählten Cases
+
+
+
 
 // Tastaturnavigation durch Suchergebnisse
 let selectedIndex = -1;
@@ -181,6 +185,7 @@ async function findFileNumberInRawMessage() {
     
     // die gespeicherte Daten aus browser.storage.local abrufen
     let storedData = await browser.storage.local.get("cases");
+    let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
     
     // die gespeicherten Daten in einem Array namens 'cases' 
     let casesArray = storedData.cases;
@@ -197,10 +202,13 @@ async function findFileNumberInRawMessage() {
 
         console.log("Matching ID: " + item.id);
         console.log("Matching Name: " + item.name);
+            
+        caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
+        console.log("caseMetaData: " + caseMetaData.lawyer + " " + caseMetaData.reason);
 
         // Aktualisieren des Label "Recommended Case" mit dem gefundenen Aktenzeichen
         const customizableLabel = document.getElementById("customizableLabel");
-        customizableLabel.textContent = item.name + ": " + item.fileNumber;
+        customizableLabel.textContent = item.name + ": " + item.fileNumber + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
 
         return {
           id: item.id,
@@ -287,6 +295,41 @@ function getTags(username, password, serverAddress) {
 }
 
 
+async function getCaseMetaData(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId;
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        let extractedData = {};
+
+            if ('reason' in data && data.reason !== null) {
+                extractedData.reason = data.reason;
+            }
+            
+            if ('lawyer' in data && data.lawyer !== null) {
+                extractedData.lawyer = data.lawyer;
+            }
+            extractedData;
+
+        return extractedData;
+    });
+}
+
+
 
 // Event-Listener für die Suche
 document.getElementById("searchInput").addEventListener("input", function() {
@@ -303,8 +346,10 @@ document.getElementById("searchInput").addEventListener("input", function() {
 // Funktion zum Suchen von Fällen
 async function searchCases(query) {
     document.getElementById("resultsList").style.display = "block";
+    // die gespeicherten Daten aus browser.storage.local abrufen
     let storedData = await browser.storage.local.get("cases");
     let casesArray = storedData.cases;
+    let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
 
     query = query.toUpperCase();
     let results = casesArray.filter(item => item.name.toUpperCase().includes(query));
@@ -327,19 +372,21 @@ async function searchCases(query) {
 
     // Event-Listener für das Klicken auf ein Ergebniselement
     document.querySelectorAll(".resultItem").forEach(item => {
-        item.addEventListener("click", function() {
+        item.addEventListener("click", async function() {
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
                 name: this.textContent.split(" (")[0],
                 fileNumber: this.textContent.split("(")[1].split(")")[0]
             };
+            caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+        
             console.log("Ausgewählter Fall:", currentSelectedCase);
             
             document.getElementById("resultsList").style.display = "none";
 
             // aktualisieren des Label "Recommended Case" mit der gefundenen Akte
             const customizableLabel = document.getElementById("customizableLabel");
-            customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name;
+            customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
         });
     });
 }

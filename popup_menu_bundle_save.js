@@ -215,6 +215,7 @@ async function searchCases(query) {
     document.getElementById("resultsList").style.display = "block";
     let storedData = await browser.storage.local.get("cases");
     let casesArray = storedData.cases;
+    let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
 
     query = query.toUpperCase();
     let results = casesArray.filter(item => item.name.toUpperCase().includes(query));
@@ -237,19 +238,22 @@ async function searchCases(query) {
 
     // Event-Listener für das Klicken auf ein Ergebniselement
     document.querySelectorAll(".resultItem").forEach(item => {
-        item.addEventListener("click", function () {
+        item.addEventListener("click", async function () {
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
                 name: this.textContent.split(" (")[0],
                 fileNumber: this.textContent.split("(")[1].split(")")[0]
             };
+            
+            caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+            
             console.log("Ausgewählter Fall:", currentSelectedCase);
 
             document.getElementById("resultsList").style.display = "none";
 
             // aktualisieren des Label "Recommended Case" mit der gefundenen Akte
             const customizableLabel = document.getElementById("customizableLabel");
-            customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name;
+            customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
         });
     });
 }
@@ -299,5 +303,39 @@ function fillTagsList() {
                 }
             });
         }
+    });
+}
+
+async function getCaseMetaData(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId;
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        let extractedData = {};
+
+            if ('reason' in data && data.reason !== null) {
+                extractedData.reason = data.reason;
+            }
+            
+            if ('lawyer' in data && data.lawyer !== null) {
+                extractedData.lawyer = data.lawyer;
+            }
+            extractedData;
+
+        return extractedData;
     });
 }
