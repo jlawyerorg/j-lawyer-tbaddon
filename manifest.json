@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-Lawyer-Thunderbird-Extension",
-  "version": "0.9.7.6",
+  "version": "0.9.7.7",
   "description": "Sendet E-Mails an einen j-Lawyer-Server",
   "permissions": [
     "activeTab",

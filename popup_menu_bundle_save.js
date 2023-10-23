@@ -218,16 +218,22 @@ async function searchCases(query) {
     let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
 
     query = query.toUpperCase();
-    let results = casesArray.filter(item => item.name.toUpperCase().includes(query));
+    
+    let results = casesArray.filter(item => 
+        item.name.toUpperCase().includes(query) || 
+        item.fileNumber.toUpperCase().includes(query)
+    );
 
     // Ergebnisse basierend auf der längsten aufeinanderfolgenden Übereinstimmungslänge bewerten und sortieren
     results = results.map(item => {
+        let nameMatchLength = getConsecutiveMatchCount(item.name.toUpperCase(), query);
+        let fileNumberMatchLength = getConsecutiveMatchCount(item.fileNumber, query);
         return {
             ...item,
-            matchLength: getConsecutiveMatchCount(item.name, query)
+            matchLength: Math.max(nameMatchLength, fileNumberMatchLength)
         };
-    }).filter(item => item.matchLength > 0) // (Optional) Nur Ergebnisse mit einer Mindestübereinstimmungslänge anzeigen
-        .sort((a, b) => b.matchLength - a.matchLength);
+    }).filter(item => item.matchLength > 0)
+    .sort((a, b) => b.matchLength - a.matchLength);
 
     let resultsHTML = "";
     results.forEach(item => {
