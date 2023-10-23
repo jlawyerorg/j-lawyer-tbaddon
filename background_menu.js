@@ -79,7 +79,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
 
     // Dateinamen erstellen
     fileName = today + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + documentCounter + ".eml";
-    fileName = fileName.replace("/", "_");
+    fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
 
     documentCounter++;
 

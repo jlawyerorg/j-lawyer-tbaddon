@@ -40,7 +40,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
 
     // Dateinamen erstellen
     fileName = today + "_" + messageData.author + messageData.subject + ".eml";
-    fileName = fileName.replace("/", "_");
+    fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
 
     // get documents in case
     let fileNamesArray = [];
@@ -144,7 +144,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
 
         // Dateinamen erstellen
         fileName = today + "_" + att.name;
-        fileName = fileName.replace("/", "_");
+        fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
         
 
         // get documents in case
@@ -234,7 +234,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
 
     // Dateinamen erstellen
     fileName = today + "_" + lastMessageData.messages[0].subject + ".eml";
-    fileName = fileName.replace("/", "_");
+    fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
 
     // den Payload erstellen
     const payload = {
