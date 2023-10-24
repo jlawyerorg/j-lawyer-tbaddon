@@ -370,11 +370,14 @@ async function searchCases(query) {
     .sort((a, b) => b.matchLength - a.matchLength);
 
     let resultsHTML = "";
+    
     results.forEach(item => {
-        resultsHTML += `<div class="resultItem" data-id="${item.id}">${item.name} (${item.fileNumber})</div>`;
+        resultsHTML += `<div class="resultItem" data-id="${item.id}" data-tooltip="Lädt...">${item.name} (${item.fileNumber})</div>`;
     });
 
     document.getElementById("resultsList").innerHTML = resultsHTML;
+
+    
 
     // Event-Listener für das Klicken auf ein Ergebniselement
     document.querySelectorAll(".resultItem").forEach(item => {
@@ -393,6 +396,11 @@ async function searchCases(query) {
             // aktualisieren des Label "Recommended Case" mit der gefundenen Akte
             const customizableLabel = document.getElementById("customizableLabel");
             customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
+        });
+        item.addEventListener("mouseover", async function() {
+            const caseId = this.getAttribute("data-id");
+            const metaData = await getCaseMetaData(caseId, loginData.username, loginData.password, loginData.serverAddress);
+            this.setAttribute("data-tooltip", metaData.reason);
         });
     });
 }

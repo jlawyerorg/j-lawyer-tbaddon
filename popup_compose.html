@@ -105,6 +105,28 @@
             margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
             border: 2px solid #FFC107; /* Gelber Rahmen */
         }
+        /* Tooltip-Stil */
+        .resultItem {
+                    position: relative;
+                }
+        .resultItem:hover::after {
+            content: attr(data-tooltip);  /* Der Tooltip zeigt den Inhalt des "data-tooltip"-Attributs */
+            position: absolute;
+            left: 0;
+            top: 100%;  /* Positioniert den Tooltip unter dem Element */
+            padding: 5px 10px;
+            background-color: #f5f5f5;  /* Heller Hintergrund */
+            color: #333;  /* Dunkler Text */
+            border: 1px solid #ccc;  /* Dünner Rand */
+            border-radius: 4px;  /* Abgerundete Ecken */
+            white-space: nowrap;  /* Verhindert Umbrüche im Tooltip */
+            z-index: 1;  /* Stellt sicher, dass der Tooltip über anderen Elementen angezeigt wird */
+            opacity: 1;  /* Ein wenig Transparenz */
+            pointer-events: none;  /* Stellt sicher, dass der Tooltip nicht klickbar ist */
+            margin-top: 5px;  /* Ein wenig Abstand zum Element */
+        }
+
+
     </style>
    
     <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
