@@ -47,15 +47,15 @@ document.addEventListener("keydown", function(event) {
 });
 
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async function() {
     const recommendCaseButton = document.getElementById("recommendCaseButton"); 
     const feedback = document.getElementById("feedback");
     const customizableLabel = document.getElementById("customizableLabel"); 
     const updateDataButton = document.getElementById("updateDataButton");
     const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
     
+    await fillTagsList();
     
-    fillTagsList();
     findFileNumberInRawMessage()
 
     // Setzt den Fokus auf das Suchfeld
@@ -131,8 +131,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
-        updateDataButton.addEventListener("click", function() {
-            fillTagsList();
+        updateDataButton.addEventListener("click", async function() {
+            
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
@@ -146,10 +146,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     feedback.style.color = "green";
                 });
                 getTags(result.username, result.password, result.serverAddress);
-                fillTagsList();
                 feedback.textContent = "Daten aktualisiert!";
-                feedback.style.color = "green";
-            });            
+                feedback.style.color = "green"; 
+            }); 
+            await fillTagsList();          
         });
     }
 
@@ -266,7 +266,7 @@ function getCases(username, password, serverAddress) {
 }
 
 
-function getTags(username, password, serverAddress) {
+async function getTags(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v7/configuration/optiongroups/document.tags';
   
     const headers = new Headers();
@@ -425,8 +425,9 @@ function getConsecutiveMatchCount(str, query) {
 
 
 // Füllen der Tagsliste
-function fillTagsList() {
-    browser.storage.local.get("documentTags").then(result => {
+async function fillTagsList() {
+    try {
+        const result = await browser.storage.local.get("documentTags");
         const tagsSelect = document.getElementById("tagsSelect");
 
         // Funktion, um zu prüfen, ob ein Tag bereits in der Liste vorhanden ist
@@ -450,5 +451,7 @@ function fillTagsList() {
                 }
             });
         }
-    });
+    } catch (error) {
+        console.error("Fehler beim Befüllen der Tags-Liste:", error);
+    }
 }
