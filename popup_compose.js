@@ -17,14 +17,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 
 let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async function() {
     const recommendCaseButtonAfterSend = document.getElementById("recommendCaseButtonAfterSend"); 
     const feedback = document.getElementById("feedback");
     const customizableLabel = document.getElementById("customizableLabel"); 
     const updateDataButton = document.getElementById("updateDataButton");
     const settingsButton = document.getElementById("settingsButton");
 
-    fillTagsList();
+    await fillTagsList();
 
     document.getElementById("searchInput").focus();
     
@@ -68,8 +68,7 @@ document.addEventListener("DOMContentLoaded", function() {
    
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
-        updateDataButton.addEventListener("click", function() {
-            fillTagsList();
+        updateDataButton.addEventListener("click", async function() {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
@@ -83,10 +82,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     feedback.style.color = "green";
                 });
                 getTags(result.username, result.password, result.serverAddress);
-                fillTagsList();
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green";
-            });            
+            });
+            await fillTagsList();            
         });
     }
 
@@ -254,9 +253,10 @@ function getConsecutiveMatchCount(str, query) {
     return maxCount;
 }
 
-// Füllen der Tagsliste
-function fillTagsList() {
-    browser.storage.local.get("documentTags").then(result => {
+/// Füllen der Tagsliste
+async function fillTagsList() {
+    try {
+        const result = await browser.storage.local.get("documentTags");
         const tagsSelect = document.getElementById("tagsSelect");
 
         // Funktion, um zu prüfen, ob ein Tag bereits in der Liste vorhanden ist
@@ -280,7 +280,9 @@ function fillTagsList() {
                 }
             });
         }
-    });
+    } catch (error) {
+        console.error("Fehler beim Befüllen der Tags-Liste:", error);
+    }
 }
 
 async function getCaseMetaData(caseId, username, password, serverAddress) {
