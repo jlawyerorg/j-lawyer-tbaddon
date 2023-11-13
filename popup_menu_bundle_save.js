@@ -77,13 +77,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
 
 
-
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
         updateDataButton.addEventListener("click", async function () {
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
+                getTags(result.username, result.password, result.serverAddress).then(() => {
+                    fillTagsList();
+                    feedback.textContent = "Daten aktualisiert!";
+                    feedback.style.color = "green";
+                });
                 getCasesFromSelection(result.username, result.password, result.serverAddress).then(data => {
                     const casesRaw = data;
                     browser.storage.local.set({
@@ -93,11 +97,12 @@ document.addEventListener("DOMContentLoaded", async function () {
                     feedback.textContent = "Daten aktualisiert!";
                     feedback.style.color = "green";
                 });
-                getTags(result.username, result.password, result.serverAddress);
+                
+                
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green";
             });
-            await fillTagsList();
+            
         });
         
     }
