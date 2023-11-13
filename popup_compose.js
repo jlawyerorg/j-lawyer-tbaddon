@@ -81,11 +81,14 @@ document.addEventListener("DOMContentLoaded", async function() {
                     feedback.textContent = "Daten aktualisiert!";
                     feedback.style.color = "green";
                 });
-                getTags(result.username, result.password, result.serverAddress);
+                getTags(result.username, result.password, result.serverAddress).then(() => {
+                    fillTagsList();
+                    feedback.textContent = "Daten aktualisiert!";
+                    feedback.style.color = "green";
+                });
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green";
-            });
-            await fillTagsList();            
+            });         
         });
     }
 

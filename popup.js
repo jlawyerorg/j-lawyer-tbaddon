@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     const updateDataButton = document.getElementById("updateDataButton");
     const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
     
+    browser.storage.local.remove("selectedTags");
     await fillTagsList();
     
     findFileNumberInRawMessage()
@@ -91,6 +92,37 @@ document.addEventListener("DOMContentLoaded", async function() {
         });
     }
 
+    
+
+    // Code für den saveOnlyMessageButton
+    if (saveOnlyMessageButton && customizableLabel) {
+        saveOnlyMessageButton.addEventListener("click", function() {
+            
+            if (!currentSelectedCase) {
+                feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+                feedback.style.color = "red";
+                return;
+            }
+
+            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+                browser.runtime.sendMessage({
+                    type: "saveMessageOnly",
+                    source: "popup",
+                    content: currentSelectedCase.fileNumber, 
+                    username: result.username,
+                    password: result.password,
+                    serverAddress: result.serverAddress
+                    
+                });
+
+                // Setzt Feedback zurück, während auf eine Antwort gewartet wird
+                feedback.textContent = "Speichern...";
+                feedback.style.color = "blue";
+            });
+            feedback.textContent = "An empfohlene Akte gesendet!";
+            feedback.style.color = "green";
+        });
+    }
 
     // Event Listener für den 2. "Nur Anhänge speichern" Button
     if (saveAttachmentsButton && customizableLabel) {
@@ -145,11 +177,14 @@ document.addEventListener("DOMContentLoaded", async function() {
                     feedback.textContent = "Daten aktualisiert!";
                     feedback.style.color = "green";
                 });
-                getTags(result.username, result.password, result.serverAddress);
+                getTags(result.username, result.password, result.serverAddress).then(() => {
+                    fillTagsList();
+                    feedback.textContent = "Daten aktualisiert!";
+                    feedback.style.color = "green";
+                });
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green"; 
-            }); 
-            await fillTagsList();          
+            });          
         });
     }
 

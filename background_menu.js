@@ -67,7 +67,8 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     
     messageId = singleMessageFromSelection.id;
     
-    
+    // Der Nachricht wird der Tag "veraktet" hinzugefügt
+    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
 
     let rawMessage = await messenger.messages.getRaw(messageId);
 
@@ -107,14 +108,13 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
         if (!response.ok) {
             throw new Error('Datei existiert eventuell schon');
         }
+        
         return response.json();
+
     }).then(data => {
         menu_documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
         browser.runtime.sendMessage({ type: "success" });
-
-        // Der Nachricht wird der Tag "veraktet" hinzugefügt
-        addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
 
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
             // Überprüfen, ob documentTags nicht leer ist
@@ -128,6 +128,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
         console.log('Error:', error);
         browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
     });
+
 }
 
 

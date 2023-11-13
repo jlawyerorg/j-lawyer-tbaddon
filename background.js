@@ -16,10 +16,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 
 
 let documentUploadedId = null;
+let documentIdsToTag = [];
 let lastMessageData = null;
 let extensionUsed = false;
-
-
 
 
 
@@ -34,6 +33,99 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(rawMessage);
+
+    // Das Datum ermitteln, um es dem Dateinamen voranzustellen
+    const today = getCurrentDateFormatted();
+
+    // Dateinamen erstellen
+    fileName = today + "_" + messageData.author + messageData.subject + ".eml";
+    fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
+
+    // get documents in case
+    let fileNamesArray = [];
+
+    try {
+        fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
+        console.log("Empfangene Dateinamen: ", fileNamesArray);
+    } catch (error) {
+        console.error("Ein Fehler ist aufgetreten: ", error);
+    }
+    
+    // check if fileName already exists
+    if (fileNamesArray.includes(fileName)) {
+        console.log("Datei existiert schon in der Akte");
+        browser.runtime.sendMessage({ type: "error", content: "Datei existiert schon in der Akte" });
+        return;
+    } else {
+
+        // den Payload erstellen
+        const payload = {
+            base64content: emailContentBase64,
+            caseId: caseId,
+            fileName: fileName,
+            folderId: "",
+            id: "",
+            version: 0
+        };
+        
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+        headers.append('Content-Type', 'application/json');
+
+        fetch(url, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(payload)
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Datei existiert eventuell schon');
+            }
+            return response.json();
+        }).then(data => {
+            documentUploadedId = data.id;
+            console.log("Dokument ID: " + data.id);
+            browser.runtime.sendMessage({ type: "success" });
+
+            // Der Nachricht wird der Tag "veraktet" hinzugefügt
+            addTagToMessage(messageData, 'veraktet', '#000080');
+
+            browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
+                // Überprüfen, ob selectedTags nicht leer ist
+                if (result.selectedTags && result.selectedTags.length > 0) {
+                    for (let documentTag of result.selectedTags) {
+                        setDocumentTag(result.username, result.password, result.serverAddress, documentTag); // 
+                    }
+                }
+            });
+            browser.storage.local.remove("selectedTags");
+            browser.storage.local.get("selectedTags").then(result => {
+                console.log("selectedTags: " + result.selectedTags);
+            }
+            );
+
+        }).catch(error => {
+            console.log('Error:', error);
+            browser.runtime.sendMessage({ type: "error", content: error.messageData });
+        });
+    }
+}
+
+async function sendOnlyMessageToServer(caseId, username, password, serverAddress) {
+    console.log("Case ID: " + caseId);
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
+
+    const messageData = await getDisplayedMessageFromActiveTab();
+    console.log("Message Id: " + messageData.id);
+
+    // get anstatt getRaw für nur die Nachricht
+    let rawMessage = await messenger.messages.getRaw(messageData.id);
+
+    let message = rawMessage.message;
+
+    // Der Inhalt der Message wird zu Base64 codiert
+    const emailContentBase64 = await messageToBase64(message);
 
     // Das Datum ermitteln, um es dem Dateinamen voranzustellen
     const today = getCurrentDateFormatted();
@@ -113,9 +205,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     }
 }
 
-
-
-async function sendAttachmentsToServer(caseId, username, password, serverAddress) {
+/* async function sendAttachmentsToServer(caseId, username, password, serverAddress) {
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
@@ -215,7 +305,98 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             });
         }
     }
+} */
+
+async function sendAttachmentsToServer(caseId, username, password, serverAddress) {
+    console.log("Case ID: " + caseId);
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
+
+    // Nachrichteninhalt abrufen
+    const messageData = await getDisplayedMessageFromActiveTab();
+    console.log("Message Id: " + messageData.id);
+
+    // Attachments holen
+    let attachments = await browser.messages.listAttachments(messageData.id);
+    console.log("Attachments: " + attachments)
+    for (let att of attachments) {
+        let file = await browser.messages.getAttachmentFile(
+            messageData.id,
+            att.partName
+        );
+        let content = await file.text();
+        console.log("ContentType: " + att.contentType);
+
+        // Der Inhalt der Message wird zu Base64 codiert
+        let buffer = await file.arrayBuffer();
+        let uint8Array = new Uint8Array(buffer);
+        const emailContentBase64 = uint8ArrayToBase64(uint8Array);
+
+        // Das Datum ermitteln, um es dem Dateinamen voranzustellen
+        const today = getCurrentDateFormatted();
+
+        // Dateinamen erstellen
+        let fileName = today + "_" + att.name;
+        fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
+        
+
+        // get documents in case
+        let fileNamesArray = [];
+
+        try {
+            fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
+            console.log("Empfangene Dateinamen: ", fileNamesArray);
+        } catch (error) {
+            console.error("Ein Fehler ist aufgetreten: ", error);
+        }
+        
+        // check if fileName already exists
+        if (fileNamesArray.includes(fileName)) {
+            console.log("Datei existiert schon in der Akte");
+            browser.runtime.sendMessage({ type: "error", content: "Datei existiert schon in der Akte" });
+            continue;
+        } 
+
+        // den Payload erstellen
+        const payload = {
+            base64content: emailContentBase64,
+            caseId: caseId,
+            fileName: fileName,
+            folderId: "",
+            id: "",
+            version: 0
+        };
+
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('Datei existiert ggfs. schon');
+            }
+            const data = await response.json();
+            console.log("Dokument ID: " + data.id);
+            // add data.id to array documentIdsToTag
+            documentIdsToTag.push(data.id);
+           
+            browser.runtime.sendMessage({ type: "success" });
+            
+        } catch (error) {
+            console.log('Error:', error);
+            browser.runtime.sendMessage({ type: "error", content: error.message });
+        }
+    }
+    // set document tags
+    setDocumentTagsForAttachments();
 }
+
 
 async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, password, serverAddress) {
     console.log("Es wird versucht, die Email in der Akte zu speichern");
@@ -439,8 +620,6 @@ function getCurrentDateFormatted() {
     return `${year}-${month}-${day}`;
 }
 
-
-
 function setDocumentTag(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
@@ -469,6 +648,54 @@ function setDocumentTag(username, password, serverAddress, documentTag) {
         return response.json();
     });
 }
+
+async function setDocumentTagsForAttachments() {
+    console.log("setDocumentTags aufgerufen");
+
+    try {
+        let result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
+        try {
+            console.log("selectedTags im Speicher: ", result.selectedTags);
+        } catch (error) {
+            console.error("Fehler beim Lesen des Speichers oder keine Etiketten ausgewählt: ", error);
+        }
+
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(result.username + ':' + result.password)));
+
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        
+        for (let documentTag of result.selectedTags) {
+            for (let documentId of documentIdsToTag) {
+                
+                console.log("Das Dokument mit der ID " + documentId + " wird mit dem Tag " + documentTag + " an " + result.serverAddress + " gesendet");
+                
+                const url = result.serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + documentId + "/tags";
+                const payload = { name: documentTag };
+
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok for document ID ${documentId}`);
+                }
+
+                
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error in setDocumentTags:", error);
+    }
+    await browser.storage.local.remove("selectedTags");
+}
+
+
 
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
 function uint8ArrayToBase64(uint8Array) {
@@ -518,10 +745,28 @@ browser.runtime.onMessage.addListener(async (message) => {
         });
     }
 
-    if ((message.type === "saveAttachments") && (message.source === "popup"))  {
+    if ((message.type === "saveMessageOnly") && (message.source === "popup"))  {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            const fileNumber = String(message.content);
+
+            getCases(result.username, result.password, result.serverAddress).then(data => {
+                const caseId = findIdByFileNumber(data, fileNumber);
+
+                if (caseId) {
+                    sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
+                } else {
+                    console.log('Keine übereinstimmende ID gefunden');
+                }
+            });
+        });
+    }
+
+    if ((message.type === "saveAttachments") && (message.source === "popup"))  {
+        console.log("Das eingegebene Aktenzeichen: " + message.content);
+
+        browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
             const fileNumber = String(message.content);
 
             getCases(result.username, result.password, result.serverAddress).then(data => {
@@ -533,7 +778,8 @@ browser.runtime.onMessage.addListener(async (message) => {
                     console.log('Keine übereinstimmende ID gefunden');
                 }
             });
-        });
+            
+        });   
     }
 
     if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
