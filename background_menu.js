@@ -214,16 +214,26 @@ function getCurrentDateFormatted() {
 
     const year = currentDate.getFullYear();
 
-    // Die getMonth() Methode gibt einen Wert zwischen 0 (für Januar) und 11 (für Dezember) zurück. 
-    // Daher ist 1 hinzufügen, um den korrekten Monat zu erhalten.
     let month = currentDate.getMonth() + 1;
-    month = month < 10 ? '0' + month : month;  // Fügt eine führende Null hinzu, wenn der Monat kleiner als 10 ist
+    month = month < 10 ? '0' + month : month;
 
     let day = currentDate.getDate();
-    day = day < 10 ? '0' + day : day;  // Fügt eine führende Null hinzu, wenn der Tag kleiner als 10 ist
+    day = day < 10 ? '0' + day : day;
 
-    return `${year}-${month}-${day}`;
+    // Ergänzung für die Uhrzeit
+    let hours = currentDate.getHours();
+    hours = hours < 10 ? '0' + hours : hours;
+
+    let minutes = currentDate.getMinutes();
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+
+    let seconds = currentDate.getSeconds();
+    seconds = seconds < 10 ? '0' + seconds : seconds;
+
+    // Kombinieren von Datum und Uhrzeit im Format YYYY-MM-DD HH:MM:SS
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
 
 
 
