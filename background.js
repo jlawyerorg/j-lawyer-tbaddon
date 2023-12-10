@@ -119,10 +119,12 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
 
-    // get anstatt getRaw für nur die Nachricht
+   
     let rawMessage = await messenger.messages.getRaw(messageData.id);
 
-    let message = rawMessage.message;
+    // let message = rawMessage.message;
+
+    message = removeAttachmentsFromRFC2822(rawMessage);
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(message);
@@ -205,107 +207,6 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
     }
 }
 
-/* async function sendAttachmentsToServer(caseId, username, password, serverAddress) {
-    console.log("Case ID: " + caseId);
-    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
-
-    // Nachrichteninhalt abrufen
-    const messageData = await getDisplayedMessageFromActiveTab();
-    console.log("Message Id: " + messageData.id);
-
-    // Attachments holen
-    let attachments = await browser.messages.listAttachments(messageData.id);
-    console.log("Attachments: " + attachments)
-    for (let att of attachments) {
-        let file = await browser.messages.getAttachmentFile(
-            messageData.id,
-            att.partName
-        );
-        let content = await file.text();
-        console.log("ContentType: " + att.contentType);
-
-        // Der Inhalt der Message wird zu Base64 codiert
-        let buffer = await file.arrayBuffer();
-        let uint8Array = new Uint8Array(buffer);
-        const emailContentBase64 = uint8ArrayToBase64(uint8Array);
-
-        // Das Datum ermitteln, um es dem Dateinamen voranzustellen
-        const today = getCurrentDateFormatted();
-
-        // Dateinamen erstellen
-        fileName = today + "_" + att.name;
-        fileName = fileName.replace(/[\/\\:*?"<>|]/g, '_');
-        
-
-        // get documents in case
-        let fileNamesArray = [];
-
-        try {
-            fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
-            console.log("Empfangene Dateinamen: ", fileNamesArray);
-        } catch (error) {
-            console.error("Ein Fehler ist aufgetreten: ", error);
-        }
-        
-        // check if fileName already exists
-        if (fileNamesArray.includes(fileName)) {
-            console.log("Datei existiert schon in der Akte");
-            browser.runtime.sendMessage({ type: "error", content: "Datei existiert schon in der Akte" });
-            return;
-        } else {
-
-            // den Payload erstellen
-            const payload = {
-                base64content: emailContentBase64,
-                caseId: caseId,
-                fileName: fileName,
-                folderId: "",
-                id: "",
-                version: 0
-            };
-
-            const headers = new Headers();
-            const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
-            headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-            // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-            headers.append('Content-Type', 'application/json');
-
-            fetch(url, {
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify(payload)
-            }).then(response => {
-                if (!response.ok) {
-                    throw new Error('Datei existiert eventuell schon');
-                }
-                return response.json();
-            }).then(data => {
-                documentUploadedId = data.id;
-                console.log("Dokument ID: " + data.id);
-                browser.runtime.sendMessage({ type: "success" });
-
-                browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
-                    // Überprüfen, ob documentTags nicht leer ist
-                    if (result.selectedTags && result.selectedTags.length > 0) {
-                        for (let documentTag of result.selectedTags) {
-                            setDocumentTag(result.username, result.password, result.serverAddress, documentTag); // 
-                        }
-                    }
-                });
-                browser.storage.local.remove("selectedTags");
-                browser.storage.local.get("selectedTags").then(result => {
-                    console.log("selectedTags: " + result.selectedTags);
-                }
-                );
-
-
-            }).catch(error => {
-                console.log('Error:', error);
-                browser.runtime.sendMessage({ type: "error", content: error.messageData });
-            });
-        }
-    }
-} */
 
 async function sendAttachmentsToServer(caseId, username, password, serverAddress) {
     console.log("Case ID: " + caseId);
@@ -838,5 +739,36 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
 });
 
 
-
+// TODO: remove or refactor when alternative in API is available
+function removeAttachmentsFromRFC2822(message) {
+    // Extract the boundary from the Content-Type header
+    const boundaryMatch = message.match(/boundary=("[^"]+"|'[^']+'|[^;\s]+)/);
+    const boundary = boundaryMatch ? boundaryMatch[1].slice(1, -1) : null;
+  
+    if (!boundary) {
+      throw new Error('Boundary not found in Content-Type header.');
+    }
+  
+    // Split the message into parts using the boundary
+    const parts = message.split(`--${boundary}`);
+  
+    // Iterate through parts and modify attachment bodies
+    const modifiedParts = parts.map(part => {
+      const lines = part.split('\r\n\r\n'); // Split header and body
+      const header = lines[0];
+  
+      if (header.includes('Content-Disposition: attachment')) {
+        // Replace the body of attachments
+        return `${header}\r\n\r\nThis attachment has been removed\r\n\r\n`;
+      } else {
+        // Keep non-attachment parts unchanged
+        return part;
+      }
+    });
+  
+    // Join the modified parts back together
+    const updatedMessage = modifiedParts.join(`--${boundary}`);
+  
+    return updatedMessage;
+  }
 
