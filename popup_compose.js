@@ -256,7 +256,7 @@ function getConsecutiveMatchCount(str, query) {
     return maxCount;
 }
 
-/// Füllen der Tagsliste
+// Füllen der Tagsliste
 async function fillTagsList() {
     try {
         const result = await browser.storage.local.get("documentTags");
@@ -273,7 +273,8 @@ async function fillTagsList() {
         }
 
         if (result.documentTags && result.documentTags.length > 0) {
-            result.documentTags.forEach(tag => {
+            const sortedTags = result.documentTags.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })); // Tags alphabetisch sortieren (unabhängig von Groß- und Kleinschreibung)
+            sortedTags.forEach(tag => {
                 // Nur hinzufügen, wenn der Tag noch nicht in der Liste ist
                 if (!isTagInList(tag)) {
                     const option = document.createElement("option");
