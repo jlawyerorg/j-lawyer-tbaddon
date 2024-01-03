@@ -410,7 +410,6 @@ function getCases(username, password, serverAddress) {
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
     return fetch(url, {

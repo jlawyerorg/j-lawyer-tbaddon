@@ -30,6 +30,16 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
   
 ![Bildschirmfoto vom 2023-09-19 11-29-54](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/43b2c296-bb85-4b62-9ddb-70355075aaf1)
 
+- wird eine Verbindung zum Server per SSH hergestellt, ist noch eine Einstellung in Thunderbird vorzunehmen.
+
+    Menü "Bearbeiten"
+    "Einstellungen"
+    ganz nach unten scrollen
+    "Konfiguration bearbeiten"
+    In der Suche folgenden Wert eintragen: network.security.ports.banned.override
+    anschließend "String" auswählen und den gewünschten Port eintragen (bei Verwendung eines SSH-Tunnels im j-lawyer.org Clientprofil ist es jener Port, der im dritten Eingabefeld (hinter "Port") steht
+    den Wert mit Klick auf den Haken speichern
+    Ein Neustart von Thunderbird ist nicht notwendig.
 
 ## Disclaimer:
 - die Erweiterung befindet sich in einem frühen Stadium. Wer Lust hat, sich zu beteiligen, kann dies durch Testen und Melden von Bugs oder Anregungen tun. Bitte dazu das Ticket System nutzen.   
