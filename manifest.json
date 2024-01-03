@@ -1,8 +1,11 @@
 {
   "manifest_version": 2,
-  "name": "j-Lawyer-Thunderbird-Extension",
+  "name": "j-lawyer.org-Thunderbird-Extension",
   "version": "0.9.9.1",
-  "description": "Sendet E-Mails an einen j-Lawyer-Server",
+  "description": "Sendet E-Mails an einen j-lawyer.org Server",
+  "icons": {
+    "64": "icons/icon-64.png"
+  },
   "permissions": [
     "activeTab",
     "tabs", 
@@ -28,7 +31,7 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "Email an j-Lawyer senden"
+    "default_title": "E-Mail an j-lawyer senden"
   },
   "compose_action": {
     "default_popup": "popup_compose.html",
@@ -37,7 +40,7 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "Email an j-Lawyer senden"
+    "default_title": "E-Mail an j-lawyer senden"
   },
   "applications": {
     "gecko": {
