@@ -32,12 +32,11 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 
 - wird eine Verbindung zum Server per SSH hergestellt, ist noch eine Einstellung in Thunderbird vorzunehmen.
 
-    - Menü "Bearbeiten"
-    - "Einstellungen"
-    - ganz nach unten scrollen
-    - "Konfiguration bearbeiten"
-    - In der Suche folgenden Wert eintragen: network.security.ports.banned.override
-    - anschließend "String" auswählen und den gewünschten Port eintragen (bei Verwendung eines SSH-Tunnels im j-lawyer.org Clientprofil ist es jener Port, der im dritten Eingabefeld (hinter "Port") steht
+    - Menü "Bearbeiten" öffnen
+    - Menüeintrag "Einstellungen" öffnen
+    - Im Tab "Allgemein" ganz nach unten scrollen und den Button "Konfiguration bearbeiten" nutzen
+    - In der Suche folgenden Wert eintragen: network.security.ports.banned.override    Unbedingt darauf achten, dass keine führenden oder abschließenden Leerzeichen enthalten sind
+    - Anschließend "String" auswählen und den gewünschten Port eintragen (bei Verwendung eines SSH-Tunnels im j-lawyer.org Clientprofil ist es jener Port, der im dritten Eingabefeld (hinter "Port") steht
     - den Wert mit Klick auf den Haken speichern
     
     Ein Neustart von Thunderbird ist nicht notwendig.
