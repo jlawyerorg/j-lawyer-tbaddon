@@ -21,6 +21,7 @@ let menu_documentUploadedId = null;
 let menu_lastMessageData = null;
 let documentsToTag = null;
 let documentCounter = 0;
+let selectedCaseFolderID_bundle = null;
 
 //  ************************* ZUORDNEN MENU ************************* 
 
@@ -40,7 +41,7 @@ browser.menus.onClicked.addListener(async (info, tab) => {
             url: browser.runtime.getURL("popup_menu_bundle_save.html"),
             type: "popup",
             width: 700,
-            height: 500
+            height: 650
         });
         
 
@@ -114,6 +115,9 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     }).then(data => {
         menu_documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
+
+        updateDocumentFolderBundle(username, password, serverAddress);
+
         browser.runtime.sendMessage({ type: "success" });
 
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
@@ -266,6 +270,36 @@ function setDocumentTagFromSelection(username, password, serverAddress, document
     });
 }
 
+
+async function updateDocumentFolderBundle(username, password, serverAddress) {
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/update";
+
+    // den Payload erstellen
+    const payload = {
+        id: menu_documentUploadedId,
+        folderId: selectedCaseFolderID_bundle 
+    };
+
+    fetch(url, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(payload)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
+}
+
+
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
 function uint8ArrayToBase64(uint8Array) {
     let binaryString = '';
@@ -298,6 +332,8 @@ async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
 browser.runtime.onMessage.addListener(async (message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup_menu_bundle_save")) {
         
+        selectedCaseFolderID_bundle = message.selectedCaseFolderID;
+
         for (const key in messagesToSaveObjects.messages) {
             
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {

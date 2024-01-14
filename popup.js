@@ -18,6 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 
 let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
 let caseMetaData = {};  // Speichert die Metadaten des aktuell ausgewählten Cases
+let caseFolders = {};  // Speichert die Ordner des aktuell ausgewählten Cases
+let selectedCaseFolderID = null;  // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
 
 
 
@@ -77,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                     type: "case",
                     source: "popup",
                     content: currentSelectedCase.fileNumber, 
+                    selectedCaseFolderID: selectedCaseFolderID,
                     username: result.username,
                     password: result.password,
                     serverAddress: result.serverAddress
@@ -109,6 +112,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                     type: "saveMessageOnly",
                     source: "popup",
                     content: currentSelectedCase.fileNumber, 
+                    selectedCaseFolderID: selectedCaseFolderID,
                     username: result.username,
                     password: result.password,
                     serverAddress: result.serverAddress
@@ -135,6 +139,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                     type: "saveAttachments",
                     source: "popup",
                     content: currentSelectedCase.fileNumber, 
+                    selectedCaseFolderID: selectedCaseFolderID,
                     username: result.username,
                     password: result.password,
                     serverAddress: result.serverAddress
@@ -238,6 +243,9 @@ async function findFileNumberInRawMessage() {
             
         caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
         console.log("caseMetaData: " + caseMetaData.lawyer + " " + caseMetaData.reason);
+        caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);        
+        console.log("caseFolders: " + caseFolders);
+        displayTreeStructure(caseFolders);
 
         // Aktualisieren des Label "Recommended Case" mit dem gefundenen Aktenzeichen
         const customizableLabel = document.getElementById("customizableLabel");
@@ -421,7 +429,11 @@ async function searchCases(query) {
                 fileNumber: this.textContent.split("(")[1].split(")")[0]
             };
             caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
-        
+            
+            caseFolders = await getCaseFolders(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);        
+            console.log("caseFolders: " + caseFolders);
+            displayTreeStructure(caseFolders);
+
             console.log("Ausgewählter Fall:", currentSelectedCase);
             
             document.getElementById("resultsList").style.display = "none";
@@ -487,5 +499,82 @@ async function fillTagsList() {
         }
     } catch (error) {
         console.error("Fehler beim Befüllen der Tags-Liste:", error);
+    }
+}
+
+async function getCaseFolders(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v3/cases/' + caseId + '/folders';
+  
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Folders des Case " + caseId + " heruntergeladen: ", data);
+        return data;
+    });
+}
+
+function createTreeElement(obj) {
+    if (!obj) return null; // Behandlung von null-Werten
+
+    const element = document.createElement('div');
+    element.className = 'treeItem';
+    element.textContent = obj.name;
+    element.style.paddingLeft = '20px';
+    element.style.cursor = 'pointer';
+    element.onclick = function(event) {
+        // Verhindern, dass das Klick-Event sich nach oben durch den Baum fortpflanzt
+        event.stopPropagation();
+
+        // Entfernen der Auswahl von allen anderen Elementen
+        const selectedElements = document.querySelectorAll('.treeItem.selectedItem');
+        selectedElements.forEach(el => el.classList.remove('selectedItem'));
+
+        // Hinzufügen der Auswahl zum aktuellen Element
+        this.classList.add('selectedItem');
+
+        selectedCaseFolderID = obj.id;
+        console.log("Name des ausgewählten Ordners: " + obj.name);
+        console.log("Id des ausgewählten Ordners: " + selectedCaseFolderID);
+        
+        
+    };
+
+    if (obj.children && obj.children.length > 0) {
+        obj.children.forEach(child => {
+            const childElement = createTreeElement(child);
+            if (childElement) {
+                element.appendChild(childElement);
+            }
+        });
+    }
+    return element;
+}
+
+
+function displayTreeStructure(folderData) {
+    // Überprüfen Sie, ob folderData nicht null ist
+    if (!folderData) {
+        console.log("Keine Folder-Daten vorhanden.");
+        return;
+    }
+
+    const treeRoot = createTreeElement(folderData);
+    const treeContainer = document.getElementById('treeContainer');
+    if (treeContainer) {
+        treeContainer.innerHTML = ''; // Bestehenden Inhalt löschen
+        treeContainer.appendChild(treeRoot);
     }
 }

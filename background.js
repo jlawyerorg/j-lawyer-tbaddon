@@ -19,6 +19,7 @@ let documentUploadedId = null;
 let documentIdsToTag = [];
 let lastMessageData = null;
 let extensionUsed = false;
+let selectedCaseFolderID = null;
 
 
 
@@ -86,6 +87,9 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
         }).then(data => {
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
+
+            updateDocumentFolder(username, password, serverAddress);
+
             browser.runtime.sendMessage({ type: "success" });
 
             // Der Nachricht wird der Tag "veraktet" hinzugefügt
@@ -181,6 +185,9 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
         }).then(data => {
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
+
+            updateDocumentFolder(username, password, serverAddress);
+
             browser.runtime.sendMessage({ type: "success" });
 
             // Der Nachricht wird der Tag "veraktet" hinzugefügt
@@ -257,12 +264,14 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             continue;
         } 
 
+        console.log("Die CasefolderID für die Attachments lautet: " + selectedCaseFolderID + " und die Datei heißt: " + fileName);
+
         // den Payload erstellen
         const payload = {
             base64content: emailContentBase64,
             caseId: caseId,
             fileName: fileName,
-            folderId: "",
+            folderId: selectedCaseFolderID,
             id: "",
             version: 0
         };
@@ -284,6 +293,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             }
             const data = await response.json();
             console.log("Dokument ID: " + data.id);
+
             // add data.id to array documentIdsToTag
             documentIdsToTag.push(data.id);
            
@@ -294,8 +304,8 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             browser.runtime.sendMessage({ type: "error", content: error.message });
         }
     }
-    // set document tags
-    setDocumentTagsForAttachments();
+    // set document tags and folder
+    setDocumentTagsAndFolderForAttachments();
 }
 
 
@@ -346,6 +356,9 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
     }).then(data => {
         documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
+
+        updateDocumentFolder(username, password, serverAddress);
+
         console.log("E-Mail wurde erfolgreich gespeichert");
 
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
@@ -530,7 +543,7 @@ function getCurrentDateFormatted() {
 }
 
 
-function setDocumentTag(username, password, serverAddress, documentTag) {
+async function setDocumentTag(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
@@ -559,7 +572,7 @@ function setDocumentTag(username, password, serverAddress, documentTag) {
     });
 }
 
-async function setDocumentTagsForAttachments() {
+async function setDocumentTagsAndFolderForAttachments() {
     console.log("setDocumentTags aufgerufen");
 
     try {
@@ -576,14 +589,65 @@ async function setDocumentTagsForAttachments() {
         headers.append('Authorization', 'Basic ' + loginBase64Encoded);
         headers.append('Content-Type', 'application/json');
 
+        // only if selectedTags is not empty
+        if (result.selectedTags && result.selectedTags.length > 0) {
+            for (let documentTag of result.selectedTags) {
+                for (let documentId of documentIdsToTag) {
+                    
+                    console.log("Das Dokument mit der ID " + documentId + " wird mit dem Tag " + documentTag + " an " + result.serverAddress + " gesendet");
+                    
+                    const url = result.serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + documentId + "/tags";
+                    const payload = { name: documentTag };
+
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: headers,
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok for document ID ${documentId}`);
+                    }
+
+                    
+                }
+            }
+        } else {
+            console.log("Keine Tags ausgewählt");
+        }
         
-        for (let documentTag of result.selectedTags) {
+    } catch (error) {
+        console.error("Error in setDocumentTags:", error);
+    }
+    await browser.storage.local.remove("selectedTags");
+
+    // set Folders for attachments
+    try {
+        let result = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        try {
+            console.log("selectedCaseFolderID: ", selectedCaseFolderID);
+        } catch (error) {
+            console.error("Fehler beim Lesen des ausgewählten Ordners: ", error);
+        }
+
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(result.username + ':' + result.password)));
+
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        
+        if (selectedCaseFolderID && selectedCaseFolderID.length > 0) {
             for (let documentId of documentIdsToTag) {
                 
-                console.log("Das Dokument mit der ID " + documentId + " wird mit dem Tag " + documentTag + " an " + result.serverAddress + " gesendet");
-                
-                const url = result.serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + documentId + "/tags";
-                const payload = { name: documentTag };
+                    
+                const url = result.serverAddress + "/j-lawyer-io/rest/v1/cases/document/update";
+
+                // den Payload erstellen
+                const payload = {
+                    id: documentId,
+                    folderId: selectedCaseFolderID
+                };
 
                 const response = await fetch(url, {
                     method: 'PUT',
@@ -594,18 +658,45 @@ async function setDocumentTagsForAttachments() {
                 if (!response.ok) {
                     throw new Error(`Network response was not ok for document ID ${documentId}`);
                 }
-
-                
             }
+        } else {
+            console.log("Kein Ordner ausgewählt");
         }
         
     } catch (error) {
-        console.error("Error in setDocumentTags:", error);
+        console.error("Fehler in setDocumentTagsAndFolderForAttachments ", error);
     }
-    await browser.storage.local.remove("selectedTags");
+
+
 }
 
+async function updateDocumentFolder(username, password, serverAddress) {
 
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/update";
+
+    // den Payload erstellen
+    const payload = {
+        id: documentUploadedId,
+        folderId: selectedCaseFolderID
+    };
+
+    fetch(url, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(payload)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
+}
 
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
 function uint8ArrayToBase64(uint8Array) {
@@ -639,6 +730,7 @@ async function addTagToMessage(message, tagName, tagColor) {
 browser.runtime.onMessage.addListener(async (message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup")) {
         console.log("Das gewählte Aktenzeichen: " + message.content);
+        selectedCaseFolderID = message.selectedCaseFolderID;
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
             const fileNumber = String(message.content);
@@ -657,6 +749,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 
     if ((message.type === "saveMessageOnly") && (message.source === "popup"))  {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
+        selectedCaseFolderID = message.selectedCaseFolderID;
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
             const fileNumber = String(message.content);
@@ -675,6 +768,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 
     if ((message.type === "saveAttachments") && (message.source === "popup"))  {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
+        selectedCaseFolderID = message.selectedCaseFolderID;
 
         browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
             const fileNumber = String(message.content);
@@ -697,6 +791,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
 
         console.log("Aktenzeichen: " + message.content);
+        selectedCaseFolderID = message.selectedCaseFolderID;
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
             const fileNumber = String(message.content);

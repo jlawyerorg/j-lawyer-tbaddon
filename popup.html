@@ -137,6 +137,42 @@
         }
     </style>
     
+    <!-- Code für den TreeContainer -->
+
+    <style>
+        #treeContainer {
+                padding: 15px;
+                border-radius: 10px;
+                background-color: #f7f7f7; /* leicht grauer Hintergrund */
+                margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+                border: 2px solid #2196F3; /* Blauer Rahmen, optional */
+            }
+            
+        #treeContainer h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1em;
+        }
+        
+        .treeItem {
+            padding-left: 20px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: initial; /* Standardtextfarbe */
+            background-color: transparent; /* Keine Hintergrundfarbe */
+        }
+
+        .selectedItem {
+            background-color: #007bff; /* Blaue Farbe bei Auswahl */
+            color: white; /* Weißer Text bei Auswahl */
+        }
+
+
+    </style>
+    
+
+
     <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
     <style>
         #buttonContainer {
@@ -179,6 +215,10 @@
         <button id="recommendCaseButton">In Akte speichern</button>
         <button id="saveOnlyMessageButton">Nur Nachricht speichern</button>
         <button id="saveAttachmentsButton">Nur Anhang speichern</button>
+    </div>
+
+    <div id="treeContainer">
+        <h3>Ordner</h3>
     </div>
 
     <div id="tagsContainer">
