@@ -4,7 +4,7 @@ Dies ist eine Thunderbird-Erweiterung, die E-Mails an einen j-Lawyer-Server send
 
 Es können auch versandte Nachrichten an den Server übermittelt werden.
 
-Die Nachrichten oder Anhänge können mit Dokumenten Etiketten versehen werden. 
+Die Nachrichten oder Anhänge können mit Etiketten versehen werden. 
 
 Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thunderbird gespeichert. Zukünftig soll eine sichere Speichermöglichkeit implementiert werden. 
 
@@ -26,7 +26,7 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 ![Bildschirmfoto vom 2023-09-20 07-38-09](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/a2b2c2b4-bdec-4b14-b94a-ab15f33676e3)
 
 
-- Daten vom Server laden - Klick auf das Pfeil Icon in der Erweiterung (dies ist vor der ersten Nutzung erforderlich, um eine Aktensuche zu ermöglichen und jedes Mal dann, wenn sicher der Aktenbestand geändert hat und neue Mails zu "neuen Akten" gespeichert werden sollen)
+- Daten vom Server laden - Klick auf das Pfeil Icon in der Erweiterung (dies ist vor der ersten Nutzung erforderlich, um eine Aktensuche zu ermöglichen und jedes Mal dann, wenn sicher der Aktenbestand geändert hat und neue E-Mails oder Anhänge zu "neuen Akten" gespeichert werden sollen)
   
 ![Bildschirmfoto vom 2023-09-19 11-29-54](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/43b2c296-bb85-4b62-9ddb-70355075aaf1)
 
@@ -42,4 +42,6 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
     Ein Neustart von Thunderbird ist nicht notwendig.
 
 ## Disclaimer:
-- die Erweiterung befindet sich in einem frühen Stadium. Wer Lust hat, sich zu beteiligen, kann dies durch Testen und Melden von Bugs oder Anregungen tun. Bitte dazu das Ticket System nutzen.   
+- Die Erweiterung kann noch Fehler enthalten. 
+- Wer Lust hat, sich zu beteiligen, kann dies durch Testen und Melden von Bugs oder Anregungen tun. Bitte dazu das Ticket System nutzen.   
+- Die Funktion "Nur Nachricht speichern" ist noch provisorisch und führt in einigen Fällen noch dazu, dass doch die komplette Nachricht samt Anhängen gespeichert wird. Es wird noch eine Änderung der Thunderbird Schnittstelle erwartet, die das Provisorium entbehrlich macht. Bis dahin gilt: wenn die Nachricht ohne Anhänge gespeichert wird, wird der eigentliche Anhang durch einen "leeren Dummy" ersetzt.
