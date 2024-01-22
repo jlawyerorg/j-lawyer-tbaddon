@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-lawyer.org-Thunderbird-Extension",
-  "version": "0.9.9.3",
+  "version": "0.9.9.4",
   "description": "Sendet E-Mails an einen j-lawyer.org Server",
   "icons": {
     "64": "icons/icon-64.png"
