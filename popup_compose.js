@@ -353,6 +353,7 @@ async function getCaseFolders(caseId, username, password, serverAddress) {
     });
 }
 
+// Funktion zum Erstellen eines Ordnerbaums einer Akte
 function createTreeElement(obj) {
     if (!obj) return null; // Behandlung von null-Werten
 
@@ -375,11 +376,11 @@ function createTreeElement(obj) {
         selectedCaseFolderID = obj.id;
         console.log("Name des ausgewählten Ordners: " + obj.name);
         console.log("Id des ausgewählten Ordners: " + selectedCaseFolderID);
-        
-        
     };
 
     if (obj.children && obj.children.length > 0) {
+        // Sortiert alphabetisch nach dem Namen
+        obj.children.sort((a, b) => a.name.localeCompare(b.name));
         obj.children.forEach(child => {
             const childElement = createTreeElement(child);
             if (childElement) {

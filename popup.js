@@ -49,6 +49,7 @@ document.addEventListener("keydown", function(event) {
 });
 
 
+// Event Listener für Buttons
 document.addEventListener("DOMContentLoaded", async function() {
     const recommendCaseButton = document.getElementById("recommendCaseButton"); 
     const feedback = document.getElementById("feedback");
@@ -214,6 +215,7 @@ browser.runtime.onMessage.addListener((message) => {
 });
 
 
+// Funktion zum Suchen des Aktenzeichens in der Nachricht
 async function findFileNumberInRawMessage() {
     // Nachrichteninhalt abrufen
     const messageData = await getDisplayedMessageFromActiveTab();
@@ -261,6 +263,7 @@ async function findFileNumberInRawMessage() {
     return null;
 }
 
+// 
 function getDisplayedMessageFromActiveTab() {
     return browser.mailTabs.query({active: true, currentWindow: true})
     .then((tabs) => {
@@ -286,6 +289,7 @@ function getDisplayedMessageFromActiveTab() {
 }
 
 
+// Funktion zum Abrufen der Fälle / Akten
 function getCases(username, password, serverAddress) {
     const url = serverAddress +'/j-lawyer-io/rest/v1/cases/list';
   
@@ -307,6 +311,7 @@ function getCases(username, password, serverAddress) {
 }
 
 
+// Funktion zum Abrufen der am Server gespeicherten Dokumenten-Tags
 async function getTags(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v7/configuration/optiongroups/document.tags';
   
@@ -336,6 +341,7 @@ async function getTags(username, password, serverAddress) {
 }
 
 
+// Funktion zum Abrufen der Metadaten eines Falls
 async function getCaseMetaData(caseId, username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId;
 
@@ -450,6 +456,7 @@ async function searchCases(query) {
     });
 }
 
+// Funktion zum Ermitteln der Länge der längsten aufeinanderfolgenden Übereinstimmung
 function getConsecutiveMatchCount(str, query) {
     let count = 0;
     let maxCount = 0;
@@ -502,6 +509,7 @@ async function fillTagsList() {
     }
 }
 
+// 
 async function getCaseFolders(caseId, username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v3/cases/' + caseId + '/folders';
   
@@ -526,6 +534,7 @@ async function getCaseFolders(caseId, username, password, serverAddress) {
     });
 }
 
+// Funktion zum Erstellen eines Ordnerbaums einer Akte
 function createTreeElement(obj) {
     if (!obj) return null; // Behandlung von null-Werten
 
@@ -548,11 +557,11 @@ function createTreeElement(obj) {
         selectedCaseFolderID = obj.id;
         console.log("Name des ausgewählten Ordners: " + obj.name);
         console.log("Id des ausgewählten Ordners: " + selectedCaseFolderID);
-        
-        
     };
 
     if (obj.children && obj.children.length > 0) {
+        // Sortiert alphabetisch nach dem Namen
+        obj.children.sort((a, b) => a.name.localeCompare(b.name));
         obj.children.forEach(child => {
             const childElement = createTreeElement(child);
             if (childElement) {
@@ -564,6 +573,8 @@ function createTreeElement(obj) {
 }
 
 
+
+// Funktion zum Anzeigen der Ordnerstruktur einer Akte
 function displayTreeStructure(folderData) {
     // Überprüfen Sie, ob folderData nicht null ist
     if (!folderData) {
