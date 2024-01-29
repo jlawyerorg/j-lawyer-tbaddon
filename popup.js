@@ -186,6 +186,55 @@ document.addEventListener("DOMContentLoaded", async function() {
                 getTags(result.username, result.password, result.serverAddress).then(() => {
                     fillTagsList();
                 });
+                getCalendars(result.username, result.password, result.serverAddress).then(data => {
+                    const calendarsRaw = data;
+                    browser.storage.local.set({
+                        calendars: calendarsRaw
+                    });
+                    console.log("Kalender heruntergeladen: " + calendarsRaw);
+                });
+                // Kalenderdaten aus dem Speicher abrufen, in jeweilige Arrays filtern und wieder speichern
+                browser.storage.local.get(["calendars"]).then(result => {
+        
+                    // Filtern und Extrahieren der Daten für Wiedervorlagen
+                    const followUpCalendars = result.calendars
+                        .filter(calendar => calendar.eventType === 'FOLLOWUP')
+                        .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+                        console.log(followUpCalendars);
+                        browser.storage.local.set({ followUpCalendars });
+            
+                    // Filtern und Extrahieren der Daten für Fristen
+                    const respiteCalendars = result.calendars
+                        .filter(calendar => calendar.eventType === 'RESPITE')
+                        .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+                        console.log(respiteCalendars);
+                        browser.storage.local.set({ respiteCalendars });
+                        
+            
+                    // Filtern und Extrahieren der Daten für Termine
+                    const eventCalendars = result.calendars
+                        .filter(calendar => calendar.eventType === 'EVENT')
+                        .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+                        console.log(eventCalendars);
+                        browser.storage.local.set({ eventCalendars });
+                        
+                });
+                getUsers(result.username, result.password, result.serverAddress).then(data => {
+                    const users = data.map(item => item.displayName);
+                    
+                    // clear users of empty strings
+                    users.forEach((item, index) => {
+                        if (item === "") {
+                            users.splice(index, 1);
+                        }
+                    });
+
+                    // save users to storage
+                    browser.storage.local.set({
+                        users: users
+                    });
+                    console.log("Benutzer heruntergeladen: " + users);
+                });
                 feedback.textContent = "Daten aktualisiert!";
                 feedback.style.color = "green"; 
             });          
@@ -587,5 +636,75 @@ function displayTreeStructure(folderData) {
     if (treeContainer) {
         treeContainer.innerHTML = ''; // Bestehenden Inhalt löschen
         treeContainer.appendChild(treeRoot);
+    }
+}
+
+
+
+async function getCalendars(username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list';
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+  
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json(); 
+
+        data.forEach(calendar => {
+            console.log('Kalender ID:', calendar.id);
+            console.log('Anzeigename: (displayName)', calendar.displayName);
+            console.log('Hintergrund:', calendar.background);
+            console.log('Cloud-Host:', calendar.cloudHost);
+            console.log('Cloud-Pfad:', calendar.cloudPath);
+            console.log('Cloud-Port:', calendar.cloudPort);
+            console.log('Cloud-SSL:', calendar.cloudSsl);
+            console.log('Ereignistyp: (eventType - FOLLOWUP, RESPITE, EVENT)', calendar.eventType);
+            console.log('Href:', calendar.href);
+            console.log('-----------------------------------');
+
+
+
+        });
+        return data;
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Kalender:', error);
+    }
+}
+
+
+async function getUsers(username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v6/security/users';
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+  
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json(); 
+
+        return data;
+    } catch (error) {
+        console.error('Fehler beim Abrufen der User:', error);
     }
 }
