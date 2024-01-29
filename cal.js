@@ -114,6 +114,18 @@ document.addEventListener('DOMContentLoaded', function () {
         let calType; 
         if (categorySelect.value === 'termin') {
             calType = 'EVENT';
+            if (datumInput.value === "") {
+                feedback.textContent = 'Bitte ein Datum angeben!';
+                return
+            }            
+            if (uhrzeitInput.value === "") {
+                feedback.textContent = 'Bitte eine Uhrzeit/Startzeit angeben!';
+                return
+            }
+            if (endzeitInput.value === "") {
+                feedback.textContent = 'Bitte eine Endzeit angeben!';
+                return
+            }
             beginDateUTC = convertToUTC(datumInput.value, uhrzeitInput.value)
             endDateUTC = convertToUTC(datumInput.value, endzeitInput.value)
         } else if (categorySelect.value === 'frist') {
