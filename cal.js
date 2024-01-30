@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-function addOptionsToUserSelect(selectElement, users) {
+async function addOptionsToUserSelect(selectElement, users) {
     users.forEach(userName => {
         
         const option = document.createElement('option');
@@ -180,7 +180,7 @@ function addOptionsToUserSelect(selectElement, users) {
 }
 
 
-function addOptionsToOptgroup(optgroup, calendars) {
+async function addOptionsToOptgroup(optgroup, calendars) {
     calendars.forEach(calendar => {
         const option = document.createElement('option');
         option.value = calendar.id;

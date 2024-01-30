@@ -191,20 +191,18 @@ document.addEventListener("DOMContentLoaded", async function() {
                     browser.storage.local.set({
                         calendars: calendarsRaw
                     });
-                    console.log("Kalender heruntergeladen: " + calendarsRaw);
-                });
-                // Kalenderdaten aus dem Speicher abrufen, in jeweilige Arrays filtern und wieder speichern
-                browser.storage.local.get(["calendars"]).then(result => {
-        
+                   
+                    // Kalenderdaten in jeweilige Arrays filtern und wieder speichern
+                    
                     // Filtern und Extrahieren der Daten für Wiedervorlagen
-                    const followUpCalendars = result.calendars
+                    const followUpCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'FOLLOWUP')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(followUpCalendars);
                         browser.storage.local.set({ followUpCalendars });
             
                     // Filtern und Extrahieren der Daten für Fristen
-                    const respiteCalendars = result.calendars
+                    const respiteCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'RESPITE')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(respiteCalendars);
@@ -212,12 +210,12 @@ document.addEventListener("DOMContentLoaded", async function() {
                         
             
                     // Filtern und Extrahieren der Daten für Termine
-                    const eventCalendars = result.calendars
+                    const eventCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'EVENT')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(eventCalendars);
                         browser.storage.local.set({ eventCalendars });
-                        
+                    console.log("Kalender heruntergeladen: " + calendarsRaw);
                 });
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
                     const users = data.map(item => item.displayName);
@@ -265,6 +263,7 @@ browser.runtime.onMessage.addListener((message) => {
 
 
 // Funktion zum Suchen des Aktenzeichens in der Nachricht
+// und Rückgabe des gefundenen Falls
 async function findFileNumberInRawMessage() {
     // Nachrichteninhalt abrufen
     const messageData = await getDisplayedMessageFromActiveTab();
@@ -312,7 +311,8 @@ async function findFileNumberInRawMessage() {
     return null;
 }
 
-// 
+// Funktion zum Abrufen der Nachrichten-ID des aktiven Tabs im Fenster 
+// und Rückgabe der Nachricht mit dieser ID
 function getDisplayedMessageFromActiveTab() {
     return browser.mailTabs.query({active: true, currentWindow: true})
     .then((tabs) => {
@@ -558,7 +558,7 @@ async function fillTagsList() {
     }
 }
 
-// 
+// Funktion zum Abrufen der Ordner einer Akte
 async function getCaseFolders(caseId, username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v3/cases/' + caseId + '/folders';
   
@@ -640,7 +640,7 @@ function displayTreeStructure(folderData) {
 }
 
 
-
+// Funktion zum Abrufen der Kalender vom Server
 async function getCalendars(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list';
     const headers = new Headers();
@@ -672,9 +672,6 @@ async function getCalendars(username, password, serverAddress) {
             console.log('Ereignistyp: (eventType - FOLLOWUP, RESPITE, EVENT)', calendar.eventType);
             console.log('Href:', calendar.href);
             console.log('-----------------------------------');
-
-
-
         });
         return data;
     } catch (error) {
@@ -682,7 +679,7 @@ async function getCalendars(username, password, serverAddress) {
     }
 }
 
-
+// Funktion zum Abrufen der Benutzer vom Server
 async function getUsers(username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v6/security/users';
     const headers = new Headers();
