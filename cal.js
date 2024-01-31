@@ -211,7 +211,7 @@ document.getElementById("searchInput").addEventListener("input", function() {
     if (query) {
         searchCases(query);
     } else {
-        document.getElementById("resultsList").innerHTML = "";
+        document.getElementById("resultsList").textContent = "";
     }
 });
 
@@ -247,13 +247,20 @@ async function searchCases(query) {
     }).filter(item => item.matchLength > 0)
     .sort((a, b) => b.matchLength - a.matchLength);
 
-    let resultsHTML = "";
-    
-    results.forEach(item => {
-        resultsHTML += `<div class="resultItem" data-id="${item.id}" data-tooltip="Lädt...">${item.name} (${item.fileNumber})</div>`;
-    });
+    const resultsListElement = document.getElementById("resultsList");
+    // Zuerst den Inhalt von resultsList leeren
+    while (resultsListElement.firstChild) {
+        resultsListElement.removeChild(resultsListElement.firstChild);
+    }
 
-    document.getElementById("resultsList").innerHTML = resultsHTML;
+    results.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "resultItem";
+        div.setAttribute("data-id", item.id);
+        div.setAttribute("data-tooltip", "Lädt...");
+        div.textContent = `${item.name} (${item.fileNumber})`; // Sicherer Textinhalt
+        resultsListElement.appendChild(div);
+    });
 
     
 
