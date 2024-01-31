@@ -191,9 +191,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                     browser.storage.local.set({
                         calendars: calendarsRaw
                     });
-                   
-                    // Kalenderdaten in jeweilige Arrays filtern und wieder speichern
-                    
+
+                    // Kalenderdaten in jeweilige Arrays filtern und wieder speichern                    
                     // Filtern und Extrahieren der Daten für Wiedervorlagen
                     const followUpCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'FOLLOWUP')
@@ -216,6 +215,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                         console.log(eventCalendars);
                         browser.storage.local.set({ eventCalendars });
                     console.log("Kalender heruntergeladen: " + calendarsRaw);
+                    
                 });
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
                     const users = data.map(item => item.displayName);
@@ -433,9 +433,10 @@ document.getElementById("searchInput").addEventListener("input", function() {
     if (query) {
         searchCases(query);
     } else {
-        document.getElementById("resultsList").innerHTML = "";
+        document.getElementById("resultsList").textContent = "";
     }
 });
+
 
 
 

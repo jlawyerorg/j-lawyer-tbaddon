@@ -95,32 +95,29 @@ document.addEventListener("DOMContentLoaded", async function() {
                     browser.storage.local.set({
                         calendars: calendarsRaw
                     });
-                    console.log("Kalender heruntergeladen: " + calendarsRaw);
-                });
-                // Kalenderdaten aus dem Speicher abrufen, in jeweilige Arrays filtern und wieder speichern
-                browser.storage.local.get(["calendars"]).then(result => {
-        
+
+                    // Kalenderdaten in jeweilige Arrays filtern und wieder speichern                    
                     // Filtern und Extrahieren der Daten für Wiedervorlagen
-                    const followUpCalendars = result.calendars
+                    const followUpCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'FOLLOWUP')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(followUpCalendars);
                         browser.storage.local.set({ followUpCalendars });
             
                     // Filtern und Extrahieren der Daten für Fristen
-                    const respiteCalendars = result.calendars
+                    const respiteCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'RESPITE')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(respiteCalendars);
-                        browser.storage.local.set({ respiteCalendars });
-                        
+                        browser.storage.local.set({ respiteCalendars });                        
             
                     // Filtern und Extrahieren der Daten für Termine
-                    const eventCalendars = result.calendars
+                    const eventCalendars = calendarsRaw
                         .filter(calendar => calendar.eventType === 'EVENT')
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(eventCalendars);
                         browser.storage.local.set({ eventCalendars });
+                    console.log("Kalender heruntergeladen: " + calendarsRaw);                      
                         
                 });
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
@@ -224,7 +221,7 @@ document.getElementById("searchInput").addEventListener("input", function() {
     if (query) {
         searchCases(query);
     } else {
-        document.getElementById("resultsList").innerHTML = "";
+        document.getElementById("resultsList").textContent = "";
     }
 });
 
