@@ -253,14 +253,21 @@ async function searchCases(query) {
     }).filter(item => item.matchLength > 0)
     .sort((a, b) => b.matchLength - a.matchLength);
 
-    let resultsHTML = "";
+    const resultsListElement = document.getElementById("resultsList");
+    // Zuerst den Inhalt von resultsList leeren
+    while (resultsListElement.firstChild) {
+        resultsListElement.removeChild(resultsListElement.firstChild);
+    }
 
     results.forEach(item => {
-        resultsHTML += `<div class="resultItem" data-id="${item.id}" data-tooltip="Lädt...">${item.name} (${item.fileNumber})</div>`;
+        const div = document.createElement("div");
+        div.className = "resultItem";
+        div.setAttribute("data-id", item.id);
+        div.setAttribute("data-tooltip", "Lädt...");
+        div.textContent = `${item.name} (${item.fileNumber})`;
+        resultsListElement.appendChild(div);
     });
-
-    document.getElementById("resultsList").innerHTML = resultsHTML;
-
+    
     // Event-Listener für das Klicken auf ein Ergebniselement
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {

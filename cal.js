@@ -258,7 +258,7 @@ async function searchCases(query) {
         div.className = "resultItem";
         div.setAttribute("data-id", item.id);
         div.setAttribute("data-tooltip", "Lädt...");
-        div.textContent = `${item.name} (${item.fileNumber})`; // Sicherer Textinhalt
+        div.textContent = `${item.name} (${item.fileNumber})`;
         resultsListElement.appendChild(div);
     });
 
