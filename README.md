@@ -14,7 +14,7 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 - **Daten aktualisieren**: Button zum Aktualisieren der Daten, falls neue Akten angelegt seit letzter Nutzung der Extension.
 - **Etiketten anbringen**: Eine oder mehrere Etiketten an dem Dokument anbringen.
 - **Schlagwort/Tag an versandter und gespeicherter Message anbringen**: das Schlagwort "veraktet" wird angefügt. So ist direkt klar, welche Nachricht schon an den Server übermittelt wurde.
-- **Kalendereintrag erstellen**: Ein Termin, eine Wiedervorlage oder eine Frist können für eine Akte und einen Nutzer erstellt werden. Ist der Kalender auch in Thunderbird synchronisiert, werden die Änderungen dann sichtbar. (soll ein Kalendereintrag zu einer "jungen" Akte erstellt werden, müssen vorher die Daten über das Addon aktualisiert werden, da die Akte sonst nicht gefunden wird)
+- **Kalendereintrag erstellen**: Ein Termin, eine Wiedervorlage oder eine Frist können für eine Akte und einen Nutzer erstellt werden. Ist der Kalender auch in Thunderbird synchronisiert, werden die Änderungen dann sichtbar. (soll ein Kalendereintrag zu einer "jungen" Akte erstellt werden, müssen vorher die Daten über das Addon aktualisiert werden, da die Akte sonst nicht gefunden wird). (Für die Kalenderfunktion wird j-lawyer.org in der Version 2.6 vorausgesetzt)
 
 ## Installation
 - Das letzte Release herunterladen (j-Lawyer-Thunderbird.xpi). 
