@@ -6,6 +6,8 @@ Es können auch versandte Nachrichten an den Server übermittelt werden.
 
 Die Nachrichten oder Anhänge können mit Etiketten versehen werden. 
 
+Ein Termin, eine Wiedervorlage oder eine Frist können für eine Akte und einen Nutzer erstellt werden. Ist der Kalender auch in Thunderbird synchronisiert, werden die Änderungen dann sichtbar. (soll ein Kalendereintrag zu einer "jungen" Akte erstellt werden, müssen vorher die Daten über das Addon aktualisiert werden, da die Akte sonst nicht gefunden wird). (Für die Kalenderfunktion wird j-lawyer.org in der Version 2.6 vorausgesetzt)
+
 Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thunderbird gespeichert. Zukünftig soll eine sichere Speichermöglichkeit implementiert werden. 
 
 ## Features
@@ -14,7 +16,14 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 - **Daten aktualisieren**: Button zum Aktualisieren der Daten, falls neue Akten angelegt seit letzter Nutzung der Extension.
 - **Etiketten anbringen**: Eine oder mehrere Etiketten an dem Dokument anbringen.
 - **Schlagwort/Tag an versandter und gespeicherter Message anbringen**: das Schlagwort "veraktet" wird angefügt. So ist direkt klar, welche Nachricht schon an den Server übermittelt wurde.
-- **Kalendereintrag erstellen**: Ein Termin, eine Wiedervorlage oder eine Frist können für eine Akte und einen Nutzer erstellt werden. Ist der Kalender auch in Thunderbird synchronisiert, werden die Änderungen dann sichtbar. (soll ein Kalendereintrag zu einer "jungen" Akte erstellt werden, müssen vorher die Daten über das Addon aktualisiert werden, da die Akte sonst nicht gefunden wird). (Für die Kalenderfunktion wird j-lawyer.org in der Version 2.6 vorausgesetzt)
+
+- Kalendereintrag erstellen
+  
+  ![Bildschirmfoto vom 2024-01-30 09-22-45](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/686c4693-4e56-49d4-9bc0-21b0cb4beca6)
+  
+  ![Kalendereintrag_erstellen](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/4531ba6d-f8ee-4ce5-8843-c748c2d5df87)
+
+
 
 ## Installation
 - Das letzte Release herunterladen (j-Lawyer-Thunderbird.xpi). 
@@ -25,13 +34,6 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 - Klick auf den Einstellungen Button im Add-On. Eingabe des Nutzernamens, Passwort und der Serveradresse (diese steht auch in der Titelleiste des j-Lawyer Clients). http:// oder https:// müssen ebenfalls Teil der Serveradresse sein! 
 
 ![Bildschirmfoto vom 2023-09-20 07-38-09](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/a2b2c2b4-bdec-4b14-b94a-ab15f33676e3)
-
-- Kalendereintrag erstellen
-  
-  ![Bildschirmfoto vom 2024-01-30 09-22-45](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/686c4693-4e56-49d4-9bc0-21b0cb4beca6)
-  
-  ![Kalendereintrag_erstellen](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/4531ba6d-f8ee-4ce5-8843-c748c2d5df87)
-
 
 
 - Daten vom Server laden - Klick auf das Pfeil Icon in der Erweiterung (dies ist vor der ersten Nutzung erforderlich, um eine Aktensuche zu ermöglichen und jedes Mal dann, wenn sicher der Aktenbestand geändert hat und neue E-Mails oder Anhänge zu "neuen Akten" gespeichert werden sollen)
