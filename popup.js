@@ -649,7 +649,7 @@ function displayTreeStructure(folderData) {
 
 // Funktion zum Abrufen der Kalender vom Server
 async function getCalendars(username, password, serverAddress) {
-    const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list';
+    const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list/'+ username;
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     
