@@ -18,14 +18,15 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.3s; 
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); 
         }
 
         button:hover {
             opacity: 0.8;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
         }
 
-        /* Unterscheidende Stile für verschiedene Schaltflächen */
         #submitButton {
             background-color: #4CAF50;
             color: white;
@@ -48,31 +49,31 @@
             margin-top: 20px;
         }
 
-        /* Anpassung des Abstands zwischen den Elementen */
+        /* Abstand zwischen den Elementen */
         p {
             margin-bottom: 10px;
         }
 
         /* Stil für die Container */
-        #inputContainer, #feedbackContainer {
-            width: 95%;
+        #inputContainer, #feedbackContainer, #tagsContainer, #treeContainer {
             padding: 15px;
             border-radius: 10px;
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+            background-color: #f7f7f7;
+            margin-bottom: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
         }
       
         #feedbackContainer {
-            border: 2px solid #2196F3; /* Blauer Rahmen */
+            border: 2px solid #2196F3; 
         }
 
         #tagsContainer {
             width: 95%;
             padding: 15px;
             border-radius: 10px;    
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-            border: 2px solid #FFC107; /* Gelber Rahmen */
+            background-color: #f7f7f7; 
+            margin-bottom: 20px; 
+            border: 2px solid #FFC107; 
         }
 
         /* Stil für das Suchfeld */
@@ -87,9 +88,9 @@
 
         /* Stil für die Ergebnisliste */
         #resultsList {
-            max-height: 170px;  /* Begrenzt die Höhe der Liste */
+            max-height: 170px;  
             width: 95%;
-            overflow-y: auto;  /* Fügt einen Scroll-Balken hinzu, wenn die Liste die maximale Höhe überschreitet */
+            overflow-y: auto;  
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -97,8 +98,8 @@
         /* Stil für jedes Ergebniselement in der Liste */
         .resultItem {
             padding: 8px 12px;
-            cursor: pointer;  /* Ändert den Mauszeiger zu einem Zeiger, wenn er über einem Element schwebt, was anzeigt, dass es anklickbar ist */
-            border-bottom: 1px solid #eee;  /* Fügt eine Trennlinie zwischen den Elementen hinzu */
+            cursor: pointer;  
+            border-bottom: 1px solid #eee;  
             font-size: 13px;
         }
 
@@ -121,10 +122,10 @@
             left: 0;
             top: 100%;  /* Positioniert den Tooltip unter dem Element */
             padding: 5px 10px;
-            background-color: #f5f5f5;  /* Heller Hintergrund */
-            color: #333;  /* Dunkler Text */
-            border: 1px solid #ccc;  /* Dünner Rand */
-            border-radius: 4px;  /* Abgerundete Ecken */
+            background-color: #f5f5f5;  
+            color: #333;  
+            border: 1px solid #ccc;  
+            border-radius: 4px;  
             white-space: nowrap;  /* Verhindert Umbrüche im Tooltip */
             z-index: 1;  /* Stellt sicher, dass der Tooltip über anderen Elementen angezeigt wird */
             opacity: 1;  /* Ein wenig Transparenz */
@@ -139,9 +140,9 @@
         #treeContainer {
                 padding: 15px;
                 border-radius: 10px;
-                background-color: #f7f7f7; /* leicht grauer Hintergrund */
-                margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-                border: 2px solid #2196F3; /* Blauer Rahmen, optional */
+                background-color: #f7f7f7; 
+                margin-bottom: 20px; 
+                border: 2px solid #2196F3;
             }
             
         #treeContainer h3 {
@@ -155,16 +156,14 @@
             cursor: pointer;
             margin-bottom: 5px;
             font-size: 0.9em;
-            color: initial; /* Standardtextfarbe */
-            background-color: transparent; /* Keine Hintergrundfarbe */
+            color: initial; 
+            background-color: transparent; 
         }
 
         .selectedItem {
-            background-color: #007bff; /* Blaue Farbe bei Auswahl */
-            color: white; /* Weißer Text bei Auswahl */
+            background-color: #007bff; 
+            color: white; 
         }
-
-
     </style>
 
 
@@ -208,7 +207,7 @@
         <div id="resultsList"></div>
 
         <p id="customizableLabel">kein Vorschlag</p>
-        <button id="recommendCaseButton">In Akte speichern</button>
+        <button id="recommendCaseButton">Speichern</button>
         <p id="feedback"></p>
     </div>
     
@@ -218,10 +217,8 @@
 
     <div id="tagsContainer">
         <p>Etiketten:</p>
-        <select id="tagsSelect" multiple size="5" style="width: 100%;"></select>
+        <select id="tagsSelect" multiple size="10" style="width: 100%;"></select>
     </div>
-
-    
     
     <div id="buttonContainer">
         <button id="updateDataButton">↺</button>

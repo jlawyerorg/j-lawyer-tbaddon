@@ -63,6 +63,31 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 
 
 async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId, username, password, serverAddress) {
+    /*
+    This function sends an email to a server. It takes five parameters: a single message from a selection, 
+    a case ID, a username, a password, and a server address.
+    First, the case ID is logged to the console. Then, the URL for the server request is created.
+    The ID of the single message from the selection is retrieved, and the tag "veraktet" is added to the message.
+    The raw data of the message is retrieved, and the content of the message is encoded to Base64.
+    The current date is retrieved and used to create the filename. The filename consists of the current date, 
+    the author of the message, the subject of the message, and a document counter. 
+    Any unwanted characters in the filename are replaced with underscores.
+
+    The document counter is incremented by one.The payload for the server request is created. 
+    It includes the encoded content of the message, the case ID, the filename, and some additional parameters.
+    The headers for the server request are created. 
+    They include a Basic Authorization with the username and password, as well as the Content-Type.
+    The server request is executed using the PUT method. The payload is sent as a JSON string in the body of the request.
+    If the server response is not OK, an error is thrown. Otherwise, the response is returned as JSON.
+    The ID of the uploaded document is retrieved and logged to the console. 
+    Then, the function updateDocumentFolderBundle is called.
+    A message of type "success" is sent to the browser runtime.
+    The selected tags are retrieved from local storage. If there are selected tags, 
+    the function setDocumentTagFromSelection is called for each tag.
+    If an error occurs, it is logged to the console, and a message of type "error" is sent to the browser runtime.
+    */
+    
+    
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
     
@@ -137,6 +162,33 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
 
 
 function getCasesFromSelection(username, password, serverAddress) {
+    /*
+    This function, `getCasesFromSelection`, is used to fetch a list of cases from a server. 
+    It takes three parameters: a username, a password, and a server address.
+
+    First, it constructs the URL for the server request by appending '/j-lawyer-io/rest/v1/cases/list' to the server address.
+    It then creates a new Headers object. This object is used to set the headers for the server request.
+    The username and password are concatenated with a colon in between, 
+    then encoded using the encodeURIComponent function to ensure that any special characters are properly escaped. 
+    The resulting string is then unescaped and encoded to Base64 using the btoa function. 
+    This Base64 encoded string is used for Basic Authorization in the headers.
+
+    The 'Authorization' header is set to 'Basic ' followed by the Base64 encoded login credentials. 
+    The 'Content-Type' header is set to 'application/json' to indicate that the server should interpret 
+    the request body as a JSON object.
+
+    A GET request is made to the server using the fetch API. The URL and headers are passed as parameters.
+
+    The fetch API returns a Promise that resolves to the Response object representing the response to the request. 
+    This is then processed with a .then() block.
+
+    Inside the .then() block, the function checks if the response was ok (status in the range 200-299). 
+    If it was not ok, it throws an error.
+
+    If the response was ok, it returns the response body parsed as JSON. 
+    This will be a Promise that resolves to the actual data when it is ready.
+    */
+    
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
     const headers = new Headers();
@@ -158,6 +210,9 @@ function getCasesFromSelection(username, password, serverAddress) {
 
 
 function findIdByFileNumberFromSelection(data, fileNumber) {
+    /* This function, `findIdByFileNumberFromSelection`, is used to find and return the 
+    ID of an item in a data set based on a given file number.
+    */
     for (let item of data) {
         if (item.fileNumber === fileNumber) {
             return item.id;
@@ -169,6 +224,10 @@ function findIdByFileNumberFromSelection(data, fileNumber) {
 
 
 function findCaseBySubject(data, subject) {
+    /* 
+    This function, `findCaseBySubject`, is used to find and return the name of an item in a data set based on a given subject. 
+    */
+    
     for (let item of data) {
         if (item.fileNumber === subject) {
             return item.name;
@@ -181,6 +240,10 @@ function findCaseBySubject(data, subject) {
 
 // zu base64 codiert, inkl. utf8
 async function messageToBase64(rawMessage) {
+    /*
+    This function, `messageToBase64`, is used to convert the content of a message to a Base64 string.
+    */
+    
     try {
         // Den Nachrichteninhalt in Base64 codieren
         let bytes = new Uint8Array(rawMessage.length);
@@ -214,6 +277,24 @@ async function messageToBase64(rawMessage) {
 
 
 function getCurrentDateFormatted() {
+    /*
+    This function, `getCurrentDateFormatted`, is used to get the current date and time, 
+    and format it in the pattern "YYYY-MM-DD HH:MM:SS".
+
+    First, it creates a new Date object, `currentDate`, which holds the current date and time.
+
+    It then extracts the year, month, and day from `currentDate`. The month is incremented 
+    by 1 because JavaScript's getMonth() method returns a zero-based value (0-11).
+
+    If the month or day is less than 10, it prepends a '0' to ensure a two-digit format.
+
+    Similarly, it extracts the hours, minutes, and seconds from `currentDate`. If any of 
+    these values are less than 10, it prepends a '0' to ensure a two-digit format.
+
+    Finally, it combines the date and time components into a single string in the format 
+    "YYYY-MM-DD HH:MM:SS" and returns this string.
+    */
+    
     const currentDate = new Date();
 
     const year = currentDate.getFullYear();
@@ -240,7 +321,7 @@ function getCurrentDateFormatted() {
 
 
 
-
+// adding Tag
 function setDocumentTagFromSelection(username, password, serverAddress, documentTag) {
 
     const headers = new Headers();
@@ -271,6 +352,7 @@ function setDocumentTagFromSelection(username, password, serverAddress, document
 }
 
 
+// puts document into case folder
 async function updateDocumentFolderBundle(username, password, serverAddress) {
 
     const headers = new Headers();
@@ -310,6 +392,7 @@ function uint8ArrayToBase64(uint8Array) {
 }
 
 
+// adds thunderbird tag to selected message
 async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
     // Alle vorhandenen Tags abrufen
     const existingTags = await browser.messages.listTags();

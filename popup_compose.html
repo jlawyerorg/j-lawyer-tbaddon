@@ -19,11 +19,13 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.3s; 
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); 
         }
 
         button:hover {
             opacity: 0.8;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3); 
         }
 
         #recommendCaseButtonAfterSend {
@@ -48,16 +50,16 @@
             margin-bottom: 10px;
         }
 
-        /* Stil für die Container */
-        #inputContainer, #feedbackContainer {
+        #inputContainer, #feedbackContainer, #tagsContainer, #treeContainer {
             padding: 15px;
             border-radius: 10px;
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-        }
+            background-color: #f7f7f7;
+            margin-bottom: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
+          }
 
         #feedbackContainer {
-            border: 2px solid #2196F3; /* Blauer Rahmen */
+            border: 2px solid #2196F3;
         }
 
 
@@ -73,9 +75,9 @@
 
         /* Stil für die Ergebnisliste */
         #resultsList {
-            max-height: 170px;  /* Begrenzt die Höhe der Liste */
+            max-height: 170px;  
             width: 95%;
-            overflow-y: auto;  /* Fügt einen Scroll-Balken hinzu, wenn die Liste die maximale Höhe überschreitet */
+            overflow-y: auto; 
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -83,8 +85,8 @@
         /* Stil für jedes Ergebniselement in der Liste */
         .resultItem {
             padding: 8px 12px;
-            cursor: pointer;  /* Ändert den Mauszeiger zu einem Zeiger, wenn er über einem Element schwebt, was anzeigt, dass es anklickbar ist */
-            border-bottom: 1px solid #eee;  /* Fügt eine Trennlinie zwischen den Elementen hinzu */
+            cursor: pointer;  
+            border-bottom: 1px solid #eee;  /* Trennlinie zwischen den Elementen */
             font-size: 13px;
         }
 
@@ -101,9 +103,9 @@
         #tagsContainer {
             padding: 5px;
             border-radius: 10px;    
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-            border: 2px solid #FFC107; /* Gelber Rahmen */
+            background-color: #f7f7f7; 
+            margin-bottom: 20px; 
+            border: 2px solid #FFC107;
         }
         /* Tooltip-Stil */
         .resultItem {
@@ -115,15 +117,15 @@
             left: 0;
             top: 100%;  /* Positioniert den Tooltip unter dem Element */
             padding: 5px 10px;
-            background-color: #f5f5f5;  /* Heller Hintergrund */
-            color: #333;  /* Dunkler Text */
-            border: 1px solid #ccc;  /* Dünner Rand */
+            background-color: #f5f5f5;  
+            color: #333;  
+            border: 1px solid #ccc; 
             border-radius: 4px;  /* Abgerundete Ecken */
             white-space: nowrap;  /* Verhindert Umbrüche im Tooltip */
             z-index: 1;  /* Stellt sicher, dass der Tooltip über anderen Elementen angezeigt wird */
-            opacity: 1;  /* Ein wenig Transparenz */
+            opacity: 1;  
             pointer-events: none;  /* Stellt sicher, dass der Tooltip nicht klickbar ist */
-            margin-top: 5px;  /* Ein wenig Abstand zum Element */
+            margin-top: 5px;  
         }
 
 
@@ -136,9 +138,9 @@
         #treeContainer {
                 padding: 15px;
                 border-radius: 10px;
-                background-color: #f7f7f7; /* leicht grauer Hintergrund */
-                margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-                border: 2px solid #2196F3; /* Blauer Rahmen, optional */
+                background-color: #f7f7f7; 
+                margin-bottom: 20px; 
+                border: 2px solid #2196F3; 
             }
             
         #treeContainer h3 {
@@ -152,8 +154,8 @@
             cursor: pointer;
             margin-bottom: 5px;
             font-size: 0.9em;
-            color: initial; /* Standardtextfarbe */
-            background-color: transparent; /* Keine Hintergrundfarbe */
+            color: initial; 
+            background-color: transparent; 
         }
 
         .selectedItem {
@@ -212,7 +214,7 @@
 
     <div id="tagsContainer">
         <p>Etiketten:</p>
-        <select id="tagsSelect" multiple size="5" style="width: 100%;"></select>
+        <select id="tagsSelect" multiple size="10" style="width: 100%;"></select>
     </div>
 
     

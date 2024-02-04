@@ -24,6 +24,9 @@ let selectedCaseFolderID = null;
 
 
 async function sendEmailToServer(caseId, username, password, serverAddress) {
+    /*
+
+    */
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
@@ -670,8 +673,8 @@ async function setDocumentTagsAndFolderForAttachments() {
 
 }
 
+// set document folder for messages and attachments
 async function updateDocumentFolder(username, password, serverAddress) {
-
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     headers.append('Authorization', 'Basic ' + loginBase64Encoded);

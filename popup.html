@@ -19,11 +19,13 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.3s; /* Übergangseffekt für Schatten hinzufügen */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Schatten hinzufügen */
         }
 
         button:hover {
             opacity: 0.8;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3); /* Intensiveren Schatten beim Hover hinzufügen */
         }
 
         /* Unterscheidende Stile für verschiedene Schaltflächen */
@@ -33,6 +35,11 @@
         }
         #saveOnlyMessageButton {
             background-color: #4CAF50;
+            color: white;
+        }
+
+        #saveAttachmentsButton {
+            background-color: #cb1e1e;
             color: white;
         }
 
@@ -58,12 +65,13 @@
             margin-bottom: 10px;
         }
 
-        /* Stil für die Container */
-        #inputContainer, #feedbackContainer {
+        /* Stil für Container mit Schatten */
+        #inputContainer, #feedbackContainer, #tagsContainer, #treeContainer {
             padding: 15px;
             border-radius: 10px;
             background-color: #f7f7f7; /* leicht grauer Hintergrund */
             margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Schatten hinzufügen */
         }
       
         #feedbackContainer {
@@ -71,10 +79,6 @@
         }
 
         #tagsContainer {
-            padding: 5px;
-            border-radius: 10px;    
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
             border: 2px solid #FFC107; /* Gelber Rahmen */
         }
 
@@ -212,9 +216,9 @@
         <div id="resultsList"></div>
 
         <p id="customizableLabel">kein Vorschlag</p>
-        <button id="recommendCaseButton">In Akte speichern</button>
-        <button id="saveOnlyMessageButton">Nur Nachricht speichern</button>
-        <button id="saveAttachmentsButton">Nur Anhang speichern</button>
+        <button id="recommendCaseButton">Speichern</button>
+        <button id="saveOnlyMessageButton">Nur Nachricht</button>
+        <button id="saveAttachmentsButton">Nur Anhang</button>
         <p id="feedback"></p>
     </div>
 
@@ -224,10 +228,8 @@
 
     <div id="tagsContainer">
         <p>Etiketten:</p>
-        <select id="tagsSelect" multiple size="5" style="width: 100%;"></select>
+        <select id="tagsSelect" multiple size="10" style="width: 100%;"></select>
     </div>
-
-    
 
     <div id="buttonContainer">
         <button id="updateDataButton">↺</button>
