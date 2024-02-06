@@ -17,7 +17,7 @@ Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thu
 - **Etiketten anbringen**: Eine oder mehrere Etiketten an dem Dokument anbringen.
 - **Schlagwort/Tag an versandter und gespeicherter Message anbringen**: das Schlagwort "veraktet" wird angefügt. So ist direkt klar, welche Nachricht schon an den Server übermittelt wurde.
 
-- Kalendereintrag erstellen
+- Kalendereintrag erstellen (erfordert j-Lawyer.org Version 2.6)
   
   ![Bildschirmfoto vom 2024-01-30 09-22-45](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/686c4693-4e56-49d4-9bc0-21b0cb4beca6)
   
