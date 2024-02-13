@@ -29,6 +29,12 @@
             margin-bottom: 20px;
         }
 
+        .warning {
+            color: #d9534f; /* Rot für Warnungen */
+            font-size: 0.9em;
+            margin-bottom: 20px; /* Zusätzlicher Abstand unter der Warnung */
+        }
+
         label {
             display: block;
             margin-bottom: 10px;
@@ -76,6 +82,7 @@
 <body>
     <div class="content-wrapper">
         <h2>j-Lawyer-Thunderbird-Extension - Einstellungen</h2>
+        <p class="warning">Hinweis: Diese Erweiterung speichert Nachrichten auf einem j-Lawyer.org-Server. Sensible Daten können übertragen werden. Abhängig von der Art der Verbindung können diese Daten auch unverschlüsselt sein.</p>
         <form id="settingsForm">
             <label for="username">Benutzername:</label>
             <input type="text" id="username"><br><br>
