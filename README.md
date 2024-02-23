@@ -8,7 +8,7 @@ Die Nachrichten oder Anhänge können mit Etiketten versehen werden.
 
 Ein Termin, eine Wiedervorlage oder eine Frist können für eine Akte und einen Nutzer erstellt werden. Ist der Kalender auch in Thunderbird synchronisiert, werden die Änderungen dann sichtbar. (soll ein Kalendereintrag zu einer "jungen" Akte erstellt werden, müssen vorher die Daten über das Addon aktualisiert werden, da die Akte sonst nicht gefunden wird). (Für die Kalenderfunktion wird j-lawyer.org in der Version 2.6 vorausgesetzt)
 
-Wichtig: Aktuell werden die Zugangsdaten lokal in in der Erweiterung bzw. in Thunderbird gespeichert. Zukünftig soll eine sichere Speichermöglichkeit implementiert werden. 
+Wichtig: Die Zugangsdaten werden lokal und unverschlüsselt in Thunderbird gespeichert.
 
 ## Features
 
