@@ -101,11 +101,13 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(rawMessage);
 
-    // Das Datum ermitteln, um es dem Dateinamen voranzustellen
-    const today = getCurrentDateFormatted();
+    // get date and time from message header
+    let date = new Date(messageData.date);
+    let dateString = formatDate(date);
+    console.log("DateString: " + dateString);
 
     // Dateinamen erstellen
-    fileName = today + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + documentCounter + ".eml";
+    fileName = dateString + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + documentCounter + ".eml";
     fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
 
     documentCounter++;
@@ -276,50 +278,58 @@ async function messageToBase64(rawMessage) {
 
 
 
-function getCurrentDateFormatted() {
-    /*
-    This function, `getCurrentDateFormatted`, is used to get the current date and time, 
-    and format it in the pattern "YYYY-MM-DD HH:MM:SS".
+// function getCurrentDateFormatted() {
+//     /*
+//     This function, `getCurrentDateFormatted`, is used to get the current date and time, 
+//     and format it in the pattern "YYYY-MM-DD HH:MM:SS".
 
-    First, it creates a new Date object, `currentDate`, which holds the current date and time.
+//     First, it creates a new Date object, `currentDate`, which holds the current date and time.
 
-    It then extracts the year, month, and day from `currentDate`. The month is incremented 
-    by 1 because JavaScript's getMonth() method returns a zero-based value (0-11).
+//     It then extracts the year, month, and day from `currentDate`. The month is incremented 
+//     by 1 because JavaScript's getMonth() method returns a zero-based value (0-11).
 
-    If the month or day is less than 10, it prepends a '0' to ensure a two-digit format.
+//     If the month or day is less than 10, it prepends a '0' to ensure a two-digit format.
 
-    Similarly, it extracts the hours, minutes, and seconds from `currentDate`. If any of 
-    these values are less than 10, it prepends a '0' to ensure a two-digit format.
+//     Similarly, it extracts the hours, minutes, and seconds from `currentDate`. If any of 
+//     these values are less than 10, it prepends a '0' to ensure a two-digit format.
 
-    Finally, it combines the date and time components into a single string in the format 
-    "YYYY-MM-DD HH:MM:SS" and returns this string.
-    */
+//     Finally, it combines the date and time components into a single string in the format 
+//     "YYYY-MM-DD HH:MM:SS" and returns this string.
+//     */
     
-    const currentDate = new Date();
+//     const currentDate = new Date();
 
-    const year = currentDate.getFullYear();
+//     const year = currentDate.getFullYear();
 
-    let month = currentDate.getMonth() + 1;
-    month = month < 10 ? '0' + month : month;
+//     let month = currentDate.getMonth() + 1;
+//     month = month < 10 ? '0' + month : month;
 
-    let day = currentDate.getDate();
-    day = day < 10 ? '0' + day : day;
+//     let day = currentDate.getDate();
+//     day = day < 10 ? '0' + day : day;
 
-    // Ergänzung für die Uhrzeit
-    let hours = currentDate.getHours();
-    hours = hours < 10 ? '0' + hours : hours;
+//     // Ergänzung für die Uhrzeit
+//     let hours = currentDate.getHours();
+//     hours = hours < 10 ? '0' + hours : hours;
 
-    let minutes = currentDate.getMinutes();
-    minutes = minutes < 10 ? '0' + minutes : minutes;
+//     let minutes = currentDate.getMinutes();
+//     minutes = minutes < 10 ? '0' + minutes : minutes;
 
-    let seconds = currentDate.getSeconds();
-    seconds = seconds < 10 ? '0' + seconds : seconds;
+//     let seconds = currentDate.getSeconds();
+//     seconds = seconds < 10 ? '0' + seconds : seconds;
 
-    // Kombinieren von Datum und Uhrzeit im Format YYYY-MM-DD HH:MM:SS
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+//     // Kombinieren von Datum und Uhrzeit im Format YYYY-MM-DD HH:MM:SS
+//     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+// }
+
+function formatDate(input) {
+    const date = new Date(input);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}_${hours}-${minutes}`;
 }
-
-
 
 // adding Tag
 function setDocumentTagFromSelection(username, password, serverAddress, documentTag) {

@@ -215,7 +215,8 @@ function getCasesFromSelection(username, password, serverAddress) {
 
     return fetch(url, {
         method: 'GET',
-        headers: headers
+        headers: headers,
+        timeOut: 10000
     }).then(response => {
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -556,7 +557,8 @@ async function getUsers(username, password, serverAddress) {
     try {
         const response = await fetch(url, {
             method: 'GET',
-            headers: headers
+            headers: headers,
+            timeOut: 10000
         });
 
         if (!response.ok) {

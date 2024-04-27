@@ -350,7 +350,8 @@ function getCases(username, password, serverAddress) {
   
     return fetch(url, {
       method: 'GET',
-      headers: headers
+      headers: headers,
+      timeout: 30000
     }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
