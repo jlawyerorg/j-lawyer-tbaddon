@@ -8,6 +8,7 @@
         /* Grundlegende Stilrichtlinien für das gesamte Popup */
         body {
             width: 450px;
+            height: fit-content;
             font-family: Arial, sans-serif;
             margin: 20px;
         }
@@ -220,6 +221,10 @@
         <button id="saveOnlyMessageButton">Nur Nachricht</button>
         <button id="saveAttachmentsButton">Nur Anhang</button>
         <p id="feedback"></p>
+        <div id="buttonContainer">
+            <button id="updateDataButton">↺</button>
+            <button id="settingsButton">&#9881;</button>
+        </div>
     </div>
 
     <div id="treeContainer">
@@ -228,12 +233,7 @@
 
     <div id="tagsContainer">
         <p>Etiketten:</p>
-        <select id="tagsSelect" multiple size="10" style="width: 100%;"></select>
-    </div>
-
-    <div id="buttonContainer">
-        <button id="updateDataButton">↺</button>
-        <button id="settingsButton">&#9881;</button>
+        <select id="tagsSelect" multiple size="15" style="width: 100%;"></select>
     </div>
     
     <script src="popup.js"></script>
