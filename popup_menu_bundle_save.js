@@ -505,7 +505,7 @@ function displayTreeStructure(folderData) {
 
 
 async function getCalendars(username, password, serverAddress) {
-    const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list'+ username;
+    const url = serverAddress + '/j-lawyer-io/rest/v4/calendars/list/'+ username;
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     
