@@ -102,7 +102,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     const emailContentBase64 = await messageToBase64(rawMessage);
 
     // get date and time from message header
-    let date = new Date(messageData.date);
+    let date = new Date(singleMessageFromSelection.date);
     let dateString = formatDate(date);
     console.log("DateString: " + dateString);
 
