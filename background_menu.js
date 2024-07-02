@@ -92,9 +92,6 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
     
     messageId = singleMessageFromSelection.id;
-    
-    // Der Nachricht wird der Tag "veraktet" hinzugefügt
-    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
 
     let rawMessage = await messenger.messages.getRaw(messageId);
 
@@ -159,7 +156,9 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
         console.log('Error:', error);
         browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
     });
-
+    
+    // Der Nachricht wird der Tag "veraktet" hinzugefügt
+    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
 }
 
 
@@ -402,7 +401,7 @@ function uint8ArrayToBase64(uint8Array) {
 }
 
 
-// adds thunderbird tag to selected message
+// adds thunderbird tag to selected message - until TB 115
 async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
     // Alle vorhandenen Tags abrufen
     const existingTags = await browser.messages.listTags();
@@ -418,6 +417,33 @@ async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
     // Tag wird der Nachricht hinzugefügt
     await browser.messages.update(messageId, { tags: [tag.key] });
 }
+
+/* // Adds a Thunderbird tag to a selected message - from TB 121
+async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
+    // Alle vorhandenen Tags abrufen
+    const existingTags = await browser.messages.tags.list();
+
+    // Überprüfen, ob der Tag bereits existiert
+    let tag = existingTags.find(t => t.tag === tagName);
+
+    // Wenn der Tag nicht existiert, wird er erstellt
+    if (!tag) {
+        const tagKey = tagName.toLowerCase();  // Erstellen eines eindeutigen Schlüssels
+        tag = await browser.messages.tags.create(tagKey, tagName, tagColor);
+    }
+
+    // Nachricht abrufen, um die aktuellen Tags zu erhalten
+    let message = await browser.messages.get(messageId);
+
+    // Bestehende Tags abrufen und neuen Tag hinzufügen
+    let tags = message.tags || [];
+    if (!tags.includes(tag.key)) {
+        tags.push(tag.key);
+    }
+
+    // Nachricht aktualisieren mit neuen Tags
+    await browser.messages.update(messageId, { tags: tags });
+} */
 
 
 
