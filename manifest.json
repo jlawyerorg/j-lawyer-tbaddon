@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-lawyer.org-Thunderbird-Extension",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Sendet E-Mails an einen j-lawyer.org Server",
   "author": "Maximilian Steinert",
   "icons": {
@@ -15,6 +15,7 @@
     "storage", 
     "<all_urls>",
     "messagesTags",
+    "messagesUpdate",
     "menus"
   ],
   "background": {
