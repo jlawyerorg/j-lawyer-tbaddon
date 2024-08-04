@@ -31,7 +31,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
 
-    let rawMessage = await messenger.messages.getRaw(messageData.id);
+    let rawMessage = await messenger.messages.getRaw(messageData.id, { decrypt: true });
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(rawMessage);
@@ -130,7 +130,7 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
     console.log("Message Id: " + messageData.id);
 
    
-    let rawMessage = await messenger.messages.getRaw(messageData.id);
+    let rawMessage = await messenger.messages.getRaw(messageData.id, { decrypt: true });
 
     // let message = rawMessage.message;
 
@@ -324,7 +324,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
 
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
-    rawMessage = await messenger.messages.getRaw(lastMessageData.messages[0].id);
+    rawMessage = await messenger.messages.getRaw(lastMessageData.messages[0].id, { decrypt: true });
 
     addTagToMessage(lastMessageData.messages[0], 'veraktet', '#000080');
 

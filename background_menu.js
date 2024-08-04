@@ -93,7 +93,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     
     messageId = singleMessageFromSelection.id;
 
-    let rawMessage = await messenger.messages.getRaw(messageId);
+    let rawMessage = await messenger.messages.getRaw(messageId, { decrypt: true });
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(rawMessage);
