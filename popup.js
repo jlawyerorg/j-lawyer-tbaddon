@@ -444,31 +444,33 @@ document.getElementById("searchInput").addEventListener("input", function() {
 // Funktion zum Suchen von Fällen
 async function searchCases(query) {
     document.getElementById("resultsList").style.display = "block";
-    // die gespeicherten Daten aus browser.storage.local abrufen
     let storedData = await browser.storage.local.get("cases");
     let casesArray = storedData.cases;
     let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
 
     query = query.toUpperCase();
-
+    
     let results = casesArray.filter(item => 
         item.name.toUpperCase().includes(query) || 
-        item.fileNumber.toUpperCase().includes(query)
+        item.fileNumber.toUpperCase().includes(query) ||
+        (item.reason && item.reason.toUpperCase().includes(query))  // Neue Bedingung für reason
     );
 
-    // Ergebnisse basierend auf der längsten aufeinanderfolgenden Übereinstimmungslänge bewerten und sortieren
+    // Ergebnisse bewerten und sortieren basierend auf Übereinstimmungslänge
     results = results.map(item => {
         let nameMatchLength = getConsecutiveMatchCount(item.name.toUpperCase(), query);
-        let fileNumberMatchLength = getConsecutiveMatchCount(item.fileNumber, query);
+        let fileNumberMatchLength = getConsecutiveMatchCount(item.fileNumber.toUpperCase(), query);
+        let reasonMatchLength = item.reason ? 
+            getConsecutiveMatchCount(item.reason.toUpperCase(), query) : 0;
+
         return {
             ...item,
-            matchLength: Math.max(nameMatchLength, fileNumberMatchLength)
+            matchLength: Math.max(nameMatchLength, fileNumberMatchLength, reasonMatchLength)
         };
     }).filter(item => item.matchLength > 0)
     .sort((a, b) => b.matchLength - a.matchLength);
 
     const resultsListElement = document.getElementById("resultsList");
-    // Zuerst den Inhalt von resultsList leeren
     while (resultsListElement.firstChild) {
         resultsListElement.removeChild(resultsListElement.firstChild);
     }
@@ -477,38 +479,34 @@ async function searchCases(query) {
         const div = document.createElement("div");
         div.className = "resultItem";
         div.setAttribute("data-id", item.id);
-        div.setAttribute("data-tooltip", "Lädt...");
         div.textContent = `${item.name} (${item.fileNumber})`;
+        if (item.reason) {
+            div.textContent += ` - ${item.reason}`;
+        }
         resultsListElement.appendChild(div);
     });
     
-
-    // Event-Listener für das Klicken auf ein Ergebniselement
+    // Event Handler für Suchergebnisse
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
                 name: this.textContent.split(" (")[0],
-                fileNumber: this.textContent.split("(")[1].split(")")[0]
+                fileNumber: this.textContent.split("(")[1].split(")")[0],
+                reason: item.getAttribute("data-tooltip")
             };
+            
             caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
             
             caseFolders = await getCaseFolders(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);        
-            console.log("caseFolders: " + caseFolders);
+            console.log("caseFolders:", caseFolders);
             displayTreeStructure(caseFolders);
 
-            console.log("Ausgewählter Fall:", currentSelectedCase);
-            
             document.getElementById("resultsList").style.display = "none";
 
-            // aktualisieren des Label "Recommended Case" mit der gefundenen Akte
+            // Label aktualisieren
             const customizableLabel = document.getElementById("customizableLabel");
-            customizableLabel.textContent = currentSelectedCase.fileNumber + ": " + currentSelectedCase.name + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
-        });
-        item.addEventListener("mouseover", async function() {
-            const caseId = this.getAttribute("data-id");
-            const metaData = await getCaseMetaData(caseId, loginData.username, loginData.password, loginData.serverAddress);
-            this.setAttribute("data-tooltip", metaData.reason);
+            customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
         });
     });
 }

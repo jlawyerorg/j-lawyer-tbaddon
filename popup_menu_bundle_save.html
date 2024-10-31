@@ -112,26 +112,7 @@
         .resultItem:last-child {
             border-bottom: none;
         }
-        /* Tooltip-Stil */
-        .resultItem {
-            position: relative;
-        }
-        .resultItem:hover::after {
-            content: attr(data-tooltip);  /* Der Tooltip zeigt den Inhalt des "data-tooltip"-Attributs */
-            position: absolute;
-            left: 0;
-            top: 100%;  /* Positioniert den Tooltip unter dem Element */
-            padding: 5px 10px;
-            background-color: #f5f5f5;  
-            color: #333;  
-            border: 1px solid #ccc;  
-            border-radius: 4px;  
-            white-space: nowrap;  /* Verhindert Umbrüche im Tooltip */
-            z-index: 1;  /* Stellt sicher, dass der Tooltip über anderen Elementen angezeigt wird */
-            opacity: 1;  /* Ein wenig Transparenz */
-            pointer-events: none;  /* Stellt sicher, dass der Tooltip nicht klickbar ist */
-            margin-top: 5px;  /* Ein wenig Abstand zum Element */
-        }
+        
     </style>
     
     <!-- Code für den TreeContainer -->
