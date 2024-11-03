@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-lawyer.org-Thunderbird-Extension",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Sendet E-Mails an einen j-lawyer.org Server",
   "author": "Maximilian Steinert",
   "icons": {
@@ -42,7 +42,7 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "E-Mail an j-lawyer senden"
+    "default_title": "j-lawyer"
   },
   "browser_action": {
     "default_icon": {
@@ -51,7 +51,7 @@
       "32": "icons/icon-32.png"
     },
     "default_title": "Kalendereintrag erstellen"
-  },  
+  }, 
   "browser_specific_settings": {
     "gecko": {
       "id": "steinert@steinertstrafrecht.com",

@@ -54,7 +54,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                     selectedCaseFolderID: selectedCaseFolderID,
                     username: result.username,
                     password: result.password,
-                    serverAddress: result.serverAddress
+                    serverAddress: result.serverAddress,
+                    currentSelectedCase: currentSelectedCase
                 });
     
                 feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";

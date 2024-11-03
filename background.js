@@ -20,7 +20,7 @@ let documentIdsToTag = [];
 let lastMessageData = null;
 let extensionUsed = false;
 let selectedCaseFolderID = null;
-
+let currentSelectedCase = null;
 
 
 async function sendEmailToServer(caseId, username, password, serverAddress) {
@@ -822,6 +822,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 
         console.log("Aktenzeichen: " + message.content);
         selectedCaseFolderID = message.selectedCaseFolderID;
+        currentSelectedCase = message.currentSelectedCase;
 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
             const fileNumber = String(message.content);
@@ -895,4 +896,139 @@ function removeAttachmentsFromRFC2822(message) {
   
     return updatedMessage;
   }
+
+
+// Menü und Untermenüeinträge dynamisch erstellen
+browser.storage.local.get({ emailTemplates: [] }).then((data) => {
+    const emailTemplates = data.emailTemplates;
+  
+    // Hauptmenüeintrag erstellen
+    browser.menus.create({
+      id: "vorlagen-menu",
+      title: "Vorlagen",
+      contexts: ["compose_action"],
+      type: "normal"
+    });
+  
+    // Untermenüeinträge für jede Vorlage erstellen
+    emailTemplates.forEach((template) => {
+      browser.menus.create({
+        id: `vorlage-${template.id}`,
+        parentId: "vorlagen-menu",
+        title: `${template.name} einfügen`,
+        contexts: ["compose_action"],
+        type: "normal"
+      });
+    });
+  
+    browser.menus.onClicked.addListener(async (info, tab) => {
+
+        const clickedTemplate = emailTemplates.find(
+            (template) => `vorlage-${template.id}` === info.menuItemId
+        );
+    
+        if (!clickedTemplate) {
+            console.error("Kein passender Menüeintrag gefunden.");
+            return;
+        }
+    
+        // UTF-8-Encoding für clickedTemplate.name
+        const clickedTemplateNameEncoded = encodeURIComponent(clickedTemplate.name);
+    
+        try {
+            // Daten aus dem Speicher abrufen
+            const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
+    
+            // Auf die asynchrone Funktion warten
+            const content = await getTemplateWithPlaceholders(
+                result.username,
+                result.password,
+                result.serverAddress,
+                clickedTemplateNameEncoded,
+                currentSelectedCase.id
+            );
+    
+            console.log("Content von getTemplateWithPlaceholders: ", content);
+            // console.log("Vorlage mit Platzhaltern: ", content.body);
+    
+            // Wenn eine passende Vorlage gefunden wurde, den Text einfügen
+            if (content && content.body) {
+                insertTemplate(tab.id, content);
+            } else {
+                console.error("Vorlage hat keinen gültigen Inhalt.");
+            }
+        } catch (error) {
+            console.error("Fehler beim Abrufen der Daten oder beim Einfügen der Vorlage: ", error);
+        }
+    });
+  });
+
+  
+function getTemplateWithPlaceholders(username, password, serverAddress, templateName, caseId) {
+    const url = serverAddress + '/j-lawyer-io/rest/v6/templates/email/'+ templateName + '/' + caseId;
+    console.log("URL: " + url);
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        console.log(response.json)
+        return response.json();
+    });
+}
+
+function insertTemplate(tabId, content) {
+    browser.compose.getComposeDetails(tabId).then((details) => {
+        let body;
+        let newBody = "";
+
+        // Text bereinigen: {{CURSOR}} und umliegende Leerzeichen entfernen
+        const cleanedContentBody = content.body.replace(/\s*{{CURSOR}}\s*/g, "");
+
+        console.log("Bereinigter Content:", cleanedContentBody);
+        console.log("Initial body:", details.body);
+        console.log("Initial plainTextBody:", details.plainTextBody);
+        console.log("Content MIME type:", content.mimeType);
+        console.log("Is plain text:", details.isPlainText);
+
+        // Überprüfen, ob die Nachricht im Nur-Text-Format ist
+        if (details.isPlainText) {
+            body = details.plainTextBody || ""; // Falls plainTextBody leer ist, setze ihn auf einen leeren String
+            newBody = cleanedContentBody + "\n" + body; // Füge Text mit Zeilenumbrüchen hinzu
+        } else {
+            body = details.body || ""; // Falls body leer ist, setze ihn auf einen leeren String
+            newBody = cleanedContentBody + body; // Füge Text mit HTML-Zeilenumbrüchen hinzu
+        }
+
+        // Wenn eine Signatur existiert, diese speziell behandeln
+        const signatureSeparator = "-- ";
+        const signatureIndex = body.indexOf(signatureSeparator);
+        if (signatureIndex !== -1) {
+            if (details.isPlainText) {
+                newBody = body.slice(0, signatureIndex) + cleanedContentBody + "\n\n" + body.slice(signatureIndex);
+            } else {
+                newBody = body.slice(0, signatureIndex) + cleanedContentBody + "<br><br>" + body.slice(signatureIndex);
+            }
+        }
+
+        console.log("Final newBody:", newBody);
+
+        // Betreff und Inhalt setzen
+        return browser.compose.setComposeDetails(tabId, {
+            subject: content.subject,
+            body: newBody
+        });
+    }).then(() => {
+        console.log("Template successfully inserted");
+    }).catch(error => {
+        console.error("Error inserting template:", error);
+    });
+}
 
