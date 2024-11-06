@@ -22,6 +22,8 @@ let extensionUsed = false;
 let selectedCaseFolderID = null;
 let currentSelectedCase = null;
 
+// Initial beim Laden der Erweiterung
+createMenuEntries();
 
 async function sendEmailToServer(caseId, username, password, serverAddress) {
 
@@ -754,7 +756,38 @@ async function addTagToMessage(message, tagName, tagColor) {
     await browser.messages.update(message.id, { tags: [tag.key] });
 }
 
-
+// TODO: remove or refactor when alternative in API is available
+function removeAttachmentsFromRFC2822(message) {
+    // Extract the boundary from the Content-Type header
+    const boundaryMatch = message.match(/boundary=("[^"]+"|'[^']+'|[^;\s]+)/);
+    const boundary = boundaryMatch ? boundaryMatch[1].slice(1, -1) : null;
+  
+    if (!boundary) {
+      throw new Error('Boundary not found in Content-Type header.');
+    }
+  
+    // Split the message into parts using the boundary
+    const parts = message.split(`--${boundary}`);
+  
+    // Iterate through parts and modify attachment bodies
+    const modifiedParts = parts.map(part => {
+      const lines = part.split('\r\n\r\n'); // Split header and body
+      const header = lines[0];
+  
+      if (header.includes('Content-Disposition: attachment')) {
+        // Replace the body of attachments
+        return `${header}\r\n\r\nThis attachment has been removed\r\n\r\n`;
+      } else {
+        // Keep non-attachment parts unchanged
+        return part;
+      }
+    });
+  
+    // Join the modified parts back together
+    const updatedMessage = modifiedParts.join(`--${boundary}`);
+  
+    return updatedMessage;
+  }
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener(async (message) => {
@@ -864,81 +897,71 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
 });
 
 
-// TODO: remove or refactor when alternative in API is available
-function removeAttachmentsFromRFC2822(message) {
-    // Extract the boundary from the Content-Type header
-    const boundaryMatch = message.match(/boundary=("[^"]+"|'[^']+'|[^;\s]+)/);
-    const boundary = boundaryMatch ? boundaryMatch[1].slice(1, -1) : null;
-  
-    if (!boundary) {
-      throw new Error('Boundary not found in Content-Type header.');
-    }
-  
-    // Split the message into parts using the boundary
-    const parts = message.split(`--${boundary}`);
-  
-    // Iterate through parts and modify attachment bodies
-    const modifiedParts = parts.map(part => {
-      const lines = part.split('\r\n\r\n'); // Split header and body
-      const header = lines[0];
-  
-      if (header.includes('Content-Disposition: attachment')) {
-        // Replace the body of attachments
-        return `${header}\r\n\r\nThis attachment has been removed\r\n\r\n`;
-      } else {
-        // Keep non-attachment parts unchanged
-        return part;
-      }
-    });
-  
-    // Join the modified parts back together
-    const updatedMessage = modifiedParts.join(`--${boundary}`);
-  
-    return updatedMessage;
-  }
-
 
 // Menü und Untermenüeinträge dynamisch erstellen
-browser.storage.local.get({ emailTemplates: [] }).then((data) => {
-    const emailTemplates = data.emailTemplates;
-  
+async function createMenuEntries() {
+    // Erst alle existierenden Menüeinträge löschen
+    await browser.menus.removeAll();
+
+    // Templates aus dem Storage holen
+    const data = await browser.storage.local.get("emailTemplates");
+    const emailTemplates = data.emailTemplates || [];
+
+    // Prüfen ob Templates vorhanden sind
+    if (!emailTemplates || emailTemplates.length === 0) {
+        console.log("Keine Email-Templates gefunden");
+        return;
+    }
+
     // Hauptmenüeintrag erstellen
-    browser.menus.create({
-      id: "vorlagen-menu",
-      title: "Vorlagen",
-      contexts: ["compose_action"],
-      type: "normal"
-    });
-  
-    // Untermenüeinträge für jede Vorlage erstellen
-    emailTemplates.forEach((template) => {
-      browser.menus.create({
-        id: `vorlage-${template.id}`,
-        parentId: "vorlagen-menu",
-        title: `${template.name} einfügen`,
+    await browser.menus.create({
+        id: "vorlagen-menu",
+        title: "Vorlagen",
         contexts: ["compose_action"],
         type: "normal"
-      });
     });
-  
-    browser.menus.onClicked.addListener(async (info, tab) => {
 
-        const clickedTemplate = emailTemplates.find(
+    // Untermenüeinträge für jede Vorlage erstellen
+    for (const template of emailTemplates) {
+        // Entferne .xml für die Anzeige im Menü
+        const displayName = template.name.replace(/\.xml$/, '');
+
+        await browser.menus.create({
+            id: `vorlage-${template.id}`,
+            parentId: "vorlagen-menu",
+            title: displayName + ` einfügen`,
+            contexts: ["compose_action"],
+            type: "normal"
+        });
+    }
+
+    // Click-Handler für die Menüeinträge
+    browser.menus.onClicked.addListener(async (info, tab) => {
+        // Templates erneut laden um sicherzugehen, dass wir die aktuellen Daten haben
+        const currentData = await browser.storage.local.get("emailTemplates");
+        const currentTemplates = currentData.emailTemplates || [];
+
+        const clickedTemplate = currentTemplates.find(
             (template) => `vorlage-${template.id}` === info.menuItemId
         );
-    
+
         if (!clickedTemplate) {
-            console.error("Kein passender Menüeintrag gefunden.");
+            console.log("Kein passender Menüeintrag gefunden für ID:", info.menuItemId);
             return;
         }
-    
+
         // UTF-8-Encoding für clickedTemplate.name
         const clickedTemplateNameEncoded = encodeURIComponent(clickedTemplate.name);
-    
+
         try {
             // Daten aus dem Speicher abrufen
             const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
-    
+
+            if (!currentSelectedCase) {
+                console.log("Keine Akte ausgewählt");
+                return;
+            }
+
             // Auf die asynchrone Funktion warten
             const content = await getTemplateWithPlaceholders(
                 result.username,
@@ -947,10 +970,7 @@ browser.storage.local.get({ emailTemplates: [] }).then((data) => {
                 clickedTemplateNameEncoded,
                 currentSelectedCase.id
             );
-    
-            // console.log("Content von getTemplateWithPlaceholders: ", content);
-            // console.log("Vorlage mit Platzhaltern: ", content.body);
-    
+
             // Wenn eine passende Vorlage gefunden wurde, den Text einfügen
             if (content && content.body) {
                 insertTemplate(tab.id, content);
@@ -961,7 +981,16 @@ browser.storage.local.get({ emailTemplates: [] }).then((data) => {
             console.error("Fehler beim Abrufen der Daten oder beim Einfügen der Vorlage: ", error);
         }
     });
-  });
+}
+
+// Storage-Listener für Änderungen an den Templates
+browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.emailTemplates) {
+        createMenuEntries();
+    }
+});
+
+
 
   
 function getTemplateWithPlaceholders(username, password, serverAddress, templateName, caseId) {
