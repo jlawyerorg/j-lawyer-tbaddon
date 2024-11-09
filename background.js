@@ -21,6 +21,10 @@ let lastMessageData = null;
 let extensionUsed = false;
 let selectedCaseFolderID = null;
 let currentSelectedCase = null;
+let documentToAddToMessage = null;
+let documentsInSelectedCase = [];
+let IdOfDocumentToAddToMail = null;
+let isMenuClickListenerRegistered = false;
 
 // Initial beim Laden der Erweiterung
 createMenuEntries();
@@ -482,6 +486,52 @@ async function getFilesInCase(caseId, username, password, serverAddress) {
     });
 }
 
+async function getFilesInCaseToDownload(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId + '/documents';
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        return data;
+    });
+}
+
+async function getFileByIdToDownload(fileId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/' + fileId + '/content';
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        return data;
+    });
+}
+
 
 function findIdByFileNumber(data, fileNumber) {
     for (let item of data) {
@@ -852,11 +902,41 @@ browser.runtime.onMessage.addListener(async (message) => {
     if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
 
         extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
+        let documentsInSelectedCase = [];
 
         console.log("Aktenzeichen: " + message.content);
+        
         selectedCaseFolderID = message.selectedCaseFolderID;
         currentSelectedCase = message.currentSelectedCase;
+        const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        try {
+            const documents = await getFilesInCaseToDownload(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+            console.log("Empfangene Dateinamen für den neuen Fall:", documents);
 
+            // Speichern der Dokumente und Aktualisieren des Menüs
+            documentsInSelectedCase = documents;
+            await browser.storage.local.set({ documentsInSelectedCase: documents });
+            await createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
+        } catch (error) {
+            console.error("Fehler beim Laden der Dokumente für den ausgewählten Fall:", error);
+        }
+        // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
+        const fileNumber = String(message.content);
+        getCases(loginData.username, loginData.password, loginData.serverAddress).then(data => {
+            const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
+            browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+            console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
+        });
+
+
+
+        /* browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            getFilesInCaseToDownload(currentSelectedCase.id, result.username, result.password, result.serverAddress).then(data => {
+                console.log("Empfangene Dateinamen: ", data);
+                browser.storage.local.set({ documentsInSelectedCase: data });
+            });
+        }); */
+ 
         browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
             const fileNumber = String(message.content);
 
@@ -898,90 +978,126 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
 
 
 
-// Menü und Untermenüeinträge dynamisch erstellen
 async function createMenuEntries() {
     // Erst alle existierenden Menüeinträge löschen
     await browser.menus.removeAll();
 
-    // Templates aus dem Storage holen
-    const data = await browser.storage.local.get("emailTemplates");
+    // Templates und Dokumente aus dem Storage holen
+    const data = await browser.storage.local.get(["emailTemplates", "documentsInSelectedCase"]);
     const emailTemplates = data.emailTemplates || [];
+    const documentsInSelectedCase = data.documentsInSelectedCase || [];
 
-    // Prüfen ob Templates vorhanden sind
-    if (!emailTemplates || emailTemplates.length === 0) {
-        console.log("Keine Email-Templates gefunden");
-        return;
-    }
-
-    // Hauptmenüeintrag erstellen
-    await browser.menus.create({
-        id: "vorlagen-menu",
-        title: "Vorlagen",
-        contexts: ["compose_action"],
-        type: "normal"
-    });
-
-    // Untermenüeinträge für jede Vorlage erstellen
-    for (const template of emailTemplates) {
-        // Entferne .xml für die Anzeige im Menü
-        const displayName = template.name.replace(/\.xml$/, '');
-
+    // Menüeinträge für Vorlagen erstellen, falls vorhanden
+    if (emailTemplates.length > 0) {
         await browser.menus.create({
-            id: `vorlage-${template.id}`,
-            parentId: "vorlagen-menu",
-            title: displayName + ` einfügen`,
+            id: "vorlagen-menu",
+            title: "Vorlagen",
             contexts: ["compose_action"],
             type: "normal"
         });
+
+        for (const template of emailTemplates) {
+            const displayName = template.name.replace(/\.xml$/, '');
+            await browser.menus.create({
+                id: `vorlage-${template.id}`,
+                parentId: "vorlagen-menu",
+                title: `${displayName} einfügen`,
+                contexts: ["compose_action"],
+                type: "normal"
+            });
+        }
+    } else {
+        console.log("Keine Email-Templates gefunden");
     }
 
-    // Click-Handler für die Menüeinträge
-    browser.menus.onClicked.addListener(async (info, tab) => {
-        // Templates erneut laden um sicherzugehen, dass wir die aktuellen Daten haben
-        const currentData = await browser.storage.local.get("emailTemplates");
-        const currentTemplates = currentData.emailTemplates || [];
+    // Menüeinträge für Dokumente erstellen, falls vorhanden
+    if (documentsInSelectedCase.length > 0) {
+        await browser.menus.create({
+            id: "dokumente-menu",
+            title: "Dokumente",
+            contexts: ["compose_action"],
+            type: "normal"
+        });
 
-        const clickedTemplate = currentTemplates.find(
-            (template) => `vorlage-${template.id}` === info.menuItemId
-        );
-
-        if (!clickedTemplate) {
-            console.log("Kein passender Menüeintrag gefunden für ID:", info.menuItemId);
-            return;
+        for (const document of documentsInSelectedCase) {
+            await browser.menus.create({
+                id: `dokument-${document.id}`,
+                parentId: "dokumente-menu",
+                title: document.name,
+                contexts: ["compose_action"],
+                type: "normal"
+            });
         }
+    } else {
+        console.log("Keine Dokumente in documentsInSelectedCase gefunden.");
+    }
 
-        // UTF-8-Encoding für clickedTemplate.name
-        const clickedTemplateNameEncoded = encodeURIComponent(clickedTemplate.name);
-
-        try {
-            // Daten aus dem Speicher abrufen
-            const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
-
-            if (!currentSelectedCase) {
-                console.log("Keine Akte ausgewählt");
+    // Click-Handler nur einmal hinzufügen
+    if (!isMenuClickListenerRegistered) {
+        browser.menus.onClicked.addListener(async (info, tab) => {
+            if (info.menuItemId === "vorlagen-menu" || info.menuItemId === "dokumente-menu") {
                 return;
             }
 
-            // Auf die asynchrone Funktion warten
-            const content = await getTemplateWithPlaceholders(
-                result.username,
-                result.password,
-                result.serverAddress,
-                clickedTemplateNameEncoded,
-                currentSelectedCase.id
-            );
+            // Templates und Dokumente neu laden, um sicherzugehen, dass wir die aktuellen Daten haben
+            const currentData = await browser.storage.local.get(["emailTemplates", "documentsInSelectedCase"]);
+            const currentTemplates = currentData.emailTemplates || [];
+            const currentDocuments = currentData.documentsInSelectedCase || [];
 
-            // Wenn eine passende Vorlage gefunden wurde, den Text einfügen
-            if (content && content.body) {
-                insertTemplate(tab.id, content);
+            const clickedTemplate = currentTemplates.find((template) => `vorlage-${template.id}` === info.menuItemId);
+            const clickedDocument = currentDocuments.find((document) => `dokument-${document.id}` === info.menuItemId);
+
+            if (clickedTemplate) {
+                const clickedTemplateNameEncoded = encodeURIComponent(clickedTemplate.name);
+                try {
+                    const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
+                    if (!currentSelectedCase) {
+                        console.log("Keine Akte ausgewählt");
+                        return;
+                    }
+
+                    const content = await getTemplateWithPlaceholders(
+                        result.username,
+                        result.password,
+                        result.serverAddress,
+                        clickedTemplateNameEncoded,
+                        currentSelectedCase.id
+                    );
+
+                    if (content && content.body) {
+                        insertTemplate(tab.id, content);
+                    } else {
+                        console.error("Vorlage hat keinen gültigen Inhalt.");
+                    }
+                } catch (error) {
+                    console.error("Fehler beim Abrufen der Daten oder beim Einfügen der Vorlage: ", error);
+                }
+            } else if (clickedDocument) {
+                IdOfDocumentToAddToMail = clickedDocument.id;
+                console.log("Dokument-ID gespeichert:", IdOfDocumentToAddToMail);
+                const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+                let downloadedFile = await getFileByIdToDownload(IdOfDocumentToAddToMail, loginData.username, loginData.password, loginData.serverAddress);
+                console.log("Downloaded File: ", downloadedFile);
+                const fileData = {
+                    base64content: downloadedFile.base64content,
+                    fileName: clickedDocument.name
+                };
+                const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+                if (tabs.length > 0) {
+                    const tabId = tabs[0].id;
+                    await attachFileToComposeWindow(tabId, fileData);
+                    IdOfDocumentToAddToMail = null;
+                }
             } else {
-                console.error("Vorlage hat keinen gültigen Inhalt.");
+                console.log("Kein passender Menüeintrag gefunden für ID:", info.menuItemId);
             }
-        } catch (error) {
-            console.error("Fehler beim Abrufen der Daten oder beim Einfügen der Vorlage: ", error);
-        }
-    });
+        });
+
+        isMenuClickListenerRegistered = true;
+    }
 }
+
+
 
 // Storage-Listener für Änderungen an den Templates
 browser.storage.onChanged.addListener((changes, areaName) => {
@@ -1037,3 +1153,21 @@ function insertTemplate(tabId, content) {
     });
 }
 
+async function attachFileToComposeWindow(tabId, fileData) {
+    // Extrahiere den Base64-Inhalt und den Dateinamen aus den übergebenen Daten
+    const base64Content = fileData.base64content;
+    const fileName = fileData.fileName;
+
+    // Base64-Inhalt in ein Blob konvertieren
+    const byteCharacters = atob(base64Content);
+    const byteNumbers = new Array(byteCharacters.length).fill().map((_, i) => byteCharacters.charCodeAt(i));
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray]);
+
+    // Blob in eine Datei umwandeln
+    const file = new File([blob], fileName, { type: "application/octet-stream" });
+
+    // Anhang hinzufügen
+    await browser.compose.addAttachment(tabId, { file: file, name: fileName });
+    console.log(`Datei ${fileName} wurde erfolgreich angehängt.`);
+}
