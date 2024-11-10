@@ -311,27 +311,53 @@ async function searchCases(query) {
         resultsListElement.appendChild(div);
     });
     
-    // Event Handler für Suchergebnisse
+    // Event-Handler für Suchergebnisse
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {
+            // Setze die ausgewählte Akte basierend auf dem Klick
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
                 name: this.textContent.split(" (")[0],
                 fileNumber: this.textContent.split("(")[1].split(")")[0],
-                reason: item.getAttribute("data-tooltip")
             };
+
+            const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
             
-            caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
-            
-            caseFolders = await getCaseFolders(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);        
-            console.log("caseFolders:", caseFolders);
+            // Hole die Metadaten des Falls, einschließlich `reason`
+            const caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+
+            // Aktualisiere die `currentSelectedCase` mit dem `reason`
+            currentSelectedCase.reason = caseMetaData.reason;
+
+            // Lade die Ordner des ausgewählten Falls und aktualisiere die Struktur
+            caseFolders = await getCaseFolders(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
             displayTreeStructure(caseFolders);
 
-            document.getElementById("resultsList").style.display = "none";
-
-            // Label aktualisieren
+            // Aktualisiere das Label mit den Falldetails, einschließlich `reason`, falls vorhanden
             const customizableLabel = document.getElementById("customizableLabel");
-            customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+            customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || "kein Grund angegeben"}`;
+
+            // Führe die Aktion aus, die sonst der Button ausgelöst hätte
+            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+                browser.runtime.sendMessage({
+                    type: "saveToCaseAfterSend",
+                    source: "popup_compose",
+                    content: currentSelectedCase.fileNumber,
+                    selectedCaseFolderID: selectedCaseFolderID,
+                    username: result.username,
+                    password: result.password,
+                    serverAddress: result.serverAddress,
+                    currentSelectedCase: currentSelectedCase
+                });
+
+                // Setze Feedback-Text und -Farbe
+                const feedback = document.getElementById("feedback");
+                feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+                feedback.style.color = "green";
+            });
+
+            // Blende die Ergebnissliste aus
+            document.getElementById("resultsList").style.display = "none";
         });
     });
 }

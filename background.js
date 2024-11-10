@@ -47,14 +47,10 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     let dateString = formatDate(date);
     console.log("DateString: " + dateString);
 
-    // Das Datum ermitteln, um es dem Dateinamen voranzustellen
-    //const today = getCurrentDateFormatted();
-
     // Dateinamen erstellen
     fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
     fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
 
-    // get documents in case
     let fileNamesArray = [];
 
     try {
@@ -141,6 +137,8 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
     // let message = rawMessage.message;
 
     message = removeAttachmentsFromRFC2822(rawMessage);
+    //message = await removeAttachmentsFromMessage(deineMessageId); // neue API-Methode
+
 
     // Der Inhalt der Message wird zu Base64 codiert
     const emailContentBase64 = await messageToBase64(message);
@@ -588,32 +586,6 @@ async function messageToBase64(rawMessage) {
 }
 
 
-
-// function getCurrentDateFormatted() {
-//     const currentDate = new Date();
-
-//     const year = currentDate.getFullYear();
-
-//     let month = currentDate.getMonth() + 1;
-//     month = month < 10 ? '0' + month : month;
-
-//     let day = currentDate.getDate();
-//     day = day < 10 ? '0' + day : day;
-
-//     // Ergänzung für die Uhrzeit
-//     let hours = currentDate.getHours();
-//     hours = hours < 10 ? '0' + hours : hours;
-
-//     let minutes = currentDate.getMinutes();
-//     minutes = minutes < 10 ? '0' + minutes : minutes;
-
-//     let seconds = currentDate.getSeconds();
-//     seconds = seconds < 10 ? '0' + seconds : seconds;
-
-//     // Kombinieren von Datum und Uhrzeit im Format YYYY-MM-DD HH:MM:SS
-//     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-// }
-
 function formatDate(input) {
     const date = new Date(input);
     const year = date.getFullYear();
@@ -831,13 +803,32 @@ function removeAttachmentsFromRFC2822(message) {
         // Keep non-attachment parts unchanged
         return part;
       }
-    });
+});
   
     // Join the modified parts back together
     const updatedMessage = modifiedParts.join(`--${boundary}`);
   
     return updatedMessage;
   }
+
+// async function removeAttachmentsFromMessage(messageId) {
+//     try {
+//         // Liste der Anhänge abrufen
+//         const attachments = await browser.messages.listAttachments(messageId);
+        
+//         // Alle Anhänge durchlaufen und partNames sammeln
+//         const partNames = attachments.map(att => att.partName);
+        
+//         // Anhänge löschen und durch Platzhalter ersetzen
+//         await browser.messages.deleteAttachments(messageId, partNames);
+        
+//         console.log("Anhänge wurden entfernt und durch Platzhalter ersetzt.");
+//     } catch (error) {
+//         console.error("Fehler beim Entfernen der Anhänge:", error);
+//     }
+// }
+
+
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener(async (message) => {
@@ -853,6 +844,26 @@ browser.runtime.onMessage.addListener(async (message) => {
 
                 if (caseId) {
                     sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
+                    
+                    // TODO: Move to Trash - add option in options page
+                    
+                    /* try {
+                        // Nachrichten-ID des gesendeten E-Mail-Headers abrufen
+                        const messageId = sendInfo.messages[0].id;
+            
+                        // Das Konto und den Ordner der gesendeten Nachricht abrufen
+                        const message = await browser.messages.get(messageId);
+                        const accountId = message.folder.accountId;
+            
+                        // Den Papierkorb-Ordner des Kontos abrufen
+                        const trashFolder = await browser.folders.getTrash(accountId);
+                        
+                        // Nachricht in den Papierkorb verschieben
+                        await browser.messages.move([messageId], trashFolder);
+                        console.log("Nachricht in den Papierkorb verschoben.");
+                    } catch (error) {
+                        console.error("Fehler beim Verschieben der Nachricht in den Papierkorb:", error);
+                    } */
                 } else {
                     console.log('Keine übereinstimmende ID gefunden');
                 }
