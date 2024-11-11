@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
 let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
 let caseFolders = {};  // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null;  // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
-
+let emailTemplatesNames = {};  // Speichert die Email-Templates
 
 document.addEventListener("DOMContentLoaded", async function() {
     browser.runtime.sendMessage({
@@ -126,6 +126,14 @@ document.addEventListener("DOMContentLoaded", async function() {
                     console.log("Kalender heruntergeladen: " + calendarsRaw);                      
                         
                 });
+                getEmailTemplates(result.username, result.password, result.serverAddress).then(data => {
+                    const emailTemplates = data.map((item, index) => ({ id: index + 1, name: item.name })).sort((a, b) => a.name.localeCompare(b.name));
+                    browser.storage.local.set({ emailTemplatesNames: emailTemplates });
+                    emailTemplates.forEach(template => console.log(`ID: ${template.id}, Name: ${template.name}`));
+                    //save emailTemplates to storage with id and name
+                    browser.storage.local.set({ emailTemplates });
+                });  
+                
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
                     const users = data.map(item => item.displayName);
                     
@@ -594,4 +602,23 @@ async function getUsers(username, password, serverAddress) {
     } catch (error) {
         console.error('Fehler beim Abrufen der User:', error);
     }
+}
+
+function getEmailTemplates(username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v6/templates/email';
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
 }
