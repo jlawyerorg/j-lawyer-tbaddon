@@ -1076,7 +1076,7 @@ async function createMenuEntries() {
                     );
 
                     if (content && content.body) {
-                        insertTemplate(tab.id, content);
+                        insertTemplate(tab.id, content, content.mimeType);
                     } else {
                         console.error("Vorlage hat keinen gültigen Inhalt.");
                     }
@@ -1140,29 +1140,68 @@ function getTemplateWithPlaceholders(username, password, serverAddress, template
     });
 }
 
-function insertTemplate(tabId, content) {
-    // Erst die aktuellen Details holen um die Signatur zu sichern
+function insertTemplate(tabId, content, mimetype) {
     browser.compose.getComposeDetails(tabId).then((details) => {
         let signature = "";
         const signatureSeparator = "-- ";
         
-        // Signatur aus aktuellem Body extrahieren falls vorhanden
+        // Signatur aus aktuellem Body extrahieren, falls vorhanden
         if (details.body) {
             const signatureIndex = details.body.indexOf(signatureSeparator);
             if (signatureIndex !== -1) {
                 signature = details.body.slice(signatureIndex);
             }
         }
+
+        let newBody = content.body.replace(/\s*{{CURSOR}}\s*/g, "");
         
-        // Neuen Content mit Signatur setzen
+        if (details.isPlainText) {
+            // Compose-Fenster ist im Plaintext-Modus
+            if (mimetype === "text/plain") {
+                // Stellen Sie sicher, dass literale '\n' korrekt interpretiert werden
+                newBody = newBody
+                    .replace(/\\n/g, '\n')  // Ersetze \n durch echte Zeilenumbrüche
+                    .replace(/\r\n/g, '\n') // Normalisiere Windows Zeilenumbrüche
+                    .replace(/\r/g, '\n');  // Normalisiere alte Mac Zeilenumbrüche
+                
+                newBody += signature ? "\n\n" + signature : "";
+            } else {
+                // HTML zu Plaintext Konvertierung
+                newBody = newBody
+                    .replace(/<br\s*\/?>/gi, '\n')  // Ersetze <br> Tags
+                    .replace(/<\/p>/gi, '\n\n')     // Füge Leerzeilen nach Paragraphen ein
+                    .replace(/<[^>]+>/g, '')        // Entferne alle anderen HTML Tags
+                    .trim();
+                    
+                newBody += signature ? "\n\n" + signature : "";
+            }
+        } else {
+            // Compose-Fenster ist im HTML-Modus
+            if (mimetype === "text/plain") {
+                // Konvertiere Plaintext zu HTML
+                newBody = newBody
+                    .replace(/\\n/g, '\n')          // Erst literale \n ersetzen
+                    .replace(/\n/g, '<br>')         // Dann Zeilenumbrüche zu <br> konvertieren
+                    .replace(/  /g, '&nbsp;&nbsp;') // Behalte multiple Leerzeichen
+                    .trim();
+                    
+                newBody += signature ? "<br><br>" + signature : "";
+            } else {
+                // HTML bleibt HTML
+                newBody += signature ? "<br><br>" + signature : "";
+            }
+        }
+
         return browser.compose.setComposeDetails(tabId, {
             subject: content.subject,
-            body: content.body.replace(/\s*{{CURSOR}}\s*/g, "") + (signature ? (details.isPlainText ? "\n\n" : "<br><br>") + signature : "")
+            body: newBody
         });
     }).catch(error => {
         console.error("Error inserting template:", error);
     });
 }
+
+
 
 async function attachFileToComposeWindow(tabId, fileData) {
     // Extrahiere den Base64-Inhalt und den Dateinamen aus den übergebenen Daten
