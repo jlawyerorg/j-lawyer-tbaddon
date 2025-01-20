@@ -71,22 +71,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
-// function testServerConnection(username, password, serverAddress) {
-//   const url = serverAddress + '/j-lawyer-io/rest/v6/security/users';
 
-//   const headers = new Headers();
-//   headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-//   headers.append('Content-Type', 'application/json');
+document.addEventListener('DOMContentLoaded', function () {
+  // Speichern-Button
+  document.getElementById('saveButton').addEventListener('click', function () {
+      // Hier deine Speichern-Logik einfügen
+      alert('Einstellungen gespeichert!');
+  });
 
-//   return fetch(url, {
-//     method: 'GET',
-//     headers: headers
-//   }).then(response => {
-//     if (!response.ok) {
-//       document.getElementById("testServerConnection").value = "Verbindung gescheitert";
-//       throw new Error('Network response was not ok');
-//     }
-//     document.getElementById("testServerConnection").value = "Verbindung erfolgreich";
-//     return response.json();
-//   });
-// }
+  // Log anzeigen-Button
+  document.getElementById('viewLogButton').addEventListener('click', function () {
+      // Hier deine Log-Anzeige-Logik einfügen
+      alert('Log anzeigen!');
+  });
+
+  // Log löschen-Button
+  document.getElementById('clearLogButton').addEventListener('click', function () {
+      // Hier deine Log-Lösch-Logik einfügen
+      alert('Log gelöscht!');
+  });
+
+  // Modal öffnen
+  var modal = document.getElementById('updatesModal');
+  var openUpdates = document.getElementById('openUpdates');
+  var closeUpdates = document.getElementById('closeUpdates');
+
+  openUpdates.addEventListener('click', function (event) {
+      event.preventDefault();
+      modal.style.display = 'block';
+  });
+
+  // Modal schließen beim Klicken auf das "X"
+  closeUpdates.addEventListener('click', function () {
+      modal.style.display = 'none';
+  });
+
+  // Modal schließen beim Klicken außerhalb des Modal-Inhalts
+  window.addEventListener('click', function (event) {
+      if (event.target == modal) {
+          modal.style.display = 'none';
+      }
+  });
+});
