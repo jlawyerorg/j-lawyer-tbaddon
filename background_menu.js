@@ -141,6 +141,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
         console.log("Dokument ID: " + data.id);
 
         updateDocumentFolderBundle(username, password, serverAddress);
+        logActivity('sendEmailToServerFromSelection', 'Email gespeichert: ' + fileName);
 
         browser.runtime.sendMessage({ type: "success" });
 
@@ -149,6 +150,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
             if (result.selectedTags && result.selectedTags.length > 0) {
                 for (let documentTag of result.selectedTags) {
                     setDocumentTagFromSelection(result.username, result.password, result.serverAddress, documentTag); 
+                    logActivity('sendEmailToServerFromSelection', 'Added Tag: ' + documentTag);
                 }
             }
         });
@@ -159,6 +161,7 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     
     // Der Nachricht wird der Tag "veraktet" hinzugefügt
     addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
+    logActivity('sendEmailToServerFromSelection', { "TAG veraktet hinzugefügt": fileName });
 }
 
 
@@ -475,7 +478,16 @@ browser.runtime.onMessage.addListener(async (message) => {
     }
 });
 
+async function logActivity(action, details) {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, action, details };
 
+    let activityLog = await browser.storage.local.get("activityLog");
+    activityLog = activityLog.activityLog || [];
+    activityLog.push(logEntry);
+
+    await browser.storage.local.set({ activityLog });
+}
 
 
 

@@ -97,6 +97,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             console.log("Dokument ID: " + data.id);
 
             updateDocumentFolder(username, password, serverAddress);
+            logActivity("sendEmailToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
 
@@ -107,7 +108,8 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
                 // Überprüfen, ob selectedTags nicht leer ist
                 if (result.selectedTags && result.selectedTags.length > 0) {
                     for (let documentTag of result.selectedTags) {
-                        setDocumentTag(result.username, result.password, result.serverAddress, documentTag); // 
+                        setDocumentTag(result.username, result.password, result.serverAddress, documentTag);
+                        logActivity("sendEmailToServer", "Tag hinzugefügt: " + documentTag);
                     }
                 }
             });
@@ -122,6 +124,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             browser.runtime.sendMessage({ type: "error", content: error.messageData });
         });
     }
+    logActivity("sendEmailToServer", { caseId, fileName});
 }
 
 async function sendOnlyMessageToServer(caseId, username, password, serverAddress) {
@@ -224,6 +227,7 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
             browser.runtime.sendMessage({ type: "error", content: error.messageData });
         });
     }
+    logActivity("sendOnlyMessageToServer", { caseId, fileName });
 }
 
 
@@ -320,6 +324,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
     }
     // set document tags and folder
     setDocumentTagsAndFolderForAttachments();
+    logActivity("sendAttachmentsToServer", { caseId, fileName });
 }
 
 
@@ -410,6 +415,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
     console.log("caseIdToSaveToAfterSend wurde gelöscht");
     extensionUsed = false;
     console.log("extensionUsed wurde wieder auf false gesetzt");
+    logActivity("sendEmailToServerAfterSend", { caseIdToSaveToAfterSend, fileName });
 }
 
 
@@ -1220,4 +1226,15 @@ async function attachFileToComposeWindow(tabId, fileData) {
     // Anhang hinzufügen
     await browser.compose.addAttachment(tabId, { file: file, name: fileName });
     console.log(`Datei ${fileName} wurde erfolgreich angehängt.`);
+}
+
+async function logActivity(action, details) {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, action, details };
+
+    let activityLog = await browser.storage.local.get("activityLog");
+    activityLog = activityLog.activityLog || [];
+    activityLog.push(logEntry);
+
+    await browser.storage.local.set({ activityLog });
 }

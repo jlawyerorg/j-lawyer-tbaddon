@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const lastUpdate = await browser.storage.local.get("lastUpdate");
     if (lastUpdate.lastUpdate !== today) {
         updateData(feedback, progressBar);
+        logActivity("sendEmailToServer", "Daten aktualisiert");
     }
 
     // Code für den recommendCaseButton
@@ -640,4 +641,15 @@ async function updateData(feedback, progressBar) {
             feedback.style.color = "red";
         });
     });
+}
+
+async function logActivity(action, details) {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, action, details };
+
+    let activityLog = await browser.storage.local.get("activityLog");
+    activityLog = activityLog.activityLog || [];
+    activityLog.push(logEntry);
+
+    await browser.storage.local.set({ activityLog });
 }

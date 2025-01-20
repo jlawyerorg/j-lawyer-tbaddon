@@ -670,3 +670,14 @@ async function updateData(feedback, progressBar) {
         });
     });
 }
+
+async function logActivity(action, details) {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, action, details };
+
+    let activityLog = await browser.storage.local.get("activityLog");
+    activityLog = activityLog.activityLog || [];
+    activityLog.push(logEntry);
+
+    await browser.storage.local.set({ activityLog });
+}
