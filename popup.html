@@ -119,6 +119,13 @@
         .resultItem:last-child {
             border-bottom: none;
         }
+
+        /* Stil für die Fortschrittsanzeige */
+        #progressBar {
+            width: 100%;
+            margin-top: 10px; /* Abstand zum Feedback-Container */
+            margin-bottom: 10px; /* Abstand zu den Buttons */
+        }
      
         
     </style>
@@ -201,6 +208,8 @@
         <button id="recommendCaseButton">Speichern</button>
         <button id="saveOnlyMessageButton">Nur Nachricht</button>
         <button id="saveAttachmentsButton">Nur Anhang</button>
+        <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
+
         <p id="feedback"></p>
         <div id="buttonContainer">
             <button id="updateDataButton">↺</button>

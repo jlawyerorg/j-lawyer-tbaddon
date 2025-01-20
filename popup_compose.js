@@ -79,23 +79,40 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
         updateDataButton.addEventListener("click", async function() {
+            progressBar.value = 0;
+            progressBar.style.display = "block";
+            
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
+                
+                let tasksCompleted = 0;
+                const totalTasks = 5;
+
+                function updateProgress() {
+                    tasksCompleted++;
+                    progressBar.value = (tasksCompleted / totalTasks) * 100;
+                    if (tasksCompleted === totalTasks) {
+                        feedback.textContent = "Daten aktualisiert!";
+                        feedback.style.color = "green";
+                    }
+                }
+
+                getTags(result.username, result.password, result.serverAddress).then(() => {
+                    fillTagsList();
+                    console.log("Tags heruntergeladen");
+                    updateProgress();
+                });
+                
                 getCases(result.username, result.password, result.serverAddress).then(data => {
                     const casesRaw = data;
                     browser.storage.local.set({
                         cases: casesRaw
                     });
                     console.log("Cases heruntergeladen: " + casesRaw);
-                    feedback.textContent = "Daten aktualisiert!";
-                    feedback.style.color = "green";
+                    updateProgress();
                 });
-                getTags(result.username, result.password, result.serverAddress).then(() => {
-                    fillTagsList();
-                    feedback.textContent = "Daten aktualisiert!";
-                    feedback.style.color = "green";
-                });
+                
                 getCalendars(result.username, result.password, result.serverAddress).then(data => {
                     const calendarsRaw = data;
                     browser.storage.local.set({
@@ -123,7 +140,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                         .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
                         console.log(eventCalendars);
                         browser.storage.local.set({ eventCalendars });
-                    console.log("Kalender heruntergeladen: " + calendarsRaw);                      
+                    console.log("Kalender heruntergeladen: " + calendarsRaw);
+                    updateProgress();                      
                         
                 });
                 getEmailTemplates(result.username, result.password, result.serverAddress).then(data => {
@@ -132,6 +150,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                     emailTemplates.forEach(template => console.log(`ID: ${template.id}, Name: ${template.name}`));
                     //save emailTemplates to storage with id and name
                     browser.storage.local.set({ emailTemplates });
+                    console.log("Email-Templates heruntergeladen: " + emailTemplates);
+                    updateProgress();
                 });  
                 
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
@@ -149,9 +169,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                         users: users
                     });
                     console.log("Benutzer heruntergeladen: " + users);
+                    updateProgress();
                 });
-                feedback.textContent = "Daten aktualisiert!";
-                feedback.style.color = "green";
             });         
         });
     }

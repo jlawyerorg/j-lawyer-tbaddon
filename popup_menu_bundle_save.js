@@ -22,7 +22,7 @@ let selectedIndex = -1; // Tastaturnavigation durch Suchergebnisse
 let currentMessageToSaveID = null;  // Speichert die ID der Nachricht, die gespeichert werden soll
 let caseFolders = {};  // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null;  // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
-
+let emailTemplatesNames = {}; // Speichert die Email-Templates
 
 document.addEventListener("DOMContentLoaded", async function () {
     const recommendCaseButton = document.getElementById("recommendCaseButton");
@@ -83,13 +83,28 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Event Listener für den "Daten aktualisieren" Button
     if (updateDataButton) {
         updateDataButton.addEventListener("click", async function () {
+            progressBar.value = 0;
+            progressBar.style.display = "block";
+            
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 feedback.textContent = "Daten werden aktualisiert...";
                 feedback.style.color = "blue";
+                
+                let tasksCompleted = 0;
+                const totalTasks = 5;
+
+                function updateProgress() {
+                    tasksCompleted++;
+                    progressBar.value = (tasksCompleted / totalTasks) * 100;
+                    if (tasksCompleted === totalTasks) {
+                        feedback.textContent = "Daten aktualisiert!";
+                        feedback.style.color = "green";
+                    }
+                }
+                
                 getTags(result.username, result.password, result.serverAddress).then(() => {
                     fillTagsList();
-                    feedback.textContent = "Daten aktualisiert!";
-                    feedback.style.color = "green";
+                    updateProgress();
                 });
                 getCasesFromSelection(result.username, result.password, result.serverAddress).then(data => {
                     const casesRaw = data;
@@ -97,8 +112,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                         cases: casesRaw
                     });
                     console.log("Cases heruntergeladen: " + casesRaw);
-                    feedback.textContent = "Daten aktualisiert!";
-                    feedback.style.color = "green";
+                    updateProgress();
                 });
                 getCalendars(result.username, result.password, result.serverAddress).then(data => {
                     const calendarsRaw = data;
@@ -129,8 +143,21 @@ document.addEventListener("DOMContentLoaded", async function () {
                         browser.storage.local.set({ eventCalendars });
                     
                     console.log("Kalender heruntergeladen: " + calendarsRaw);
+                    updateProgress();
                 
                 });
+                
+                
+                getEmailTemplates(result.username, result.password, result.serverAddress).then(data => {
+                    const emailTemplates = data.map((item, index) => ({ id: index + 1, name: item.name })).sort((a, b) => a.name.localeCompare(b.name));
+                    browser.storage.local.set({ emailTemplatesNames: emailTemplates });
+                    emailTemplates.forEach(template => console.log(`ID: ${template.id}, Name: ${template.name}`));
+                    //save emailTemplates to storage with id and name
+                    browser.storage.local.set({ emailTemplates });
+                    console.log("eMail Templates heruntergeladen: " + emailTemplates);
+                    updateProgress();
+                }); 
+
                 getUsers(result.username, result.password, result.serverAddress).then(data => {
                     const users = data.map(item => item.displayName);
                     
@@ -146,11 +173,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                         users: users
                     });
                     console.log("Benutzer heruntergeladen: " + users);
+                    updateProgress();
                 });
                 
-                
-                feedback.textContent = "Daten aktualisiert!";
-                feedback.style.color = "green";
             });
             
         });
@@ -570,4 +595,24 @@ async function getUsers(username, password, serverAddress) {
     } catch (error) {
         console.error('Fehler beim Abrufen der User:', error);
     }
+}
+
+
+function getEmailTemplates(username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v6/templates/email';
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    });
 }

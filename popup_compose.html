@@ -96,6 +96,13 @@
             border-bottom: none;
         }
 
+        /* Stil für die Fortschrittsanzeige */
+        #progressBar {
+            width: 100%;
+            margin-top: 10px; /* Abstand zum Feedback-Container */
+            margin-bottom: 10px; /* Abstand zu den Buttons */
+        }
+
         #tagsContainer {
             padding: 5px;
             border-radius: 10px;    
@@ -179,6 +186,7 @@
         <div id="resultsList"></div>
 
         <p id="customizableLabel">kein Vorschlag</p>
+        <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
         <p id="feedback"></p>
         <div id="buttonContainer">
             <button id="updateDataButton">↺</button>

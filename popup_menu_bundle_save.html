@@ -112,6 +112,13 @@
         .resultItem:last-child {
             border-bottom: none;
         }
+
+        /* Stil für die Fortschrittsanzeige */
+        #progressBar {
+            width: 100%;
+            margin-top: 10px; /* Abstand zum Feedback-Container */
+            margin-bottom: 10px; /* Abstand zu den Buttons */
+        }
         
     </style>
     
@@ -189,6 +196,7 @@
 
         <p id="customizableLabel">kein Vorschlag</p>
         <button id="recommendCaseButton">Speichern</button>
+        <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
         <p id="feedback"></p>
         <div id="buttonContainer">
             <button id="updateDataButton">↺</button>
