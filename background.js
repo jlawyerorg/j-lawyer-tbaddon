@@ -139,7 +139,14 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
 
     // let message = rawMessage.message;
 
-    message = removeAttachmentsFromRFC2822(rawMessage);
+    let message;
+    try {
+        message = removeAttachmentsFromRFC2822(rawMessage);
+    } catch (error) {
+        console.error("Fehler beim Entfernen der Anhänge:", error);
+        message = rawMessage;
+    }
+
     //message = await removeAttachmentsFromMessage(deineMessageId); // neue API-Methode
 
 
@@ -241,7 +248,15 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
 
     // Attachments holen
     let attachments = await browser.messages.listAttachments(messageData.id);
-    console.log("Attachments: " + attachments)
+    console.log("Attachments: " + attachments);
+
+    // Überprüfen, ob Attachments vorhanden sind
+    if (attachments.length === 0) {
+        console.log("Keine Attachments in der Nachricht vorhanden.");
+        browser.runtime.sendMessage({ type: "error", content: "Keine Attachments in der Nachricht vorhanden." });
+        return;
+    }
+
     for (let att of attachments) {
         let file = await browser.messages.getAttachmentFile(
             messageData.id,
@@ -263,7 +278,6 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
         // Dateinamen erstellen
         let fileName = dateString + "_" + att.name;
         fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
-        
 
         // get documents in case
         let fileNamesArray = [];
