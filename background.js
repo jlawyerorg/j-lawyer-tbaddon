@@ -447,24 +447,68 @@ function getDisplayedMessageFromActiveTab() {
 
 
 
-function getCases(username, password, serverAddress) {
-    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
+// function getCases(username, password, serverAddress) {
+//     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
+//     const headers = new Headers();
+//     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+//     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+//     headers.append('Content-Type', 'application/json');
+
+//     return fetch(url, {
+//         method: 'GET',
+//         headers: headers
+//     }).then(response => {
+//         if (!response.ok) {
+//             throw new Error('Network response was not ok');
+//         }
+//         return response.json();
+//     });
+// }
+
+async function getCases(username, password, serverAddress) {
+    const storageKey = 'casesList';
+    const cachedData = await browser.storage.local.get(storageKey);
+
+    if (cachedData[storageKey]) {
+        console.log('Verwende zwischengespeicherte Daten für Fälle');
+        return cachedData[storageKey];
+    }
+
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
     headers.append('Content-Type', 'application/json');
 
-    return fetch(url, {
+    const response = await fetch(url, {
         method: 'GET',
         headers: headers
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
     });
+
+    if (!response.ok) {
+        throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    await browser.storage.local.set({ [storageKey]: data });
+    console.log('Fälle im Speicher gespeichert');
+    return data;
 }
+
+async function getStoredCases() {
+    const storageKey = 'casesList';
+    const cachedData = await browser.storage.local.get(storageKey);
+
+    if (cachedData[storageKey]) {
+        console.log('Verwende zwischengespeicherte Daten für Fälle');
+        return cachedData[storageKey];
+    } else {
+        console.log('Keine zwischengespeicherten Daten gefunden');
+        return null;
+    }
+}
+
 
 async function getFilesInCase(caseId, username, password, serverAddress) {
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId + '/documents';
@@ -841,79 +885,90 @@ browser.runtime.onMessage.addListener(async (message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup")) {
         console.log("Das gewählte Aktenzeichen: " + message.content);
         selectedCaseFolderID = message.selectedCaseFolderID;
-
-        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+    
+        browser.storage.local.get(["username", "password", "serverAddress"]).then(async result => {
             const fileNumber = String(message.content);
-
-            getCases(result.username, result.password, result.serverAddress).then(data => {
-                const caseId = findIdByFileNumber(data, fileNumber);
-
-                if (caseId) {
-                    sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
-                    
-                    // TODO: Move to Trash - add option in options page
-                    
-                    /* try {
-                        // Nachrichten-ID des gesendeten E-Mail-Headers abrufen
-                        const messageId = sendInfo.messages[0].id;
+    
+            let cases = await getStoredCases();
             
-                        // Das Konto und den Ordner der gesendeten Nachricht abrufen
-                        const message = await browser.messages.get(messageId);
-                        const accountId = message.folder.accountId;
-            
-                        // Den Papierkorb-Ordner des Kontos abrufen
-                        const trashFolder = await browser.folders.getTrash(accountId);
-                        
-                        // Nachricht in den Papierkorb verschieben
-                        await browser.messages.move([messageId], trashFolder);
-                        console.log("Nachricht in den Papierkorb verschoben.");
-                    } catch (error) {
-                        console.error("Fehler beim Verschieben der Nachricht in den Papierkorb:", error);
-                    } */
-                } else {
-                    console.log('Keine übereinstimmende ID gefunden');
-                }
-            });
+            if (!cases) {
+                cases = await getCases(result.username, result.password, result.serverAddress);
+            }
+    
+            const caseId = findIdByFileNumber(cases, fileNumber);
+    
+            if (caseId) {
+                sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
+                
+                // TODO: Move to Trash - add option in options page
+                
+                /* try {
+                    // Nachrichten-ID des gesendeten E-Mail-Headers abrufen
+                    const messageId = sendInfo.messages[0].id;
+        
+                    // Das Konto und den Ordner der gesendeten Nachricht abrufen
+                    const message = await browser.messages.get(messageId);
+                    const accountId = message.folder.accountId;
+        
+                    // Den Papierkorb-Ordner des Kontos abrufen
+                    const trashFolder = await browser.folders.getTrash(accountId);
+                    
+                    // Nachricht in den Papierkorb verschieben
+                    await browser.messages.move([messageId], trashFolder);
+                    console.log("Nachricht in den Papierkorb verschoben.");
+                } catch (error) {
+                    console.error("Fehler beim Verschieben der Nachricht in den Papierkorb:", error);
+                } */
+            } else {
+                console.log('Keine übereinstimmende ID gefunden');
+            }
         });
     }
 
-    if ((message.type === "saveMessageOnly") && (message.source === "popup"))  {
+    if ((message.type === "saveMessageOnly") && (message.source === "popup")) {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
         selectedCaseFolderID = message.selectedCaseFolderID;
-
-        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+    
+        browser.storage.local.get(["username", "password", "serverAddress"]).then(async result => {
             const fileNumber = String(message.content);
-
-            getCases(result.username, result.password, result.serverAddress).then(data => {
-                const caseId = findIdByFileNumber(data, fileNumber);
-
-                if (caseId) {
-                    sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
-                } else {
-                    console.log('Keine übereinstimmende ID gefunden');
-                }
-            });
+    
+            let cases = await getStoredCases();
+            
+            if (!cases) {
+                cases = await getCases(result.username, result.password, result.serverAddress);
+            }
+    
+            const caseId = findIdByFileNumber(cases, fileNumber);
+    
+            if (caseId) {
+                sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
+            } else {
+                console.log('Keine übereinstimmende ID gefunden');
+            }
         });
     }
 
-    if ((message.type === "saveAttachments") && (message.source === "popup"))  {
+    if ((message.type === "saveAttachments") && (message.source === "popup")) {
         console.log("Das eingegebene Aktenzeichen: " + message.content);
         selectedCaseFolderID = message.selectedCaseFolderID;
-
-        browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
+    
+        browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(async result => {
             const fileNumber = String(message.content);
-
-            getCases(result.username, result.password, result.serverAddress).then(data => {
-                const caseId = findIdByFileNumber(data, fileNumber);
-
-                if (caseId) {
-                    sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
-                } else {
-                    console.log('Keine übereinstimmende ID gefunden');
-                }
-            });
+    
+            let cases = await getStoredCases();
             
-        });   
+            if (!cases) {
+                cases = await getCases(result.username, result.password, result.serverAddress);
+            }
+    
+            const caseId = findIdByFileNumber(cases, fileNumber);
+    
+            if (caseId) {
+                sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
+            } else {
+                console.log('Keine übereinstimmende ID gefunden');
+            }
+        });
     }
 
     if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
@@ -937,32 +992,27 @@ browser.runtime.onMessage.addListener(async (message) => {
         } catch (error) {
             console.error("Fehler beim Laden der Dokumente für den ausgewählten Fall:", error);
         }
+        // // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
+        // const fileNumber = String(message.content);
+        // getCases(loginData.username, loginData.password, loginData.serverAddress).then(data => {
+        //     const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
+        //     browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+        //     console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
+        // });
+
         // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
         const fileNumber = String(message.content);
-        getCases(loginData.username, loginData.password, loginData.serverAddress).then(data => {
-            const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
-            browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
-            console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
-        });
+        let cases = await getStoredCases();
+        
+        if (!cases) {
+            cases = await getCases(loginData.username, loginData.password, loginData.serverAddress);
+        }
+
+        const caseIdToSaveToAfterSend = findIdByFileNumber(cases, fileNumber);
+        await browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+        console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
 
 
-
-        /* browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-            getFilesInCaseToDownload(currentSelectedCase.id, result.username, result.password, result.serverAddress).then(data => {
-                console.log("Empfangene Dateinamen: ", data);
-                browser.storage.local.set({ documentsInSelectedCase: data });
-            });
-        }); */
- 
-        browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-            const fileNumber = String(message.content);
-
-            getCases(result.username, result.password, result.serverAddress).then(data => {
-                const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
-                browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
-                console.log("caseIdToSaveToAfterSend: " + caseIdToSaveToAfterSend);
-            });
-        });
     }
 });
 

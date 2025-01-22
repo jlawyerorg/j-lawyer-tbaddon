@@ -165,51 +165,95 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
 }
 
 
-function getCasesFromSelection(username, password, serverAddress) {
-    /*
-    This function, `getCasesFromSelection`, is used to fetch a list of cases from a server. 
-    It takes three parameters: a username, a password, and a server address.
+// function getCasesFromSelection(username, password, serverAddress) {
+//     /*
+//     This function, `getCasesFromSelection`, is used to fetch a list of cases from a server. 
+//     It takes three parameters: a username, a password, and a server address.
 
-    First, it constructs the URL for the server request by appending '/j-lawyer-io/rest/v1/cases/list' to the server address.
-    It then creates a new Headers object. This object is used to set the headers for the server request.
-    The username and password are concatenated with a colon in between, 
-    then encoded using the encodeURIComponent function to ensure that any special characters are properly escaped. 
-    The resulting string is then unescaped and encoded to Base64 using the btoa function. 
-    This Base64 encoded string is used for Basic Authorization in the headers.
+//     First, it constructs the URL for the server request by appending '/j-lawyer-io/rest/v1/cases/list' to the server address.
+//     It then creates a new Headers object. This object is used to set the headers for the server request.
+//     The username and password are concatenated with a colon in between, 
+//     then encoded using the encodeURIComponent function to ensure that any special characters are properly escaped. 
+//     The resulting string is then unescaped and encoded to Base64 using the btoa function. 
+//     This Base64 encoded string is used for Basic Authorization in the headers.
 
-    The 'Authorization' header is set to 'Basic ' followed by the Base64 encoded login credentials. 
-    The 'Content-Type' header is set to 'application/json' to indicate that the server should interpret 
-    the request body as a JSON object.
+//     The 'Authorization' header is set to 'Basic ' followed by the Base64 encoded login credentials. 
+//     The 'Content-Type' header is set to 'application/json' to indicate that the server should interpret 
+//     the request body as a JSON object.
 
-    A GET request is made to the server using the fetch API. The URL and headers are passed as parameters.
+//     A GET request is made to the server using the fetch API. The URL and headers are passed as parameters.
 
-    The fetch API returns a Promise that resolves to the Response object representing the response to the request. 
-    This is then processed with a .then() block.
+//     The fetch API returns a Promise that resolves to the Response object representing the response to the request. 
+//     This is then processed with a .then() block.
 
-    Inside the .then() block, the function checks if the response was ok (status in the range 200-299). 
-    If it was not ok, it throws an error.
+//     Inside the .then() block, the function checks if the response was ok (status in the range 200-299). 
+//     If it was not ok, it throws an error.
 
-    If the response was ok, it returns the response body parsed as JSON. 
-    This will be a Promise that resolves to the actual data when it is ready.
-    */
+//     If the response was ok, it returns the response body parsed as JSON. 
+//     This will be a Promise that resolves to the actual data when it is ready.
+//     */
     
-    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
+//     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
 
+//     const headers = new Headers();
+//     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+//     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+//     // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+//     headers.append('Content-Type', 'application/json');
+
+//     return fetch(url, {
+//         method: 'GET',
+//         headers: headers
+//     }).then(response => {
+//         if (!response.ok) {
+//             throw new Error('Network response was not ok');
+//         }
+//         return response.json();
+//     });
+// }
+
+async function getCasesFromSelection(username, password, serverAddress) {
+    const storageKey = 'casesList';
+    const cachedData = await browser.storage.local.get(storageKey);
+
+    if (cachedData[storageKey]) {
+        console.log('Verwende zwischengespeicherte Daten für Fälle');
+        return cachedData[storageKey];
+    }
+
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
     headers.append('Content-Type', 'application/json');
 
-    return fetch(url, {
+    const response = await fetch(url, {
         method: 'GET',
         headers: headers
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
     });
+
+    if (!response.ok) {
+        throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    await browser.storage.local.set({ [storageKey]: data });
+    console.log('Fälle im Speicher gespeichert');
+    return data;
+}
+
+
+async function getStoredCases() {
+    const storageKey = 'casesList';
+    const cachedData = await browser.storage.local.get(storageKey);
+
+    if (cachedData[storageKey]) {
+        console.log('Verwende zwischengespeicherte Daten für Fälle');
+        return cachedData[storageKey];
+    } else {
+        console.log('Keine zwischengespeicherten Daten gefunden');
+        return null;
+    }
 }
 
 
@@ -455,23 +499,27 @@ browser.runtime.onMessage.addListener(async (message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup_menu_bundle_save")) {
         
         selectedCaseFolderID_bundle = message.selectedCaseFolderID;
-
+    
         for (const key in messagesToSaveObjects.messages) {
             
-            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+            browser.storage.local.get(["username", "password", "serverAddress"]).then(async result => {
                 const fileNumber = String(message.content);
                 console.log("Single Selected Message Key:", key, "Value:", messagesToSaveObjects.messages[key].id);
-
-                getCasesFromSelection(result.username, result.password, result.serverAddress).then(data => {
-                    const caseId = findIdByFileNumberFromSelection(data, fileNumber);
-                    
-                    if (caseId) {
-                        singleMessageFromSelection = messagesToSaveObjects.messages[key];
-                        sendEmailToServerFromSelection(singleMessageFromSelection, caseId, result.username, result.password, result.serverAddress);
-                    } else {
-                        console.log('Keine übereinstimmende ID gefunden');
-                    }
-                });
+    
+                let cases = await getStoredCases();
+                
+                if (!cases) {
+                    cases = await getCasesFromSelection(result.username, result.password, result.serverAddress);
+                }
+    
+                const caseId = findIdByFileNumberFromSelection(cases, fileNumber);
+                
+                if (caseId) {
+                    singleMessageFromSelection = messagesToSaveObjects.messages[key];
+                    sendEmailToServerFromSelection(singleMessageFromSelection, caseId, result.username, result.password, result.serverAddress);
+                } else {
+                    console.log('Keine übereinstimmende ID gefunden');
+                }
             });
         }
         documentCounter = 0;
