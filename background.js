@@ -113,6 +113,16 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
                     }
                 }
             });
+
+            // Überprüfen, ob die Option "Email nach Zuordnung in Papierkorb verschieben" gesetzt ist
+            browser.storage.local.get("moveToTrash").then(result => {
+                if (result.moveToTrash) {
+                    browser.messages.delete([messageData.id]);
+                    logActivity("sendEmailToServer", "Email in Papierkorb verschoben");
+                }
+            });
+            
+
             browser.storage.local.remove("selectedTags");
             browser.storage.local.get("selectedTags").then(result => {
                 console.log("selectedTags: " + result.selectedTags);
