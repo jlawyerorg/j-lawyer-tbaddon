@@ -117,7 +117,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             // Überprüfen, ob die Option "Email nach Zuordnung in Papierkorb verschieben" gesetzt ist
             const moveToTrashResult = await browser.storage.local.get("moveToTrash");
             if (moveToTrashResult.moveToTrash) {
-                await moveToTrash(messageData.id);
+                await browser.messages.delete([messageData.id]);
                 await logActivity("sendEmailToServer", "Email in Papierkorb verschoben");
             }
 
@@ -236,7 +236,7 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
             // Überprüfen, ob die Option "Email nach Zuordnung in Papierkorb verschieben" gesetzt ist
             const moveToTrashResult = await browser.storage.local.get("moveToTrash");
             if (moveToTrashResult.moveToTrash) {
-                await moveToTrash(messageData.id);
+                await browser.messages.delete([messageData.id]);
                 await logActivity("sendOnlyMessageToServer", "Email in Papierkorb verschoben");
             }
 
