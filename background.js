@@ -48,7 +48,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     console.log("DateString: " + dateString);
 
     // Dateinamen erstellen
-    fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
+    let fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
     fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
 
     let fileNamesArray = [];
@@ -80,59 +80,55 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
         const headers = new Headers();
         const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
         headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-        // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
         headers.append('Content-Type', 'application/json');
 
-        fetch(url, {
-            method: 'PUT',
-            headers: headers,
-            body: JSON.stringify(payload)
-        }).then(response => {
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+
             if (!response.ok) {
                 throw new Error('Datei existiert eventuell schon');
             }
-            return response.json();
-        }).then(data => {
+
+            const data = await response.json();
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            updateDocumentFolder(username, password, serverAddress);
-            logActivity("sendEmailToServer", 'Email gespeichert: ' + fileName);
+            await updateDocumentFolder(username, password, serverAddress);
+            await logActivity("sendEmailToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
 
             // Der Nachricht wird der Tag "veraktet" hinzugefügt
-            addTagToMessage(messageData, 'veraktet', '#000080');
+            await addTagToMessage(messageData, 'veraktet', '#000080');
 
-            browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
-                // Überprüfen, ob selectedTags nicht leer ist
-                if (result.selectedTags && result.selectedTags.length > 0) {
-                    for (let documentTag of result.selectedTags) {
-                        setDocumentTag(result.username, result.password, result.serverAddress, documentTag);
-                        logActivity("sendEmailToServer", "Tag hinzugefügt: " + documentTag);
-                    }
+            const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
+            // Überprüfen, ob selectedTags nicht leer ist
+            if (result.selectedTags && result.selectedTags.length > 0) {
+                for (let documentTag of result.selectedTags) {
+                    await setDocumentTag(result.username, result.password, result.serverAddress, documentTag);
+                    await logActivity("sendEmailToServer", "Tag hinzugefügt: " + documentTag);
                 }
-            });
+            }
 
             // Überprüfen, ob die Option "Email nach Zuordnung in Papierkorb verschieben" gesetzt ist
-            browser.storage.local.get("moveToTrash").then(result => {
-                if (result.moveToTrash) {
-                    browser.messages.delete([messageData.id]);
-                    logActivity("sendEmailToServer", "Email in Papierkorb verschoben");
-                }
-            });
-            
-
-            browser.storage.local.remove("selectedTags");
-            browser.storage.local.get("selectedTags").then(result => {
-                console.log("selectedTags: " + result.selectedTags);
+            const moveToTrashResult = await browser.storage.local.get("moveToTrash");
+            if (moveToTrashResult.moveToTrash) {
+                await moveToTrash(messageData.id);
+                await logActivity("sendEmailToServer", "Email in Papierkorb verschoben");
             }
-            );
 
-        }).catch(error => {
+            await browser.storage.local.remove("selectedTags");
+            const selectedTagsResult = await browser.storage.local.get("selectedTags");
+            console.log("selectedTags: " + selectedTagsResult.selectedTags);
+
+        } catch (error) {
             console.log('Error:', error);
-            browser.runtime.sendMessage({ type: "error", content: error.messageData });
-        });
+            browser.runtime.sendMessage({ type: "error", content: error.message });
+        }
     }
     logActivity("sendEmailToServer", { caseId, fileName});
 }
@@ -205,44 +201,53 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
         // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
         headers.append('Content-Type', 'application/json');
 
-        fetch(url, {
-            method: 'PUT',
-            headers: headers,
-            body: JSON.stringify(payload)
-        }).then(response => {
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+
             if (!response.ok) {
                 throw new Error('Datei existiert eventuell schon');
             }
-            return response.json();
-        }).then(data => {
+
+            const data = await response.json();
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            updateDocumentFolder(username, password, serverAddress);
+            await updateDocumentFolder(username, password, serverAddress);
+            await logActivity("sendOnlyMessageToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
 
             // Der Nachricht wird der Tag "veraktet" hinzugefügt
-            addTagToMessage(messageData, 'veraktet', '#000080');
+            await addTagToMessage(messageData, 'veraktet', '#000080');
 
-            browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
-                // Überprüfen, ob documentTags nicht leer ist
-                if (result.selectedTags && result.selectedTags.length > 0) {
-                    for (let documentTag of result.selectedTags) {
-                        setDocumentTag(result.username, result.password, result.serverAddress, documentTag); // 
-                    }
+            const result = await browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]);
+            // Überprüfen, ob selectedTags nicht leer ist
+            if (result.selectedTags && result.selectedTags.length > 0) {
+                for (let documentTag of result.selectedTags) {
+                    await setDocumentTag(result.username, result.password, result.serverAddress, documentTag);
+                    await logActivity("sendOnlyMessageToServer", "Tag hinzugefügt: " + documentTag);
                 }
-            });
-            browser.storage.local.remove("selectedTags");
-            browser.storage.local.get("selectedTags").then(result => {
-                console.log("selectedTags: " + result.selectedTags);
             }
-            );
 
-        }).catch(error => {
+            // Überprüfen, ob die Option "Email nach Zuordnung in Papierkorb verschieben" gesetzt ist
+            const moveToTrashResult = await browser.storage.local.get("moveToTrash");
+            if (moveToTrashResult.moveToTrash) {
+                await moveToTrash(messageData.id);
+                await logActivity("sendOnlyMessageToServer", "Email in Papierkorb verschoben");
+            }
+
+            await browser.storage.local.remove("selectedTags");
+            const selectedTagsResult = await browser.storage.local.get("selectedTags");
+            console.log("selectedTags: " + selectedTagsResult.selectedTags);
+
+        } catch (error) {
             console.log('Error:', error);
-            browser.runtime.sendMessage({ type: "error", content: error.messageData });
-        });
+            browser.runtime.sendMessage({ type: "error", content: error.message });
+        }
     }
     logActivity("sendOnlyMessageToServer", { caseId, fileName });
 }
@@ -521,11 +526,12 @@ async function getCases(username, password, serverAddress) {
 }
 
 async function getStoredCases() {
-    const storageKey = 'casesList';
+    const storageKey = 'cases';
     const cachedData = await browser.storage.local.get(storageKey);
 
     if (cachedData[storageKey]) {
         console.log('Verwende zwischengespeicherte Daten für Fälle');
+        // console.log(cachedData[storageKey]);
         return cachedData[storageKey];
     } else {
         console.log('Keine zwischengespeicherten Daten gefunden');
@@ -559,26 +565,32 @@ async function getFilesInCase(caseId, username, password, serverAddress) {
 }
 
 async function getFilesInCaseToDownload(caseId, username, password, serverAddress) {
-    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId + '/documents';
+    const url = `${serverAddress}/j-lawyer-io/rest/v1/cases/${caseId}/documents`;
 
-    const headers = new Headers();
-    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
-    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-    headers.append('Content-Type', 'application/json');
+    try {
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(`${username}:${password}`);
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
 
-    return fetch(url, {
-        method: 'GET',
-        headers: headers
-    }).then(response => {
+        // HTTP GET Request ausführen
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers,
+        });
+
+        // Überprüfen, ob der Response erfolgreich war
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        return response.json();
-    })
-    .then(data => {
+
+        // JSON-Daten aus der Antwort extrahieren
+        const data = await response.json();
         return data;
-    });
+    } catch (error) {
+        console.error('Error fetching documents:', error);
+        throw error; // Fehler weitergeben, falls die aufrufende Funktion ihn behandeln möchte
+    }
 }
 
 async function getFileByIdToDownload(fileId, username, password, serverAddress) {
@@ -605,9 +617,10 @@ async function getFileByIdToDownload(fileId, username, password, serverAddress) 
 }
 
 
-function findIdByFileNumber(data, fileNumber) {
+async function findIdByFileNumber(data, fileNumber) {
     for (let item of data) {
         if (item.fileNumber === fileNumber) {
+            console.log("ID gefunden: " + item.id + " für Dateinummer: " + fileNumber);
             return item.id;
         }
     }
@@ -905,7 +918,7 @@ function removeAttachmentsFromRFC2822(message) {
 
 
 // Empfangen der Nachrichten vom Popup
-browser.runtime.onMessage.addListener(async (message) => {
+browser.runtime.onMessage.addListener((message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup")) {
         console.log("Das gewählte Aktenzeichen: " + message.content);
         selectedCaseFolderID = message.selectedCaseFolderID;
@@ -914,12 +927,15 @@ browser.runtime.onMessage.addListener(async (message) => {
             const fileNumber = String(message.content);
     
             let cases = await getStoredCases();
+            console.log("Die gespeicherten Fälle lauten: ", cases);
             
             if (!cases) {
                 cases = await getCases(result.username, result.password, result.serverAddress);
             }
-    
-            const caseId = findIdByFileNumber(cases, fileNumber);
+            
+            
+            const caseId = await findIdByFileNumber(cases, fileNumber);
+            console.log("Die ID des gefundenen Aktenzeichens lautet: " + caseId);
     
             if (caseId) {
                 sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
@@ -1004,15 +1020,15 @@ browser.runtime.onMessage.addListener(async (message) => {
         
         selectedCaseFolderID = message.selectedCaseFolderID;
         currentSelectedCase = message.currentSelectedCase;
-        const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        const loginData = browser.storage.local.get(["username", "password", "serverAddress"]);
         try {
-            const documents = await getFilesInCaseToDownload(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+            const documents = getFilesInCaseToDownload(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
             console.log("Empfangene Dateinamen für den neuen Fall:", documents);
 
             // Speichern der Dokumente und Aktualisieren des Menüs
             documentsInSelectedCase = documents;
-            await browser.storage.local.set({ documentsInSelectedCase: documents });
-            await createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
+            browser.storage.local.set({ documentsInSelectedCase: documents });
+            createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
         } catch (error) {
             console.error("Fehler beim Laden der Dokumente für den ausgewählten Fall:", error);
         }
@@ -1026,14 +1042,14 @@ browser.runtime.onMessage.addListener(async (message) => {
 
         // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
         const fileNumber = String(message.content);
-        let cases = await getStoredCases();
+        let cases = getStoredCases();
         
         if (!cases) {
-            cases = await getCases(loginData.username, loginData.password, loginData.serverAddress);
+            cases = getCases(loginData.username, loginData.password, loginData.serverAddress);
         }
 
         const caseIdToSaveToAfterSend = findIdByFileNumber(cases, fileNumber);
-        await browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+        browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
         console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
 
 

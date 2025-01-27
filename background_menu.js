@@ -89,79 +89,81 @@ async function sendEmailToServerFromSelection(singleMessageFromSelection, caseId
     
     
     console.log("Case ID: " + caseId);
-    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
-    
-    messageId = singleMessageFromSelection.id;
+    const url = `${serverAddress}/j-lawyer-io/rest/v1/cases/document/create`;
 
-    let rawMessage = await messenger.messages.getRaw(messageId, { decrypt: true });
+    try {
+        const messageId = singleMessageFromSelection.id;
 
-    // Der Inhalt der Message wird zu Base64 codiert
-    const emailContentBase64 = await messageToBase64(rawMessage);
+        // Nachricht im Rohformat abrufen
+        const rawMessage = await messenger.messages.getRaw(messageId, { decrypt: true });
 
-    // get date and time from message header
-    let date = new Date(singleMessageFromSelection.date);
-    let dateString = formatDate(date);
-    console.log("DateString: " + dateString);
+        // Der Inhalt der Nachricht wird zu Base64 codiert
+        const emailContentBase64 = await messageToBase64(rawMessage);
 
-    // Dateinamen erstellen
-    fileName = dateString + "_" + singleMessageFromSelection.author + singleMessageFromSelection.subject + documentCounter + ".eml";
-    fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+        // Datum und Zeit aus den Headern abrufen
+        const date = new Date(singleMessageFromSelection.date);
+        const dateString = formatDate(date);
+        console.log("DateString: " + dateString);
 
-    documentCounter++;
+        // Dateinamen erstellen
+        let fileName = `${dateString}_${singleMessageFromSelection.author}_${singleMessageFromSelection.subject}_${documentCounter}.eml`;
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
 
-    // den Payload erstellen
-    const payload = {
-        base64content: emailContentBase64,
-        caseId: caseId,
-        fileName: fileName,
-        folderId: "",
-        id: "",
-        version: 0
-    };
+        documentCounter++;
 
-    const headers = new Headers();
-    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
-    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-    headers.append('Content-Type', 'application/json');
+        // Payload erstellen
+        const payload = {
+            base64content: emailContentBase64,
+            caseId: caseId,
+            fileName: fileName,
+            folderId: "",
+            id: "",
+            version: 0,
+        };
 
-    fetch(url, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify(payload)
-    }).then(response => {
+        // Headers erstellen
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(`${username}:${password}`);
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        // Fetch-Request an den Server senden
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(payload),
+        });
+
         if (!response.ok) {
             throw new Error('Datei existiert eventuell schon');
         }
-        
-        return response.json();
 
-    }).then(data => {
-        menu_documentUploadedId = data.id;
+        const data = await response.json();
         console.log("Dokument ID: " + data.id);
+        menu_documentUploadedId = data.id;
 
-        updateDocumentFolderBundle(username, password, serverAddress);
+        await updateDocumentFolderBundle(username, password, serverAddress);
         logActivity('sendEmailToServerFromSelection', 'Email gespeichert: ' + fileName);
 
-        browser.runtime.sendMessage({ type: "success" });
+        // Erfolgsnachricht senden
+        await browser.runtime.sendMessage({ type: "success" });
 
-        browser.storage.local.get(["username", "password", "serverAddress", "selectedTags"]).then(result => {
-            // Überprüfen, ob documentTags nicht leer ist
-            if (result.selectedTags && result.selectedTags.length > 0) {
-                for (let documentTag of result.selectedTags) {
-                    setDocumentTagFromSelection(result.username, result.password, result.serverAddress, documentTag); 
-                    logActivity('sendEmailToServerFromSelection', 'Added Tag: ' + documentTag);
-                }
+        // Tags aus localStorage abrufen
+        const { selectedTags } = await browser.storage.local.get(["selectedTags"]);
+        if (selectedTags && selectedTags.length > 0) {
+            for (const documentTag of selectedTags) {
+                await setDocumentTagFromSelection(username, password, serverAddress, documentTag);
+                logActivity('sendEmailToServerFromSelection', 'Added Tag: ' + documentTag);
             }
-        });
-    }).catch(error => {
-        console.log('Error:', error);
-        browser.runtime.sendMessage({ type: "error", content: error.rawMessage });
-    });
-    
-    // Der Nachricht wird der Tag "veraktet" hinzugefügt
-    addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
-    logActivity('sendEmailToServerFromSelection', { "TAG veraktet hinzugefügt": fileName });
+        }
+
+        // Nachricht taggen
+        await addTagToMessageFromSelection(messageId, 'veraktet', '#000080');
+        logActivity('sendEmailToServerFromSelection', { "TAG veraktet hinzugefügt": fileName });
+    } catch (error) {
+        console.error('Error:', error);
+        await browser.runtime.sendMessage({ type: "error", content: error.message });
+    }
 }
 
 
@@ -244,7 +246,7 @@ async function getCasesFromSelection(username, password, serverAddress) {
 
 
 async function getStoredCases() {
-    const storageKey = 'casesList';
+    const storageKey = 'cases';
     const cachedData = await browser.storage.local.get(storageKey);
 
     if (cachedData[storageKey]) {
@@ -495,7 +497,7 @@ async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
 
 
 // Empfangen der Nachrichten vom Popup
-browser.runtime.onMessage.addListener(async (message) => {
+browser.runtime.onMessage.addListener((message) => {
     if ((message.type === "fileNumber" || message.type === "case") && (message.source === "popup_menu_bundle_save")) {
         
         selectedCaseFolderID_bundle = message.selectedCaseFolderID;

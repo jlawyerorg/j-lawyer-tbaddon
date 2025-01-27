@@ -196,8 +196,9 @@ document.addEventListener("DOMContentLoaded", async function() {
 async function updateData(feedback, progressBar) {
     progressBar.value = 0;
     progressBar.style.display = "block";
-    
-    browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+
+    try {
+        const { username, password, serverAddress } = await browser.storage.local.get(["username", "password", "serverAddress"]);
         feedback.textContent = "Daten werden aktualisiert...";
         feedback.style.color = "blue";
 
@@ -215,94 +216,66 @@ async function updateData(feedback, progressBar) {
             }
         }
 
-        getTags(result.username, result.password, result.serverAddress).then(() => {
-            fillTagsList();
-            updateProgress();
-        }).catch(error => {
-            feedback.textContent = "Fehler: " + error.message;
-            feedback.style.color = "red";
-        });
+        // Alle asynchronen Aufgaben parallel ausführen
+        await Promise.all([
+            (async () => {
+                await getTags(username, password, serverAddress);
+                fillTagsList();
+                updateProgress();
+            })(),
 
-        getCases(result.username, result.password, result.serverAddress).then(data => {
-            const casesRaw = data;
-            browser.storage.local.set({
-                cases: casesRaw
-            });
-            console.log("Cases heruntergeladen: " + casesRaw);
-            updateProgress();
-        }).catch(error => {
-            feedback.textContent = "Fehler: " + error.message;
-            feedback.style.color = "red";
-        });
-
-        getCalendars(result.username, result.password, result.serverAddress).then(data => {
-            const calendarsRaw = data;
-            browser.storage.local.set({
-                calendars: calendarsRaw
-            });
-
-            // Kalenderdaten in jeweilige Arrays filtern und wieder speichern                    
-            // Filtern und Extrahieren der Daten für Wiedervorlagen
-            const followUpCalendars = calendarsRaw
-                .filter(calendar => calendar.eventType === 'FOLLOWUP')
-                .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
-                console.log(followUpCalendars);
-                browser.storage.local.set({ followUpCalendars });
-    
-            // Filtern und Extrahieren der Daten für Fristen
-            const respiteCalendars = calendarsRaw
-                .filter(calendar => calendar.eventType === 'RESPITE')
-                .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
-                console.log(respiteCalendars);
-                browser.storage.local.set({ respiteCalendars });
+            (async () => {
+                const casesRaw = await getCases(username, password, serverAddress);
+                console.log("Anzahl der Fälle: " + casesRaw.length);
                 
-    
-            // Filtern und Extrahieren der Daten für Termine
-            const eventCalendars = calendarsRaw
-                .filter(calendar => calendar.eventType === 'EVENT')
-                .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
-                console.log(eventCalendars);
-                browser.storage.local.set({ eventCalendars });
-            console.log("Kalender heruntergeladen: " + calendarsRaw);
-            updateProgress();
-        }).catch(error => {
-            feedback.textContent = "Fehler: " + error.message;
-            feedback.style.color = "red";
-        });
+                await browser.storage.local.set({ cases: casesRaw });
 
-        getEmailTemplates(result.username, result.password, result.serverAddress).then(data => {
-            const emailTemplates = data.map((item, index) => ({ id: index + 1, name: item.name })).sort((a, b) => a.name.localeCompare(b.name));
-            browser.storage.local.set({ emailTemplatesNames: emailTemplates });
-            emailTemplates.forEach(template => console.log(`ID: ${template.id}, Name: ${template.name}`));
-            //save emailTemplates to storage with id and name
-            browser.storage.local.set({ emailTemplates });
-            updateProgress();
-        }).catch(error => {
-            feedback.textContent = "Fehler: " + error.message;
-            feedback.style.color = "red";
-        });
+                updateProgress();
+            })(),
 
-        getUsers(result.username, result.password, result.serverAddress).then(data => {
-            const users = data.map(item => item.displayName);
-            
-            // clear users of empty strings
-            users.forEach((item, index) => {
-                if (item === "") {
-                    users.splice(index, 1);
-                }
-            });
+            (async () => {
+                const calendarsRaw = await getCalendars(username, password, serverAddress);
+                await browser.storage.local.set({ calendars: calendarsRaw });
 
-            // save users to storage
-            browser.storage.local.set({
-                users: users
-            });
-            console.log("Benutzer heruntergeladen: " + users);
-            updateProgress();
-        }).catch(error => {
-            feedback.textContent = "Fehler: " + error.message;
-            feedback.style.color = "red";
-        });
-    });
+                // Kalenderdaten filtern und speichern
+                const followUpCalendars = calendarsRaw.filter(calendar => calendar.eventType === 'FOLLOWUP')
+                    .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+                const respiteCalendars = calendarsRaw.filter(calendar => calendar.eventType === 'RESPITE')
+                    .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+                const eventCalendars = calendarsRaw.filter(calendar => calendar.eventType === 'EVENT')
+                    .map(calendar => ({ id: calendar.id, displayName: calendar.displayName }));
+
+                await browser.storage.local.set({
+                    followUpCalendars,
+                    respiteCalendars,
+                    eventCalendars
+                });
+
+                console.log("Kalender heruntergeladen: " + calendarsRaw);
+                updateProgress();
+            })(),
+
+            (async () => {
+                const emailTemplates = (await getEmailTemplates(username, password, serverAddress))
+                    .map((item, index) => ({ id: index + 1, name: item.name }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                await browser.storage.local.set({ emailTemplates, emailTemplatesNames: emailTemplates });
+                console.log("E-Mail-Vorlagen: ", emailTemplates);
+                updateProgress();
+            })(),
+
+            (async () => {
+                const users = (await getUsers(username, password, serverAddress)).filter(user => user.displayName);
+                await browser.storage.local.set({ users: users.map(user => user.displayName) });
+                console.log("Benutzer heruntergeladen: ", users);
+                updateProgress();
+            })()
+        ]);
+    } catch (error) {
+        console.error("Error during updateData:", error);
+        feedback.textContent = "Fehler: " + error.message;
+        feedback.style.color = "red";
+    }
 }
 
 // Hört auf Antworten vom Hintergrund-Skript background.js
