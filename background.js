@@ -978,10 +978,10 @@ browser.runtime.onMessage.addListener((message) => {
                 cases = await getCases(result.username, result.password, result.serverAddress);
             }
     
-            const caseId = findIdByFileNumber(cases, fileNumber);
+            const caseId = await findIdByFileNumber(cases, fileNumber);
     
             if (caseId) {
-                sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
+                await sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
             } else {
                 console.log('Keine übereinstimmende ID gefunden');
             }
@@ -1001,10 +1001,10 @@ browser.runtime.onMessage.addListener((message) => {
                 cases = await getCases(result.username, result.password, result.serverAddress);
             }
     
-            const caseId = findIdByFileNumber(cases, fileNumber);
+            const caseId = await findIdByFileNumber(cases, fileNumber);
     
             if (caseId) {
-                sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
+                await sendAttachmentsToServer(caseId, result.username, result.password, result.serverAddress);
             } else {
                 console.log('Keine übereinstimmende ID gefunden');
             }
@@ -1012,47 +1012,40 @@ browser.runtime.onMessage.addListener((message) => {
     }
 
     if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
-
         extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
         let documentsInSelectedCase = [];
-
+    
         console.log("Aktenzeichen: " + message.content);
-        
+    
         selectedCaseFolderID = message.selectedCaseFolderID;
         currentSelectedCase = message.currentSelectedCase;
-        const loginData = browser.storage.local.get(["username", "password", "serverAddress"]);
-        try {
-            const documents = getFilesInCaseToDownload(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
-            console.log("Empfangene Dateinamen für den neuen Fall:", documents);
 
-            // Speichern der Dokumente und Aktualisieren des Menüs
-            documentsInSelectedCase = documents;
-            browser.storage.local.set({ documentsInSelectedCase: documents });
-            createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
-        } catch (error) {
-            console.error("Fehler beim Laden der Dokumente für den ausgewählten Fall:", error);
-        }
-        // // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
-        // const fileNumber = String(message.content);
-        // getCases(loginData.username, loginData.password, loginData.serverAddress).then(data => {
-        //     const caseIdToSaveToAfterSend = findIdByFileNumber(data, fileNumber);
-        //     browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
-        //     console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
-        // });
-
-        // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
-        const fileNumber = String(message.content);
-        let cases = getStoredCases();
-        
-        if (!cases) {
-            cases = getCases(loginData.username, loginData.password, loginData.serverAddress);
-        }
-
-        const caseIdToSaveToAfterSend = findIdByFileNumber(cases, fileNumber);
-        browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
-        console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
-
-
+        (async () => {
+            try {
+                const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+                const documents = await getFilesInCaseToDownload(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);
+                console.log("Empfangene Dateinamen für den neuen Fall:", documents);
+    
+                // Speichern der Dokumente und Aktualisieren des Menüs
+                documentsInSelectedCase = documents;
+                await browser.storage.local.set({ documentsInSelectedCase: documents });
+                createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
+            } catch (error) {
+                console.error("Fehler beim Laden der Dokumente für den ausgewählten Fall:", error);
+            }
+    
+            // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
+            const fileNumber = String(message.content);
+            let cases = await getStoredCases();
+    
+            if (!cases) {
+                cases = await getCases(loginData.username, loginData.password, loginData.serverAddress);
+            }
+    
+            const caseIdToSaveToAfterSend = await findIdByFileNumber(cases, fileNumber);
+            await browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+            console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
+        })(); // Sofortige Ausführung der async-Funktion
     }
 });
 
