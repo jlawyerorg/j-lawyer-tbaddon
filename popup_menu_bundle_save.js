@@ -614,6 +614,28 @@ async function updateData(feedback, progressBar) {
     }
 }
 
+async function getCases(username, password, serverAddress) {
+    const url = serverAddress +'/j-lawyer-io/rest/v1/cases/list';
+  
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
+    headers.append('Content-Type', 'application/json');
+  
+    return fetch(url, {
+      method: 'GET',
+      headers: headers,
+      timeout: 30000
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    });
+}
+
+
 async function logActivity(action, details) {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, action, details };
