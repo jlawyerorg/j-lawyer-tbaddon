@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", async function() {
     const progressBar = document.getElementById("progressBar");
 
     await fillTagsList();
+    
+    // Automatisch nach Aktenzeichen im Betreff suchen
+    await findFileNumberInComposeMessage();
 
     document.getElementById("searchInput").focus();
     
@@ -91,39 +94,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         });
     }
 
-    if (message.type === "updateStatus") {
-        const updateIndicator = document.getElementById("updateIndicator");
-        const updateText = updateIndicator.querySelector(".update-text");
-        
-        // Entferne alle Status-Klassen
-        updateIndicator.classList.remove("update-success", "update-error");
-        
-        switch(message.status) {
-            case "start":
-                updateIndicator.style.display = "flex";
-                updateText.textContent = message.message;
-                break;
-                
-            case "success":
-                updateIndicator.classList.add("update-success");
-                updateText.textContent = message.message;
-                // Nach 3 Sekunden ausblenden
-                setTimeout(() => {
-                    updateIndicator.style.display = "none";
-                }, 3000);
-                break;
-                
-            case "error":
-                updateIndicator.classList.add("update-error");
-                updateText.textContent = message.message;
-                // Nach 5 Sekunden ausblenden
-                setTimeout(() => {
-                    updateIndicator.style.display = "none";
-                }, 5000);
-                break;
-        }
-    }
-
     // Code, um die options.html in einem neuen Tab zu öffnen
     if (settingsButton) {
         settingsButton.addEventListener("click", function() {
@@ -142,6 +112,39 @@ browser.runtime.onMessage.addListener((message) => {
     } else if (message.type === "error") {
         feedback.textContent = "Fehler: " + message.content;
         feedback.style.color = "red";
+    } else if (message.type === "updateStatus") {
+        const updateIndicator = document.getElementById("updateIndicator");
+        if (updateIndicator) {
+            const updateText = updateIndicator.querySelector(".update-text");
+            
+            // Entferne alle Status-Klassen
+            updateIndicator.classList.remove("update-success", "update-error");
+            
+            switch(message.status) {
+                case "start":
+                    updateIndicator.style.display = "flex";
+                    updateText.textContent = message.message;
+                    break;
+                    
+                case "success":
+                    updateIndicator.classList.add("update-success");
+                    updateText.textContent = message.message;
+                    // Nach 3 Sekunden ausblenden
+                    setTimeout(() => {
+                        updateIndicator.style.display = "none";
+                    }, 3000);
+                    break;
+                    
+                case "error":
+                    updateIndicator.classList.add("update-error");
+                    updateText.textContent = message.message;
+                    // Nach 5 Sekunden ausblenden
+                    setTimeout(() => {
+                        updateIndicator.style.display = "none";
+                    }, 5000);
+                    break;
+            }
+        }
     }
 });
 
@@ -641,6 +644,114 @@ async function updateData(feedback, progressBar) {
         feedback.style.color = "red";
     }
 }
+
+// Funktion zum Auslesen des Betreffs im Compose-Fenster und Suche nach einem Aktenzeichen
+async function findFileNumberInComposeMessage() {
+    try {
+        // Aktiven Tab im Compose-Fenster ermitteln
+        const tabs = await browser.tabs.query({active: true, currentWindow: true});
+        if (tabs.length === 0) {
+            console.log("Kein aktiver Tab gefunden.");
+            return null;
+        }
+        
+        const tabId = tabs[0].id;
+        console.log("Aktive Tab-ID:", tabId);
+        
+        // Compose-Details aus dem aktiven Tab abrufen
+        const composeDetails = await browser.compose.getComposeDetails(tabId);
+        console.log("Compose-Details:", composeDetails);
+        
+        // Wenn kein Betreff vorhanden ist, frühzeitig beenden
+        if (!composeDetails.subject || composeDetails.subject.trim() === "") {
+            console.log("Nachricht hat keinen Betreff.");
+            return null;
+        }
+        
+        // In Betreff nach Aktenzeichen suchen
+        const subject = composeDetails.subject;
+        console.log("Betreff der Nachricht:", subject);
+        
+        // Gespeicherte Cases aus dem lokalen Storage holen
+        let storedData = await browser.storage.local.get("cases");
+        let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        
+        // Die gespeicherten Cases in einem Array
+        let casesArray = storedData.cases;
+        
+        // Wenn keine Cases vorhanden sind, beenden
+        if (!casesArray || casesArray.length === 0) {
+            console.log("Keine Cases im Storage gefunden.");
+            return null;
+        }
+        
+        // Durch alle Cases iterieren und prüfen, ob das Aktenzeichen im Betreff vorkommt
+        for (let item of casesArray) {
+            if (subject.includes(item.fileNumber)) {
+                console.log("Aktenzeichen im Betreff gefunden:", item.fileNumber);
+                
+                // Case-Informationen speichern
+                currentSelectedCase = {
+                    id: item.id,
+                    name: item.name,
+                    fileNumber: item.fileNumber
+                };
+                
+                console.log("Matching ID:", item.id);
+                console.log("Matching Name:", item.name);
+                
+                // Weitere Metadaten und Ordner des Cases laden
+                const caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
+                console.log("caseMetaData:", caseMetaData);
+                
+                // Aktualisiere den currentSelectedCase mit dem reason
+                currentSelectedCase.reason = caseMetaData.reason;
+                
+                // Ordner des Cases laden
+                caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);
+                displayTreeStructure(caseFolders);
+                
+                // UI-Elemente aktualisieren
+                const customizableLabel = document.getElementById("customizableLabel");
+                const labelText = `${item.fileNumber}: ${item.name}${caseMetaData.reason ? ` - ${caseMetaData.reason}` : ''}`;
+                customizableLabel.textContent = labelText;
+                
+                // Automatisch Speichern nach Senden aktivieren
+                browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+                    browser.runtime.sendMessage({
+                        type: "saveToCaseAfterSend",
+                        source: "popup_compose",
+                        content: currentSelectedCase.fileNumber,
+                        selectedCaseFolderID: selectedCaseFolderID,
+                        username: result.username,
+                        password: result.password,
+                        serverAddress: result.serverAddress,
+                        currentSelectedCase: currentSelectedCase
+                    });
+                    
+                    // Feedback anzeigen
+                    const feedback = document.getElementById("feedback");
+                    feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+                    feedback.style.color = "green";
+                });
+                
+                return {
+                    id: item.id,
+                    name: item.name,
+                    fileNumber: item.fileNumber
+                };
+            }
+        }
+        
+        // Wenn kein Aktenzeichen gefunden wurde
+        console.log("Kein Aktenzeichen im Betreff gefunden");
+        return null;
+    } catch (error) {
+        console.error("Fehler bei der Suche nach Aktenzeichen:", error);
+        return null;
+    }
+}
+
 async function logActivity(action, details) {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, action, details };
