@@ -1119,8 +1119,8 @@ async function createMenuEntries() {
             console.log("Keine Email-Templates gefunden");
         }
 
-        // Dokumente nach Name sortieren
-        documentsInSelectedCase.sort((a, b) => a.name.localeCompare(b.name));
+        // Dokumente nach Name sortieren (umgekehrt)
+        documentsInSelectedCase.sort((a, b) => b.name.localeCompare(a.name));
 
         // Ordnerstruktur holen
         let folders = [];
@@ -1180,8 +1180,8 @@ async function createMenuEntries() {
                 type: "normal"
             });
 
-            // Dateien in diesem Ordner (sortiert)
-            const docs = (docsByFolder[id] || []).sort((a, b) => a.name.localeCompare(b.name));
+            // Dateien in diesem Ordner (umgekehrt sortiert)
+            const docs = (docsByFolder[id] || []).sort((a, b) => b.name.localeCompare(a.name));
             for (const doc of docs) {
                 await browser.menus.create({
                     id: `dokument-${doc.id}`,
@@ -1231,11 +1231,11 @@ async function createMenuEntries() {
                         }
                     }
                 }
-                // 2. Dateien im Wurzelverzeichnis (folderId == null, undefined, "" oder "root" oder gleich dem Wurzelordner selbst)
+                // 2. Dateien im Wurzelverzeichnis (umgekehrt sortiert)
                 const rootFolderIds = [null, undefined, "", "root", folders.id];
                 const rootDocs = documentsInSelectedCase.filter(
                     doc => rootFolderIds.includes(doc.folderId)
-                ).sort((a, b) => a.name.localeCompare(b.name));
+                ).sort((a, b) => b.name.localeCompare(a.name));
                 for (const doc of rootDocs) {
                     await browser.menus.create({
                         id: `dokument-${doc.id}`,
