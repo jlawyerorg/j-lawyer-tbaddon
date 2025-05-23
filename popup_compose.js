@@ -261,10 +261,18 @@ async function searchCases(query) {
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {
             // Setze die ausgewählte Akte basierend auf dem Klick
+            const caseId = this.getAttribute("data-id");
+            const caseName = this.textContent.split(" (")[0];
+            const caseFileNumber = this.textContent.split("(")[1].split(")")[0];
+            
+            console.log("Ausgewählter Fall - ID:", caseId);
+            console.log("Ausgewählter Fall - Name:", caseName);
+            console.log("Ausgewählter Fall - Aktenzeichen:", caseFileNumber);
+            
             currentSelectedCase = {
-                id: this.getAttribute("data-id"),
-                name: this.textContent.split(" (")[0],
-                fileNumber: this.textContent.split("(")[1].split(")")[0],
+                id: caseId,
+                name: caseName,
+                fileNumber: caseFileNumber,
             };
 
             const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
@@ -285,6 +293,38 @@ async function searchCases(query) {
 
             // Beteiligte anzeigen
             displayParties(currentSelectedCase.id);
+
+            // Aktualisiere den Betreff im Compose-Fenster
+            try {
+                // Aktiven Tab im Compose-Fenster ermitteln
+                const tabs = await browser.tabs.query({active: true, currentWindow: true});
+                if (tabs.length > 0) {
+                    const tabId = tabs[0].id;
+                    
+                    // Aktuelle Compose-Details abrufen
+                    const composeDetails = await browser.compose.getComposeDetails(tabId);
+                    
+                    console.log("Compose-Details:", composeDetails);
+                    console.log("currentSelectedCase für Betreff:", currentSelectedCase);
+                    
+                    // Betreff nur aktualisieren, wenn die Aktenzeichen-Nummer noch nicht im Betreff steht
+                    if (!composeDetails.subject || !composeDetails.subject.includes(currentSelectedCase.fileNumber)) {
+                        // Neuen Betreff mit "Unser Zeichen: " und Falldaten erstellen
+                        const newSubject = `Unser Zeichen: ${currentSelectedCase.name}, ${currentSelectedCase.fileNumber}`;
+                        
+                        // Compose-Details mit neuem Betreff aktualisieren
+                        await browser.compose.setComposeDetails(tabId, { subject: newSubject });
+                        
+                        console.log("Betreff aktualisiert:", newSubject);
+                    } else {
+                        console.log("Betreff nicht aktualisiert, da die Aktenzeichen-Nummer bereits enthalten ist");
+                    }
+                } else {
+                    console.error("Kein aktiver Tab gefunden für Betreff-Aktualisierung");
+                }
+            } catch (error) {
+                console.error("Fehler beim Aktualisieren des Betreffs:", error);
+            }
 
             // Führe die Aktion aus, die sonst der Button ausgelöst hätte
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
@@ -980,6 +1020,9 @@ async function findFileNumberInComposeMessage() {
                 const labelText = `${item.fileNumber}: ${item.name}${caseMetaData.reason ? ` - ${caseMetaData.reason}` : ''}`;
                 customizableLabel.textContent = labelText;
                 
+                // Betreff aktualisieren, aber nur wenn die Aktenzeichen-Nummer nicht bereits im Betreff enthalten ist
+                // (Wir haben bereits oben geprüft, dass die Nummer im Betreff ist, daher aktualisieren wir hier nicht)
+                
                 // Beteiligte anzeigen
                 displayParties(item.id);
                 
@@ -1002,13 +1045,11 @@ async function findFileNumberInComposeMessage() {
                     feedback.style.color = "green";
                 });
                 
-                // Beteiligte anzeigen
-                displayParties(item.id);
-                
                 return {
                     id: item.id,
                     name: item.name,
-                    fileNumber: item.fileNumber
+                    fileNumber: item.fileNumber,
+                    reason: caseMetaData.reason
                 };
             }
         }
