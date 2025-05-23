@@ -146,6 +146,27 @@
         }
     </style>
 
+    <!-- Code für den Beteiligten-Container -->
+    <style>
+        #partiesContainer {
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f7f7f7; 
+            margin-bottom: 20px; 
+            border: 2px solid #4CAF50; /* Grüner Rand für den Beteiligte-Container */
+        }
+
+        .partyItem {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .partyItem:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
 
     <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
     <style>
@@ -196,6 +217,11 @@
 
     <div id="treeContainer">
         <h3>Ordner</h3>
+    </div>
+
+    <div id="partiesContainer">
+        <h3>Beteiligte</h3>
+        <div id="partiesList"></div>
     </div>
 
     <div id="tagsContainer">

@@ -283,6 +283,9 @@ async function searchCases(query) {
             const customizableLabel = document.getElementById("customizableLabel");
             customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || "kein Grund angegeben"}`;
 
+            // Beteiligte anzeigen
+            displayParties(currentSelectedCase.id);
+
             // Führe die Aktion aus, die sonst der Button ausgelöst hätte
             browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                 browser.runtime.sendMessage({
@@ -417,7 +420,240 @@ async function getCaseFolders(caseId, username, password, serverAddress) {
     });
 }
 
-// Funktion zum Erstellen eines Ordnerbaums einer Akte
+// Funktion zum Abrufen der Beteiligten einer Akte
+async function getPartiesInCase(caseId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/' + caseId + '/parties';
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        console.log("Beteiligte der Akte " + caseId + " heruntergeladen:", data);
+        return data;
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Beteiligten:", error);
+        throw error;
+    }
+}
+
+// Funktion zum Anzeigen der Beteiligten einer Akte
+async function displayParties(caseId) {
+    try {
+        if (!caseId) {
+            console.log("Keine Case-ID vorhanden, kann Beteiligte nicht anzeigen");
+            return;
+        }
+
+        const loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        
+        // Beteiligte abrufen
+        const parties = await getPartiesInCase(caseId, loginData.username, loginData.password, loginData.serverAddress);
+        
+        // Container für die Beteiligten leeren
+        const partiesListElement = document.getElementById("partiesList");
+        partiesListElement.innerHTML = "";
+        
+        // Wenn keine Beteiligten vorhanden sind
+        if (!parties || parties.length === 0) {
+            const noPartiesElement = document.createElement("div");
+            noPartiesElement.textContent = "Keine Beteiligten gefunden";
+            partiesListElement.appendChild(noPartiesElement);
+            return;
+        }
+        
+        // Array für Beteiligte mit E-Mail-Adressen
+        const partiesWithEmails = [];
+        
+        // Für jeden Beteiligten die Adressdetails abrufen
+        for (const party of parties) {
+            if (party.addressId) {
+                try {
+                    const addressDetails = await getAddressDetails(
+                        party.addressId, 
+                        loginData.username, 
+                        loginData.password, 
+                        loginData.serverAddress
+                    );
+                    
+                    // Nur Beteiligte mit E-Mail-Adresse anzeigen
+                    if (addressDetails.email) {
+                        partiesWithEmails.push({
+                            name: addressDetails.name,
+                            firstName: addressDetails.firstName,
+                            email: addressDetails.email,
+                            involvementType: party.involvementType,
+                            reference: party.reference // Referenz aus der Partei-Information hinzufügen
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Fehler beim Abrufen der Adressdetails für ${party.addressId}:`, error);
+                }
+            }
+        }
+        
+        // Beteiligte alphabetisch nach Namen sortieren
+        partiesWithEmails.sort((a, b) => {
+            const nameA = a.name + (a.firstName ? `, ${a.firstName}` : "");
+            const nameB = b.name + (b.firstName ? `, ${b.firstName}` : "");
+            return nameA.localeCompare(nameB);
+        });
+        
+        // Beteiligten-Liste erstellen
+        partiesWithEmails.forEach(party => {
+            const div = document.createElement("div");
+            div.className = "partyItem";
+            
+            // Namen formatieren
+            let displayName = party.name;
+            if (party.firstName) {
+                displayName += `, ${party.firstName}`;
+            }
+            
+            // Involvementtype als Badge hinzufügen
+            let involvementBadge = "";
+            if (party.involvementType) {
+                involvementBadge = ` [${party.involvementType}]`;
+            }
+            
+            // Referenz-Information hinzufügen, falls vorhanden
+            let referenceInfo = "";
+            if (party.reference) {
+                referenceInfo = ` - Zeichen: ${party.reference}`;
+            }
+            
+            div.textContent = `${displayName}${involvementBadge}${referenceInfo} (${party.email})`;
+            div.setAttribute("data-email", party.email);
+            div.setAttribute("data-name", displayName);
+            
+            // Referenz als Datenattribut speichern, falls vorhanden
+            if (party.reference) {
+                div.setAttribute("data-reference", party.reference);
+            }
+            
+            // Event-Listener für Klick auf Beteiligten
+            div.addEventListener("click", async function() {
+                const email = this.getAttribute("data-email");
+                const name = this.getAttribute("data-name");
+                const reference = this.getAttribute("data-reference");
+                
+                try {
+                    // Aktiven Tab im Compose-Fenster ermitteln
+                    const tabs = await browser.tabs.query({active: true, currentWindow: true});
+                    if (tabs.length === 0) {
+                        console.log("Kein aktiver Tab gefunden.");
+                        return;
+                    }
+                    
+                    const tabId = tabs[0].id;
+                    
+                    // Aktuelle Compose-Details abrufen
+                    const composeDetails = await browser.compose.getComposeDetails(tabId);
+                    
+                    // Aktualisierte Liste der Empfänger erstellen
+                    let recipients = [];
+                    if (composeDetails.to) {
+                        if (Array.isArray(composeDetails.to)) {
+                            recipients = [...composeDetails.to];
+                        } else {
+                            recipients = [composeDetails.to];
+                        }
+                    }
+                    
+                    // Neuen Empfänger formatieren und hinzufügen
+                    const formattedRecipient = `${name} <${email}>`;
+                    
+                    // Prüfen, ob der Empfänger bereits in der Liste ist
+                    const emailExists = recipients.some(recipient => {
+                        if (typeof recipient === 'string') {
+                            return recipient.includes(email);
+                        } else if (recipient.nodeId) {
+                            return false; // NodeID kann nicht geprüft werden ohne weitere Infos
+                        }
+                        return false;
+                    });
+                    
+                    // Nur hinzufügen, wenn die E-Mail noch nicht in der Liste ist
+                    if (!emailExists) {
+                        recipients.push(formattedRecipient);
+                    }
+                    
+                    // Betreff aktualisieren, wenn eine Referenz vorhanden ist
+                    let updatedSubject = composeDetails.subject || "";
+                    if (reference) {
+                        // Prüfen, ob die Referenz bereits im Betreff vorhanden ist
+                        if (!updatedSubject.includes(reference)) {
+                            // Referenz zum Betreff hinzufügen
+                            updatedSubject = updatedSubject.trim() ? `${updatedSubject.trim()} (${reference})` : reference;
+                        }
+                    }
+                    
+                    // Compose-Details aktualisieren (Empfänger und möglicherweise Betreff)
+                    const updateDetails = {
+                        to: recipients
+                    };
+                    
+                    // Betreff nur hinzufügen, wenn er geändert wurde
+                    if (updatedSubject !== composeDetails.subject) {
+                        updateDetails.subject = updatedSubject;
+                    }
+                    
+                    await browser.compose.setComposeDetails(tabId, updateDetails);
+                    
+                    // Feedback-Nachricht vorbereiten
+                    let feedbackMessage = `E-Mail-Adresse hinzugefügt: ${formattedRecipient}`;
+                    if (reference && updatedSubject !== composeDetails.subject) {
+                        feedbackMessage += `, Referenz "${reference}" zum Betreff hinzugefügt`;
+                    }
+                    
+                    // Feedback anzeigen
+                    const feedback = document.getElementById("feedback");
+                    feedback.textContent = !emailExists ? feedbackMessage : 
+                        `E-Mail-Adresse existiert bereits: ${email}${reference ? `, Referenz "${reference}" zum Betreff hinzugefügt` : ""}`;
+                    feedback.style.color = !emailExists ? "green" : "orange";
+                    
+                    // Feedback nach 3 Sekunden zurücksetzen
+                    setTimeout(() => {
+                        feedback.textContent = "";
+                    }, 3000);
+                } catch (error) {
+                    console.error("Fehler beim Aktualisieren des Compose-Fensters:", error);
+                    
+                    // Fehlermeldung anzeigen
+                    const feedback = document.getElementById("feedback");
+                    feedback.textContent = "Fehler beim Aktualisieren des Compose-Fensters";
+                    feedback.style.color = "red";
+                }
+            });
+            
+            partiesListElement.appendChild(div);
+        });
+        
+    } catch (error) {
+        console.error("Fehler beim Anzeigen der Beteiligten:", error);
+        
+        // Fehlermeldung anzeigen
+        const partiesListElement = document.getElementById("partiesList");
+        partiesListElement.innerHTML = "";
+        
+        const errorElement = document.createElement("div");
+        errorElement.textContent = "Fehler beim Laden der Beteiligten";
+        errorElement.style.color = "red";
+        partiesListElement.appendChild(errorElement);
+    }
+}
+
 function createTreeElement(obj) {
     if (!obj) return null; // Behandlung von null-Werten
 
@@ -559,6 +795,34 @@ function getEmailTemplates(username, password, serverAddress) {
         }
         return response.json();
     });
+}
+
+// Funktion zum Abrufen der Kontaktdetails anhand der Adress-ID
+async function getAddressDetails(addressId, username, password, serverAddress) {
+    const url = serverAddress + '/j-lawyer-io/rest/v2/contacts/' + addressId;
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        console.log("Kontaktdetails für Adresse " + addressId + " heruntergeladen:", data);
+        return data;
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Kontaktdetails:", error);
+        throw error;
+    }
 }
 
 // Funktion zum Aktualisieren der Daten
@@ -716,6 +980,9 @@ async function findFileNumberInComposeMessage() {
                 const labelText = `${item.fileNumber}: ${item.name}${caseMetaData.reason ? ` - ${caseMetaData.reason}` : ''}`;
                 customizableLabel.textContent = labelText;
                 
+                // Beteiligte anzeigen
+                displayParties(item.id);
+                
                 // Automatisch Speichern nach Senden aktivieren
                 browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
                     browser.runtime.sendMessage({
@@ -734,6 +1001,9 @@ async function findFileNumberInComposeMessage() {
                     feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
                     feedback.style.color = "green";
                 });
+                
+                // Beteiligte anzeigen
+                displayParties(item.id);
                 
                 return {
                     id: item.id,
