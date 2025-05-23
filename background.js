@@ -474,27 +474,6 @@ function getDisplayedMessageFromActiveTab() {
 
 
 
-
-
-// function getCases(username, password, serverAddress) {
-//     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/list';
-
-//     const headers = new Headers();
-//     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
-//     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-//     headers.append('Content-Type', 'application/json');
-
-//     return fetch(url, {
-//         method: 'GET',
-//         headers: headers
-//     }).then(response => {
-//         if (!response.ok) {
-//             throw new Error('Network response was not ok');
-//         }
-//         return response.json();
-//     });
-// }
-
 async function getCases(username, password, serverAddress) {
     const storageKey = 'casesList';
     const cachedData = await browser.storage.local.get(storageKey);
