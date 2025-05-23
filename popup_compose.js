@@ -594,8 +594,8 @@ async function displayParties(caseId) {
                     if (reference) {
                         // Prüfen, ob die Referenz bereits im Betreff vorhanden ist
                         if (!updatedSubject.includes(reference)) {
-                            // Referenz zum Betreff hinzufügen
-                            updatedSubject = updatedSubject.trim() ? `${updatedSubject.trim()} (${reference})` : reference;
+                            // Referenz zum Betreff hinzufügen mit dem Format "Zeichen: [referenz]"
+                            updatedSubject = updatedSubject.trim() ? `${updatedSubject.trim()} (Zeichen: ${reference})` : `Zeichen: ${reference}`;
                         }
                     }
                     
@@ -614,13 +614,13 @@ async function displayParties(caseId) {
                     // Feedback-Nachricht vorbereiten
                     let feedbackMessage = `E-Mail-Adresse hinzugefügt: ${formattedRecipient}`;
                     if (reference && updatedSubject !== composeDetails.subject) {
-                        feedbackMessage += `, Referenz "${reference}" zum Betreff hinzugefügt`;
+                        feedbackMessage += `, Zeichen "${reference}" zum Betreff hinzugefügt`;
                     }
                     
                     // Feedback anzeigen
                     const feedback = document.getElementById("feedback");
                     feedback.textContent = !emailExists ? feedbackMessage : 
-                        `E-Mail-Adresse existiert bereits: ${email}${reference ? `, Referenz "${reference}" zum Betreff hinzugefügt` : ""}`;
+                        `E-Mail-Adresse existiert bereits: ${email}${reference ? `, Zeichen "${reference}" zum Betreff hinzugefügt` : ""}`;
                     feedback.style.color = !emailExists ? "green" : "orange";
                     
                     // Feedback nach 3 Sekunden zurücksetzen
