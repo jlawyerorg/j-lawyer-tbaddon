@@ -94,7 +94,6 @@ document.addEventListener("DOMContentLoaded", async function() {
                     serverAddress: result.serverAddress
                     
                 });
-    
                 // Setzt Feedback zurück, während auf eine Antwort gewartet wird
                 feedback.textContent = "Speichern...";
                 feedback.style.color = "blue";

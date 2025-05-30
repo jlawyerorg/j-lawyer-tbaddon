@@ -20,6 +20,7 @@ let documentIdsToTag = [];
 let lastMessageData = null;
 let extensionUsed = false;
 let selectedCaseFolderID = null;
+let selectedCaseFolderIDAfterSend = null;
 let currentSelectedCase = null;
 let documentToAddToMessage = null;
 let documentsInSelectedCase = [];
@@ -72,7 +73,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             base64content: emailContentBase64,
             caseId: caseId,
             fileName: fileName,
-            folderId: "",
+            folderId: selectedCaseFolderID,
             id: "",
             version: 0
         };
@@ -97,7 +98,7 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            await updateDocumentFolder(username, password, serverAddress);
+            await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
             await logActivity("sendEmailToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
@@ -190,7 +191,7 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
             base64content: emailContentBase64,
             caseId: caseId,
             fileName: fileName,
-            folderId: "",
+            folderId: selectedCaseFolderID,
             id: "",
             version: 0
         };
@@ -216,7 +217,7 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            await updateDocumentFolder(username, password, serverAddress);
+            await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
             await logActivity("sendOnlyMessageToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
@@ -357,8 +358,10 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
 }
 
 
-async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, password, serverAddress) {
+async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseFolderIDAfterSend, username, password, serverAddress) {
     console.log("Es wird versucht, die Email in der Akte zu speichern");
+    console.log("selectedCaseFolderIDAfterSend: " + selectedCaseFolderIDAfterSend);
+    selectedCaseFolderID = selectedCaseFolderIDAfterSend;
 
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
@@ -391,7 +394,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
         base64content: emailContentBase64,
         caseId: caseIdToSaveToAfterSend,
         fileName: fileName,
-        folderId: "",
+        folderId: selectedCaseFolderID,
         id: "",
         version: 0
     };
@@ -415,7 +418,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, username, pas
         documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
 
-        updateDocumentFolder(username, password, serverAddress);
+        updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
 
         console.log("E-Mail wurde erfolgreich gespeichert");
 
@@ -791,7 +794,7 @@ async function setDocumentTagsAndFolderForAttachments() {
 }
 
 // set document folder for messages and attachments
-async function updateDocumentFolder(username, password, serverAddress) {
+async function updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID) {
     const headers = new Headers();
     const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
     headers.append('Authorization', 'Basic ' + loginBase64Encoded);
@@ -1049,8 +1052,8 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
         lastSentMessageId = sendInfo.messages[0].id;
 
         // speichert E-Mail nach dem Senden in der Akte
-        await browser.storage.local.get(["caseIdToSaveToAfterSend", "username", "password", "serverAddress"]).then(result => {
-            sendEmailToServerAfterSend(result.caseIdToSaveToAfterSend, result.username, result.password, result.serverAddress);
+        await browser.storage.local.get(["caseIdToSaveToAfterSend", "selectedCaseFolderIDAfterSend", "username", "password", "serverAddress"]).then(result => {
+            sendEmailToServerAfterSend(result.caseIdToSaveToAfterSend, result.selectedCaseFolderIDAfterSend, result.username, result.password, result.serverAddress);
         });
     }
 });

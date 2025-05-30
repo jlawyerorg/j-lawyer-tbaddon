@@ -716,6 +716,8 @@ function createTreeElement(obj) {
         selectedCaseFolderID = obj.id;
         console.log("Name des ausgewählten Ordners: " + obj.name);
         console.log("Id des ausgewählten Ordners: " + selectedCaseFolderID);
+
+        browser.storage.local.set({ selectedCaseFolderIDAfterSend: selectedCaseFolderID });
     };
 
     if (obj.children && obj.children.length > 0) {
