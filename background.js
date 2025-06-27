@@ -264,7 +264,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
 
     // Attachments holen
     let attachments = await browser.messages.listAttachments(messageData.id);
-    console.log("Attachments: " + attachments);
+    console.log("Attachments gefunden:", attachments.length);
 
     // Überprüfen, ob Attachments vorhanden sind
     if (attachments.length === 0) {
@@ -273,63 +273,87 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
         return;
     }
 
+    // Datum und Zeit einmal für alle Attachments generieren
+    let date = new Date(messageData.date);
+    let dateString = formatDate(date);
+    console.log("DateString: " + dateString);
+
+    // Dateinamen-Liste einmal für alle Attachments abrufen
+    let fileNamesArray = [];
+    try {
+        fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
+        console.log("Empfangene Dateinamen:", fileNamesArray.length, "Dateien");
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Dateinamen:", error);
+        browser.runtime.sendMessage({ type: "error", content: "Fehler beim Abrufen der vorhandenen Dateien" });
+        return;
+    }
+
+    // Tracking für Verarbeitung
+    const processedFiles = [];
+    const errors = [];
+    let attachmentCounter = 0;
+
+    // Headers einmal erstellen
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
     for (let att of attachments) {
-        let file = await browser.messages.getAttachmentFile(
-            messageData.id,
-            att.partName
-        );
-        let content = await file.text();
-        console.log("ContentType: " + att.contentType);
-
-        // Der Inhalt der Message wird zu Base64 codiert
-        let buffer = await file.arrayBuffer();
-        let uint8Array = new Uint8Array(buffer);
-        const emailContentBase64 = uint8ArrayToBase64(uint8Array);
-
-        // get date and time from message header
-        let date = new Date(messageData.date);
-        let dateString = formatDate(date);
-        console.log("DateString: " + dateString);
-
-        // Dateinamen erstellen
-        let fileName = dateString + "_" + att.name;
-        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
-
-        // get documents in case
-        let fileNamesArray = [];
+        attachmentCounter++;
+        console.log(`Verarbeite Attachment ${attachmentCounter}/${attachments.length}: ${att.name}`);
 
         try {
-            fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
-            console.log("Empfangene Dateinamen: ", fileNamesArray);
-        } catch (error) {
-            console.error("Ein Fehler ist aufgetreten: ", error);
-        }
-        
-        // check if fileName already exists
-        if (fileNamesArray.includes(fileName)) {
-            console.log("Datei existiert schon in der Akte");
-            browser.runtime.sendMessage({ type: "error", content: "Datei existiert schon in der Akte" });
-            continue;
-        } 
+            // Attachment-Datei abrufen
+            let file = await browser.messages.getAttachmentFile(
+                messageData.id,
+                att.partName
+            );
+            
+            console.log(`ContentType für ${att.name}: ${att.contentType}`);
 
-        console.log("Die CasefolderID für die Attachments lautet: " + selectedCaseFolderID + " und die Datei heißt: " + fileName);
+            // Nur arrayBuffer() verwenden, text() wird nicht benötigt
+            let buffer = await file.arrayBuffer();
+            let uint8Array = new Uint8Array(buffer);
+            const emailContentBase64 = uint8ArrayToBase64(uint8Array);
 
-        // den Payload erstellen
-        const payload = {
-            base64content: emailContentBase64,
-            caseId: caseId,
-            fileName: fileName,
-            folderId: selectedCaseFolderID,
-            id: "",
-            version: 0
-        };
+            // Eindeutigen Dateinamen erstellen
+            let fileName = dateString + "_" + att.name;
+            fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
 
-        const headers = new Headers();
-        const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
-        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-        headers.append('Content-Type', 'application/json');
+            // Bei Duplikaten Counter hinzufügen
+            let finalFileName = fileName;
+            let duplicateCounter = 1;
+            while (fileNamesArray.includes(finalFileName) || processedFiles.includes(finalFileName)) {
+                const nameParts = fileName.split('.');
+                if (nameParts.length > 1) {
+                    const extension = nameParts.pop();
+                    const baseName = nameParts.join('.');
+                    finalFileName = `${baseName}_${duplicateCounter}.${extension}`;
+                } else {
+                    finalFileName = `${fileName}_${duplicateCounter}`;
+                }
+                duplicateCounter++;
+            }
 
-        try {
+            if (finalFileName !== fileName) {
+                console.log(`Dateiname geändert von "${fileName}" zu "${finalFileName}" wegen Duplikat`);
+            }
+
+            console.log(`CasefolderID für Attachment "${finalFileName}": ${selectedCaseFolderID}`);
+
+            // Payload erstellen
+            const payload = {
+                base64content: emailContentBase64,
+                caseId: caseId,
+                fileName: finalFileName,
+                folderId: selectedCaseFolderID,
+                id: "",
+                version: 0
+            };
+
+            // Upload versuchen
             const response = await fetch(url, {
                 method: 'PUT',
                 headers: headers,
@@ -339,22 +363,52 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
             if (!response.ok) {
                 throw new Error('Datei existiert ggfs. schon');
             }
-            const data = await response.json();
-            console.log("Dokument ID: " + data.id);
 
-            // add data.id to array documentIdsToTag
+            const data = await response.json();
+            console.log(`Dokument ID für "${finalFileName}": ${data.id}`);
+
+            // Erfolg vermerken
             documentIdsToTag.push(data.id);
-           
-            browser.runtime.sendMessage({ type: "success" });
-            
+            processedFiles.push(finalFileName);
+
         } catch (error) {
-            console.log('Error:', error);
-            browser.runtime.sendMessage({ type: "error", content: error.message });
+            console.error(`Fehler beim Verarbeiten von Attachment "${att.name}":`, error);
+            errors.push({
+                fileName: att.name,
+                error: error.message
+            });
         }
     }
-    // set document tags and folder
-    setDocumentTagsAndFolderForAttachments();
-    logActivity("sendAttachmentsToServer", { caseId, fileName });
+
+    // Ergebnis-Summary
+    console.log(`Attachment-Verarbeitung abgeschlossen: ${processedFiles.length}/${attachments.length} erfolgreich`);
+    
+    if (errors.length > 0) {
+        console.error("Fehler bei folgenden Attachments:", errors);
+        const errorMessage = `${errors.length} von ${attachments.length} Attachments konnten nicht hochgeladen werden: ${errors.map(e => e.fileName).join(', ')}`;
+        browser.runtime.sendMessage({ type: "error", content: errorMessage });
+    }
+
+    // Nur Success-Message senden wenn mindestens ein Attachment erfolgreich war
+    if (processedFiles.length > 0) {
+        browser.runtime.sendMessage({ type: "success", content: `${processedFiles.length} Attachment(s) erfolgreich hochgeladen` });
+        
+        // Tags und Ordner setzen
+        await setDocumentTagsAndFolderForAttachments();
+    }
+
+    // Zusätzlich alle MIME-Parts durchsuchen (für inline Attachments)
+    // Übergebe bereits verarbeitete Dateien um Duplikate zu vermeiden
+    await sendAllMimePartsToServer(caseId, username, password, serverAddress, processedFiles);
+
+    // Logging mit allen verarbeiteten Dateien
+    await logActivity("sendAttachmentsToServer", { 
+        caseId, 
+        processedFiles: processedFiles,
+        totalAttachments: attachments.length,
+        successCount: processedFiles.length,
+        errorCount: errors.length
+    });
 }
 
 
@@ -1475,4 +1529,580 @@ async function logActivity(action, details) {
     activityLog.push(logEntry);
 
     await browser.storage.local.set({ activityLog });
+}
+
+
+/**
+ * Extrahiert Base64-kodierten Anhang-Inhalt aus der Raw-E-Mail-Nachricht
+ * @param {number} messageId - ID der E-Mail-Nachricht
+ * @param {Object} mimePart - MIME-Part Objekt mit Anhang-Informationen
+ * @param {string} partPath - Pfad zum MIME-Part (z.B. "1.2")
+ * @returns {string|null} Base64-kodierte Anhang-Daten oder null bei Fehler
+ */
+async function extractAttachmentFromRawMessage(messageId, mimePart, partPath) {
+    try {
+        console.log(`Starte Raw-Message Extraktion für Part: ${partPath}, Name: ${mimePart.name || 'unbekannt'}`);
+        
+        // Raw-Message holen
+        const rawMessage = await browser.messages.getRaw(messageId, { decrypt: true });
+        if (!rawMessage) {
+            console.warn(`Keine Raw-Message erhalten für messageId: ${messageId}`);
+            return null;
+        }
+        
+        console.log(`Raw-Message erhalten: ${rawMessage.length} Zeichen`);
+        
+        // MIME-Grenzen finden
+        const boundaryMatch = rawMessage.match(/boundary=["']?([^"';\s]+)["']?/i);
+        if (!boundaryMatch) {
+            console.warn(`Keine MIME-Boundary in Raw-Message gefunden`);
+            return await extractSinglePartAttachment(rawMessage, mimePart);
+        }
+        
+        const boundary = boundaryMatch[1];
+        console.log(`MIME-Boundary gefunden: ${boundary}`);
+        
+        // MIME-Parts aufteilen
+        const parts = rawMessage.split(`--${boundary}`);
+        console.log(`${parts.length} MIME-Parts gefunden`);
+        
+        // Ziel-Part suchen
+        let targetPart = null;
+        
+        // Strategie 1: Nach partPath suchen (falls verfügbar)
+        if (partPath && partPath !== '1') {
+            console.log(`Suche nach partPath: ${partPath}`);
+            // Hier würde eine komplexere Logik für verschachtelte MIME-Parts stehen
+            // Vereinfacht: nehme den Part basierend auf der Position
+            const pathParts = partPath.split('.');
+            const partIndex = parseInt(pathParts[pathParts.length - 1]) - 1;
+            if (partIndex < parts.length && partIndex >= 0) {
+                targetPart = parts[partIndex + 1]; // +1 wegen Offset durch Boundary-Split
+                console.log(`Part nach partPath gefunden: Index ${partIndex}`);
+            }
+        }
+        
+        // Strategie 2: Nach Content-Disposition oder Dateinamen suchen
+        if (!targetPart && mimePart.name) {
+            console.log(`Suche nach Dateinamen: ${mimePart.name}`);
+            for (let i = 1; i < parts.length - 1; i++) { // Erste und letzte sind leer/Epilog
+                const part = parts[i];
+                if (part.includes(`filename="${mimePart.name}"`) || 
+                    part.includes(`filename=${mimePart.name}`) ||
+                    part.includes(`name="${mimePart.name}"`) ||
+                    part.includes(`name=${mimePart.name}`)) {
+                    targetPart = part;
+                    console.log(`Part nach Dateinamen gefunden: Index ${i}`);
+                    break;
+                }
+            }
+        }
+        
+        // Strategie 3: Nach Content-Type suchen
+        if (!targetPart && mimePart.contentType) {
+            console.log(`Suche nach Content-Type: ${mimePart.contentType}`);
+            for (let i = 1; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (part.includes(mimePart.contentType)) {
+                    // Prüfe, ob es ein Attachment ist (nicht der Haupt-Body)
+                    if (part.includes('Content-Disposition:') && 
+                        (part.includes('attachment') || part.includes('filename'))) {
+                        targetPart = part;
+                        console.log(`Part nach Content-Type gefunden: Index ${i}`);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!targetPart) {
+            console.warn(`Kein passender MIME-Part gefunden`);
+            return null;
+        }
+        
+        console.log(`Ziel-Part gefunden, analysiere Inhalt...`);
+        
+        // Base64-kodierten Inhalt extrahieren
+        return extractBase64FromMimePart(targetPart);
+        
+    } catch (error) {
+        console.error(`Fehler bei Raw-Message Extraktion:`, error);
+        return null;
+    }
+}
+
+/**
+ * Extrahiert Base64-Daten aus einem einzelnen MIME-Part (für einfache E-Mails ohne Multipart)
+ */
+async function extractSinglePartAttachment(rawMessage, mimePart) {
+    try {
+        console.log(`Versuche Single-Part Extraktion für: ${mimePart.name || 'unbekannt'}`);
+        
+        // Prüfe ob die gesamte Message base64-kodiert ist
+        if (rawMessage.includes('Content-Transfer-Encoding: base64')) {
+            const lines = rawMessage.split('\n');
+            let inBase64Section = false;
+            let base64Content = '';
+            
+            for (const line of lines) {
+                if (line.trim() === '' && !inBase64Section) {
+                    inBase64Section = true; // Leere Zeile nach Headers
+                    continue;
+                }
+                
+                if (inBase64Section) {
+                    // Base64-Zeile (normalerweise nur A-Z, a-z, 0-9, +, /, =)
+                    if (/^[A-Za-z0-9+/=\s]*$/.test(line.trim()) && line.trim().length > 0) {
+                        base64Content += line.trim();
+                    }
+                }
+            }
+            
+            if (base64Content) {
+                console.log(`Single-Part Base64-Inhalt extrahiert: ${base64Content.length} Zeichen`);
+                return base64Content;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`Fehler bei Single-Part Extraktion:`, error);
+        return null;
+    }
+}
+
+/**
+ * Extrahiert Base64-kodierten Inhalt aus einem MIME-Part
+ */
+function extractBase64FromMimePart(mimePart) {
+    try {
+        const lines = mimePart.split('\n');
+        let inContentSection = false;
+        let base64Content = '';
+        let encoding = 'base64'; // Standard-Annahme
+        
+        // Headers analysieren
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            if (trimmedLine.toLowerCase().includes('content-transfer-encoding:')) {
+                const encodingMatch = trimmedLine.match(/content-transfer-encoding:\s*(.+)/i);
+                if (encodingMatch) {
+                    encoding = encodingMatch[1].trim().toLowerCase();
+                    console.log(`Content-Transfer-Encoding gefunden: ${encoding}`);
+                }
+            }
+            
+            // Leere Zeile markiert Ende der Headers
+            if (trimmedLine === '' && !inContentSection) {
+                inContentSection = true;
+                continue;
+            }
+            
+            // Content sammeln
+            if (inContentSection && trimmedLine.length > 0) {
+                if (encoding === 'base64') {
+                    // Nur gültige Base64-Zeichen
+                    if (/^[A-Za-z0-9+/=]*$/.test(trimmedLine)) {
+                        base64Content += trimmedLine;
+                    }
+                } else if (encoding === 'quoted-printable') {
+                    // Quoted-Printable zu Base64 konvertieren
+                    const decoded = decodeQuotedPrintable(trimmedLine);
+                    base64Content += btoa(decoded);
+                } else {
+                    // Plain text oder andere Kodierung
+                    base64Content += btoa(trimmedLine);
+                }
+            }
+        }
+        
+        if (base64Content) {
+            console.log(`Base64-Inhalt aus MIME-Part extrahiert: ${base64Content.length} Zeichen (Encoding: ${encoding})`);
+            return base64Content;
+        }
+        
+        console.warn(`Kein Base64-Inhalt in MIME-Part gefunden`);
+        return null;
+        
+    } catch (error) {
+        console.error(`Fehler bei Base64-Extraktion aus MIME-Part:`, error);
+        return null;
+    }
+}
+
+/**
+ * Dekodiert Quoted-Printable Text
+ */
+function decodeQuotedPrintable(str) {
+    return str.replace(/=([0-9A-F]{2})/g, (match, hex) => {
+        return String.fromCharCode(parseInt(hex, 16));
+    }).replace(/=\r?\n/g, '');
+}
+
+async function sendAllMimePartsToServer(caseId, username, password, serverAddress, alreadyProcessedFiles = []) {
+    console.log("Case ID für MIME-Parts: " + caseId);
+    console.log("Bereits verarbeitete Dateien:", alreadyProcessedFiles.length);
+    const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
+
+    // Nachrichteninhalt abrufen
+    const messageData = await getDisplayedMessageFromActiveTab();
+    console.log("Message Id für MIME-Parts: " + messageData.id);
+
+    // Vollständige MIME-Struktur abrufen
+    let fullMessage;
+    try {
+        fullMessage = await browser.messages.getFull(messageData.id, { decrypt: true });
+        console.log("MIME-Struktur erfolgreich abgerufen");
+    } catch (error) {
+        console.error("Fehler beim Abrufen der MIME-Struktur:", error);
+        browser.runtime.sendMessage({ type: "error", content: "Fehler beim Analysieren der E-Mail-Struktur" });
+        return;
+    }
+
+    // Datum und Zeit einmal generieren
+    let date = new Date(messageData.date);
+    let dateString = formatDate(date);
+
+    // Dateinamen-Liste abrufen
+    let fileNamesArray = [];
+    try {
+        fileNamesArray = await getFilesInCase(caseId, username, password, serverAddress);
+        console.log("Dateinamen für MIME-Parts abgerufen:", fileNamesArray.length, "Dateien");
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Dateinamen für MIME-Parts:", error);
+        browser.runtime.sendMessage({ type: "error", content: "Fehler beim Abrufen der vorhandenen Dateien" });
+        return;
+    }
+
+    // Tracking für Verarbeitung
+    const processedFiles = [];
+    const errors = [];
+    let mimePartCounter = 0;
+
+    // Headers einmal erstellen
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(unescape(encodeURIComponent(username + ':' + password)));
+    headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+    headers.append('Content-Type', 'application/json');
+
+    // Rekursive Funktion zum Durchsuchen aller MIME-Parts
+    async function processMimePart(part, partPath = '') {
+        if (!part) return;
+
+        // Prüfen ob es sich um einen echten Attachment handelt
+        const hasAttachmentDisposition = part.headers && part.headers['content-disposition'] && 
+                                        part.headers['content-disposition'].some(disp => disp.toLowerCase().includes('attachment'));
+        
+        const hasInlineDisposition = part.headers && part.headers['content-disposition'] && 
+                                   part.headers['content-disposition'].some(disp => disp.toLowerCase().includes('inline'));
+        
+        // Prüfen auf Content-Disposition mit Dateinamen (auch ungewöhnliche Formate)
+        const hasContentDispositionWithFilename = part.headers && part.headers['content-disposition'] && 
+                                                 part.headers['content-disposition'].some(disp => 
+                                                     disp.toLowerCase().includes('filename='));
+        
+        // Haupttext der E-Mail erkennen und ausschließen
+        const contentType = part.contentType || '';
+        const isTextContent = contentType.includes('text/plain') || contentType.includes('text/html');
+        const hasFileName = part.name && part.name.trim() !== '';
+        
+        // Der Haupttext der E-Mail ist typischerweise:
+        // - text/plain oder text/html
+        // - ohne Dateinamen
+        // - ohne explizite "attachment" Disposition
+        // - ohne Content-Disposition mit filename
+        // - oft bei partPath '0' oder '1' (erste Parts der E-Mail)
+        const isMainEmailContent = isTextContent && 
+                                 !hasFileName && 
+                                 !hasAttachmentDisposition &&
+                                 !hasContentDispositionWithFilename &&
+                                 (partPath === '' || partPath === '0' || partPath === '1' || 
+                                  partPath.split('.').length <= 2);
+
+        // Nur echte Attachments verarbeiten:
+        // - Muss einen Dateinamen haben ODER explizit als "attachment" markiert sein
+        // - ODER Content-Disposition mit filename (auch ungewöhnliche Formate wie "filename.pdf; filename=...")
+        // - ODER inline Content mit Dateinamen (z.B. eingebettete Bilder)
+        // - ODER PDFs und andere Binärdateien (auch ohne explizite Markierung)
+        const isBinaryContent = contentType.includes('application/') || contentType.includes('image/') || 
+                               contentType.includes('audio/') || contentType.includes('video/');
+        
+        const isRealAttachment = hasFileName || hasAttachmentDisposition || 
+                                hasContentDispositionWithFilename ||
+                                (hasInlineDisposition && hasFileName) ||
+                                (isBinaryContent && !isTextContent);
+
+        // Debug-Ausgabe für übersprungene Parts
+        if (!isRealAttachment || isMainEmailContent) {
+            const contentDisposition = part.headers && part.headers['content-disposition'] ? 
+                                      part.headers['content-disposition'].join('; ') : 'keine';
+            console.log(`MIME-Part übersprungen - PartPath: ${partPath}, Name: ${part.name || 'ohne'}, ContentType: ${contentType}, Content-Disposition: ${contentDisposition}, Grund: ${
+                isMainEmailContent ? 'Haupttext der E-Mail' : 'kein echter Anhang'
+            }`);
+        } else {
+            // Debug-Ausgabe für verarbeitete Parts
+            const contentDisposition = part.headers && part.headers['content-disposition'] ? 
+                                      part.headers['content-disposition'].join('; ') : 'keine';
+            console.log(`MIME-Part wird verarbeitet - PartPath: ${partPath}, Name: ${part.name || 'ohne'}, ContentType: ${contentType}, Content-Disposition: ${contentDisposition}`);
+        }
+
+        // Attachments verarbeiten (aber NICHT den Haupttext der E-Mail)
+        if (isRealAttachment && !isMainEmailContent) {
+            // Prüfen ob dieser MIME-Part bereits als regulärer Anhang verarbeitet wurde
+            // Dies passiert wenn part.partName existiert und über listAttachments() gefunden wurde
+            if (part.partName && alreadyProcessedFiles.length > 0) {
+                // Generiere temporären Dateinamen um zu prüfen ob bereits verarbeitet
+                let tempAttachmentName = part.name;
+                if (!tempAttachmentName && part.headers && part.headers['content-disposition']) {
+                    // Versuche Dateinamen aus Content-Disposition zu extrahieren
+                    for (let disp of part.headers['content-disposition']) {
+                        let filenameMatch = disp.match(/filename=["']?([^"';]+)["']?/i);
+                        if (filenameMatch) {
+                            tempAttachmentName = filenameMatch[1];
+                            break;
+                        }
+                    }
+                }
+                
+                if (tempAttachmentName) {
+                    // Prüfe ob ein Anhang mit diesem Namen bereits verarbeitet wurde
+                    const alreadyProcessed = alreadyProcessedFiles.some(processedFile => {
+                        // Entferne Datum-Prefix und vergleiche Basis-Namen
+                        const baseName = processedFile.replace(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}_/, '').replace(/_\d+(\.[^.]+)?$/, '$1');
+                        return baseName === tempAttachmentName || processedFile.includes(tempAttachmentName);
+                    });
+                    
+                    if (alreadyProcessed) {
+                        console.log(`MIME-Part übersprungen - bereits als regulärer Anhang verarbeitet: ${tempAttachmentName} (partName: ${part.partName})`);
+                        return; // Diesen Part überspringen
+                    }
+                }
+            }
+            
+            // Prüfen ob part.body existiert - wenn nicht, versuche trotzdem zu verarbeiten
+            if (!part.body) {
+                console.warn(`MIME-Part hat keinen Body, versuche trotzdem zu verarbeiten: PartPath ${partPath}, Name: ${part.name || 'ohne'}`);
+            }
+            mimePartCounter++;
+            const partName = part.partName || `${partPath}.${mimePartCounter}`;
+            console.log(`Verarbeite MIME-Part ${mimePartCounter}: ${part.name} (${partName})`);
+
+            try {
+                // Robuste Anhang-Extraktion: Mehrere Methoden versuchen
+                let emailContentBase64 = null;
+                
+                // Methode 1: Standard WebExtension API (für normale Attachments)
+                if (part.partName) {
+                    try {
+                        console.log(`Versuche Standard-API für partName: ${part.partName}`);
+                        const attachmentData = await browser.messages.getAttachmentFile(messageData.id, part.partName);
+                        if (attachmentData) {
+                            const arrayBuffer = await attachmentData.arrayBuffer();
+                            const uint8Array = new Uint8Array(arrayBuffer);
+                            emailContentBase64 = uint8ArrayToBase64(uint8Array);
+                            console.log(`Standard-API erfolgreich: ${emailContentBase64.length} Zeichen Base64`);
+                        }
+                    } catch (apiError) {
+                        console.warn(`Standard-API fehlgeschlagen für ${part.partName}: ${apiError.message}`);
+                    }
+                }
+                
+                // Methode 2: Extraktion aus Raw-Message (für problematische Attachments)
+                if (!emailContentBase64) {
+                    console.log(`Versuche Raw-Message Extraktion für MIME-Part ${mimePartCounter}`);
+                    try {
+                        emailContentBase64 = await extractAttachmentFromRawMessage(messageData.id, part, partPath);
+                        if (emailContentBase64) {
+                            console.log(`Raw-Message Extraktion erfolgreich: ${emailContentBase64.length} Zeichen Base64`);
+                        }
+                    } catch (rawError) {
+                        console.warn(`Raw-Message Extraktion fehlgeschlagen: ${rawError.message}`);
+                    }
+                }
+                
+                // Methode 3: part.body als Fallback (für inline/text Attachments)
+                if (!emailContentBase64 && part.body && part.body.trim() !== '') {
+                    console.log(`Verwende part.body als Fallback für MIME-Part ${mimePartCounter}`);
+                    try {
+                        emailContentBase64 = btoa(unescape(encodeURIComponent(part.body)));
+                        console.log(`part.body erfolgreich kodiert: ${emailContentBase64.length} Zeichen Base64`);
+                    } catch (bodyError) {
+                        console.warn(`part.body Kodierung fehlgeschlagen: ${bodyError.message}`);
+                    }
+                }
+                
+                // Letzter Fallback: Informativer Platzhalter
+                if (!emailContentBase64) {
+                    console.warn(`Alle Extraktionsmethoden fehlgeschlagen für MIME-Part ${mimePartCounter} - erstelle Platzhalter`);
+                    const attachmentInfo = `Anhang erkannt aber Inhalt nicht verfügbar
+
+Dateiname: ${part.name || 'unbekannt'}
+Content-Type: ${part.contentType || 'unbekannt'}
+Content-Disposition: ${part.headers?.['content-disposition']?.join('; ') || 'keine'}
+PartName: ${part.partName || 'unbekannt'}
+PartPath: ${partPath}
+
+Versuchte Extraktionsmethoden:
+- Standard WebExtension API: ${part.partName ? 'versucht' : 'nicht verfügbar'}
+- Raw-Message Parsing: versucht
+- Part Body: ${part.body ? 'versucht' : 'nicht verfügbar'}
+
+Dies ist ein Platzhalter für einen erkannten Anhang, dessen Inhalt 
+nicht über verfügbare Methoden extrahiert werden konnte.`;
+                    
+                    emailContentBase64 = btoa(unescape(encodeURIComponent(attachmentInfo)));
+                    console.log(`Informativer Platzhalter für MIME-Part ${mimePartCounter} erstellt`);
+                }
+
+                // Dateinamen generieren falls keiner vorhanden
+                let attachmentName = part.name;
+                if (!attachmentName) {
+                    // Versuche Dateinamen aus Content-Disposition zu extrahieren
+                    if (part.headers && part.headers['content-disposition']) {
+                        for (let disp of part.headers['content-disposition']) {
+                            console.log(`Analysiere Content-Disposition: "${disp}"`);
+                            
+                            // Standard filename= Pattern
+                            let filenameMatch = disp.match(/filename=["']?([^"';]+)["']?/i);
+                            if (filenameMatch) {
+                                attachmentName = filenameMatch[1];
+                                console.log(`Dateiname aus filename= extrahiert: ${attachmentName}`);
+                                break;
+                            }
+                            
+                            // Alternative: Dateiname am Anfang der Content-Disposition
+                            // Für Fälle wie "LVM_Unternehmenssignatur.pdf; filename=..."
+                            filenameMatch = disp.match(/^([^;]+\.[a-zA-Z0-9]+)/);
+                            if (filenameMatch && !filenameMatch[1].toLowerCase().includes('attachment') && !filenameMatch[1].toLowerCase().includes('inline')) {
+                                attachmentName = filenameMatch[1].trim();
+                                console.log(`Dateiname vom Anfang der Content-Disposition extrahiert: ${attachmentName}`);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (!attachmentName) {
+                    // Fallback-Namen generieren basierend auf Content-Type
+                    const contentType = part.contentType || 'unknown';
+                    if (contentType.includes('text/plain')) {
+                        attachmentName = 'inline_text.txt';
+                    } else if (contentType.includes('text/html')) {
+                        attachmentName = 'inline_content.html';
+                    } else if (contentType.includes('image/')) {
+                        const ext = contentType.split('/')[1] || 'img';
+                        attachmentName = `inline_image.${ext}`;
+                    } else {
+                        attachmentName = `inline_attachment_${mimePartCounter}`;
+                    }
+                    console.log(`Generierter Dateiname für unbenannten Part: ${attachmentName}`);
+                }
+
+                // Eindeutigen Dateinamen erstellen
+                let fileName = dateString + "_" + attachmentName;
+                fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+
+                // Bei Duplikaten Counter hinzufügen (inkl. bereits verarbeitete Dateien)
+                let finalFileName = fileName;
+                let duplicateCounter = 1;
+                while (fileNamesArray.includes(finalFileName) || 
+                       processedFiles.includes(finalFileName) || 
+                       alreadyProcessedFiles.includes(finalFileName)) {
+                    const nameParts = fileName.split('.');
+                    if (nameParts.length > 1) {
+                        const extension = nameParts.pop();
+                        const baseName = nameParts.join('.');
+                        finalFileName = `${baseName}_${duplicateCounter}.${extension}`;
+                    } else {
+                        finalFileName = `${fileName}_${duplicateCounter}`;
+                    }
+                    duplicateCounter++;
+                }
+
+                if (finalFileName !== fileName) {
+                    console.log(`MIME-Part Dateiname geändert von "${fileName}" zu "${finalFileName}" wegen Duplikat`);
+                }
+
+                console.log(`CasefolderID für MIME-Part "${finalFileName}": ${selectedCaseFolderID}`);
+
+                // Payload erstellen
+                const payload = {
+                    base64content: emailContentBase64,
+                    caseId: caseId,
+                    fileName: finalFileName,
+                    folderId: selectedCaseFolderID,
+                    id: "",
+                    version: 0
+                };
+
+                console.log(`Beginne Upload für MIME-Part "${finalFileName}" mit ${emailContentBase64.length} Zeichen Base64-Content`);
+
+                // Upload versuchen
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                console.log(`Upload-Response Status für MIME-Part "${finalFileName}": ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`MIME-Part Upload fehlgeschlagen für "${finalFileName}": ${response.status} - ${errorText}`);
+                    throw new Error(`MIME-Part Upload fehlgeschlagen: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log(`MIME-Part Dokument ID für "${finalFileName}": ${data.id}`);
+
+                // Erfolg vermerken
+                documentIdsToTag.push(data.id);
+                processedFiles.push(finalFileName);
+
+            } catch (error) {
+                console.error(`Fehler beim Verarbeiten von MIME-Part "${attachmentName || 'unbekannt'}":`, error);
+                errors.push({
+                    fileName: attachmentName || 'unbekannt',
+                    error: error.message
+                });
+            }
+        }
+
+        // Rekursiv durch Sub-Parts gehen
+        if (part.parts && Array.isArray(part.parts)) {
+            for (let i = 0; i < part.parts.length; i++) {
+                await processMimePart(part.parts[i], partPath ? `${partPath}.${i}` : `${i}`);
+            }
+        }
+    }
+
+    // MIME-Parts verarbeiten
+    await processMimePart(fullMessage, '0');
+
+    // Ergebnis-Summary
+    console.log(`MIME-Parts Verarbeitung abgeschlossen: ${processedFiles.length} Parts erfolgreich`);
+    
+    if (errors.length > 0) {
+        console.error("Fehler bei folgenden MIME-Parts:", errors);
+        const errorMessage = `${errors.length} MIME-Parts konnten nicht hochgeladen werden: ${errors.map(e => e.fileName).join(', ')}`;
+        browser.runtime.sendMessage({ type: "error", content: errorMessage });
+    }
+
+    // Success-Message senden wenn MIME-Parts erfolgreich waren
+    if (processedFiles.length > 0) {
+        browser.runtime.sendMessage({ type: "success", content: `${processedFiles.length} zusätzliche MIME-Part(s) erfolgreich hochgeladen` });
+        
+        // Tags und Ordner setzen
+        await setDocumentTagsAndFolderForAttachments();
+    }
+
+    // Logging mit allen verarbeiteten MIME-Parts
+    await logActivity("sendAllMimePartsToServer", { 
+        caseId, 
+        processedFiles: processedFiles,
+        totalMimeParts: mimePartCounter,
+        successCount: processedFiles.length,
+        errorCount: errors.length
+    });
 }

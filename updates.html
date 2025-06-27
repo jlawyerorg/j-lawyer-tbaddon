@@ -30,11 +30,34 @@
     <ul>
         
         <li>
+            <strong>Version 1.4</strong>
+            <ul>
+                <li><strong>Major Fix:</strong> Revolutionäre Verbesserung der Anhang-Extraktion</li>
+                <li>Implementiert: Mehrstufige Anhang-Extraktion (Standard-API → Raw-Message-Parsing → Fallback)</li>
+                <li>Behoben: Problematische Anhänge mit ungewöhnlicher MIME-Formatierung werden jetzt korrekt erkannt</li>
+                <li>Neu: Direkte Extraktion von Base64-Daten aus der rohen E-Mail-Nachricht</li>
+                <li>Verbessert: Unterstützung für verschiedene Content-Transfer-Encodings (base64, quoted-printable)</li>
+                <li>Robuster: Fallback-Mechanismen für nicht-standardkonforme MIME-Parts</li>
+                <li>Detailliertes Logging aller Extraktionsversuche für bessere Fehlerdiagnose</li>
+                <li>Informative Platzhalter für nicht extrahierbare Anhänge mit Diagnoseinformationen</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Version 1.3</strong>
+            <ul>
+                <li>Fixed: Robusteres Speichern von Anhängen</li>
+                <li>Verbessert: Präzisere Erkennung von echten Anhängen vs. E-Mail-Haupttext</li>
+                <li>Verhindert: Upload des E-Mail-Haupttexts als Anhang</li>
+                <li>Kleinere Fehlerbehebungen</li>
+            </ul>
+        </li>
+        <li>
             <strong>Version 1.2</strong>
             <ul>
                 <li>Fixed: Speicherung der Message im richtigen Ordner.</li>
             </ul>
-        </li><li>
+        </li>
+        <li>
             <strong>Version 1.1.9</strong>
             <ul>
                 <li>hinzugefügt: Bei Verfassen einer Mail können nun die Beteiligten abgerufen werden. Deren Mailadresse wird in "to" gesetzt und deren Zeichen dem Betreff hinzugefügt.</li>
