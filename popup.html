@@ -205,6 +205,15 @@
         <div id="resultsList"></div>
 
         <p id="customizableLabel">kein Vorschlag</p>
+        
+        <!-- Bildbearbeitung Toggle -->
+        <div id="imageEditToggleContainer" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px;">
+                <input type="checkbox" id="imageEditToggle" style="margin-right: 8px;">
+                <span>🖼️ Bildanhänge vor Speichern bearbeiten</span>
+            </label>
+        </div>
+        
         <button id="recommendCaseButton">Speichern</button>
         <button id="saveOnlyMessageButton">Nur Nachricht</button>
         <button id="saveAttachmentsButton">Nur Anhang</button>
@@ -226,6 +235,8 @@
         <select id="tagsSelect" multiple size="15" style="width: 100%;"></select>
     </div>
     
+    <script src="jspdf.umd.min.js"></script>
+    <script src="attachment-image-processor.js"></script>
     <script src="popup.js"></script>
 </body>
 

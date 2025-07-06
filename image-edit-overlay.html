@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bildbearbeitung - j-Lawyer Extension</title>
+    <link rel="stylesheet" href="image-edit-overlay.css">
+    <script src="jspdf.umd.min.js"></script>
+    <style>
+        /* Größeres Overlay für bessere Bilddarstellung */
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="header">
+            <h2>Bildbearbeitung</h2>
+            <div class="progress-info">
+                <span id="progressText">Bild 1 von 1</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="image-container">
+                <div class="canvas-wrapper">
+                    <canvas id="imageCanvas"></canvas>
+                    <div id="cropBox" class="crop-box"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="crop-controls">
+                    <h3>Zuschneiden</h3>
+                    <div class="crop-buttons">
+                        <button id="resetCropBtn" class="btn btn-secondary">Zurücksetzen</button>
+                        <button id="applyCropBtn" class="btn btn-primary">Zuschnitt anwenden</button>
+                    </div>
+                </div>
+
+                <div class="navigation-controls">
+                    <button id="skipBtn" class="btn btn-warning">Bild überspringen</button>
+                    <button id="nextBtn" class="btn btn-success">Weiter</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div id="finishOptions" class="finish-options" style="display: none;">
+                <div class="finish-layout-container">
+                    <!-- Abbrechen Button links -->
+                    <div class="cancel-section">
+                        <button id="cancelBtn" class="btn btn-danger">Abbrechen</button>
+                    </div>
+                    
+                    <!-- Vorschau in der Mitte -->
+                    <div class="preview-center-section">
+                        <h3 class="finish-title">Bearbeitung abschließen</h3>
+                        
+                        <div id="previewSection" class="preview-section-compact">
+                            <div class="preview-header">
+                                <span class="preview-title">Vorschau:</span>
+                                <span id="previewInfo" class="preview-info-compact">Bild 1 von 1</span>
+                            </div>
+                            <div class="preview-container-compact">
+                                <button id="prevImageBtn" class="nav-btn-compact" disabled>◀</button>
+                                <img id="previewImage" class="preview-image-compact" alt="Vorschau">
+                                <button id="nextImageBtn" class="nav-btn-compact" disabled>▶</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons rechts -->
+                    <div class="action-buttons-section">
+                        <button id="uploadIndividualBtn" class="btn btn-primary">Einzeln hochladen</button>
+                        <button id="createPdfBtn" class="btn btn-success">Als PDF zusammenfassen</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Normaler Abbrechen Button für normale Ansicht (nicht finish-options) -->
+            <button id="cancelBtnNormal" class="btn btn-danger">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Bild wird verarbeitet...</p>
+    </div>
+
+    <script src="image-edit-overlay.js"></script>
+</body>
+</html>

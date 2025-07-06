@@ -49,6 +49,9 @@ document.addEventListener("keydown", function(event) {
 });
 
 
+// Debug-Check für AttachmentImageProcessor
+console.log('popup.js loaded, AttachmentImageProcessor available:', !!window.AttachmentImageProcessor);
+
 // Event Listener für Buttons
 document.addEventListener("DOMContentLoaded", async function() {
     const recommendCaseButton = document.getElementById("recommendCaseButton"); 
@@ -57,9 +60,20 @@ document.addEventListener("DOMContentLoaded", async function() {
     const updateDataButton = document.getElementById("updateDataButton");
     const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
     const progressBar = document.getElementById("progressBar");
+    const imageEditToggle = document.getElementById("imageEditToggle");
     
     browser.storage.local.remove("selectedTags");
     await fillTagsList();
+    
+    // Bildbearbeitung Toggle laden
+    const toggleState = await browser.storage.local.get("imageEditEnabled");
+    imageEditToggle.checked = toggleState.imageEditEnabled || false;
+    
+    // Event Listener für Bildbearbeitung Toggle
+    imageEditToggle.addEventListener("change", async function() {
+        await browser.storage.local.set({ imageEditEnabled: this.checked });
+        console.log("Image edit toggle set to:", this.checked);
+    });
     
     findFileNumberInRawMessage()
 
@@ -138,25 +152,59 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     // Event Listener für den 2. "Nur Anhänge speichern" Button
     if (saveAttachmentsButton && customizableLabel) {
-        saveAttachmentsButton.addEventListener("click", function() {
+        saveAttachmentsButton.addEventListener("click", async function() {
             
             const feedback = document.getElementById("feedback");
 
-            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-                browser.runtime.sendMessage({
-                    type: "saveAttachments",
-                    source: "popup",
-                    content: currentSelectedCase.fileNumber, 
-                    selectedCaseFolderID: selectedCaseFolderID,
-                    username: result.username,
-                    password: result.password,
-                    serverAddress: result.serverAddress
-                });
+            if (!currentSelectedCase) {
+                feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+                feedback.style.color = "red";
+                return;
+            }
 
-                // Setzt das Feedback zurück, während auf eine Antwort gewartet wird
-                feedback.textContent = "Speichern...";
-                feedback.style.color = "blue";
-            });
+            try {
+                const settings = await browser.storage.local.get(["username", "password", "serverAddress"]);
+                const toggleState = await browser.storage.local.get("imageEditEnabled");
+                
+                if (toggleState.imageEditEnabled) {
+                    // Neue Bildbearbeitungslogik
+                    feedback.textContent = "Bildbearbeitung wird gestartet...";
+                    feedback.style.color = "blue";
+                    
+                    // Warten bis AttachmentImageProcessor verfügbar ist
+                    let attempts = 0;
+                    while (!window.AttachmentImageProcessor && attempts < 50) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+                    
+                    if (!window.AttachmentImageProcessor) {
+                        throw new Error("AttachmentImageProcessor konnte nicht geladen werden");
+                    }
+                    
+                    const processor = new AttachmentImageProcessor();
+                    await processor.processWithImageEditing(currentSelectedCase, selectedCaseFolderID);
+                } else {
+                    // Bestehende Logik beibehalten
+                    browser.runtime.sendMessage({
+                        type: "saveAttachments",
+                        source: "popup",
+                        content: currentSelectedCase.fileNumber, 
+                        selectedCaseFolderID: selectedCaseFolderID,
+                        username: settings.username,
+                        password: settings.password,
+                        serverAddress: settings.serverAddress
+                    });
+
+                    // Setzt das Feedback zurück, während auf eine Antwort gewartet wird
+                    feedback.textContent = "Speichern...";
+                    feedback.style.color = "blue";
+                }
+            } catch (error) {
+                console.error("Fehler beim Verarbeiten der Anhänge:", error);
+                feedback.textContent = "Fehler: " + error.message;
+                feedback.style.color = "red";
+            }
         });
     }
 

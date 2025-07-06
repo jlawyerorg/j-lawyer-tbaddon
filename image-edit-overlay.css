@@ -1,0 +1,547 @@
+/* j-Lawyer Thunderbird Extension - Image Edit Overlay Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    height: 100vh;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.overlay-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: white;
+}
+
+.header {
+    background: #007bff;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.progress-info {
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    padding: 10px;
+    gap: 15px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.image-container {
+    flex: 1;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#imageCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    border: 1px solid #ccc;
+    cursor: crosshair;
+}
+
+.crop-box {
+    position: absolute;
+    border: 2px solid #007bff;
+    border-style: dashed;
+    background: rgba(0, 123, 255, 0.1);
+    cursor: move;
+    display: none;
+    z-index: 10;
+}
+
+.crop-box::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border: 1px solid white;
+}
+
+.crop-box .resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #007bff;
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.crop-box .resize-handle.top-left {
+    top: -5px;
+    left: -5px;
+    cursor: nw-resize;
+}
+
+.crop-box .resize-handle.top-right {
+    top: -5px;
+    right: -5px;
+    cursor: ne-resize;
+}
+
+.crop-box .resize-handle.bottom-left {
+    bottom: -5px;
+    left: -5px;
+    cursor: sw-resize;
+}
+
+.crop-box .resize-handle.bottom-right {
+    bottom: -5px;
+    right: -5px;
+    cursor: se-resize;
+}
+
+.controls {
+    width: 250px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.crop-controls h3,
+.navigation-controls h3 {
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.crop-buttons,
+.navigation-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #1e7e34;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.footer {
+    background: #f8f9fa;
+    padding: 12px 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 80px;
+}
+
+.finish-options {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: calc(100vh - 20px - 60px); /* 20px Abstand zum unteren Rand, 60px für Header */
+    min-height: 400px;
+    position: fixed;
+    top: 60px; /* Header-Höhe */
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    background: #f8f9fa;
+    z-index: 100;
+}
+
+.finish-layout-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.cancel-section {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    width: 150px;
+}
+
+.preview-center-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 100%;
+    max-width: none;
+}
+
+.finish-title {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 1.2em;
+    text-align: center;
+}
+
+.action-buttons-section {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    width: 180px;
+    height: 100%;
+}
+
+.action-buttons-section .btn {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 14px;
+}
+
+/* Verstecke den normalen Abbrechen Button wenn finish-options aktiv sind */
+.footer:has(#finishOptions[style*="display: block"]) #cancelBtnNormal,
+.footer:has(#finishOptions[style*="display: flex"]) #cancelBtnNormal {
+    display: none;
+}
+
+/* Zeige den normalen Abbrechen Button nur wenn finish-options versteckt sind */
+#cancelBtnNormal {
+    display: block;
+}
+
+.loading-spinner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.crop-info {
+    background: #e9ecef;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.crop-info h4 {
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.crop-info p {
+    margin: 5px 0;
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.help-text {
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+/* Vollbild-Bildvorschau Styling */
+.preview-section-compact {
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 0;
+    width: 100%;
+    padding: 15px;
+    flex: 1;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.preview-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+}
+
+.preview-info-compact {
+    font-size: 1em;
+    color: #666;
+    font-weight: 500;
+}
+
+.preview-container-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex: 1;
+    padding: 10px 0;
+    min-height: 200px;
+    max-height: calc(100vh - 200px); /* Dynamische Höhe basierend auf Viewport */
+    width: 100%;
+}
+
+.preview-image-compact {
+    flex: 1;
+    max-width: calc(100% - 100px);
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    object-fit: contain;
+    object-position: center;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+.preview-image-compact:hover {
+    transform: scale(1.02);
+}
+
+.nav-btn-compact {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    font-weight: bold;
+}
+
+.nav-btn-compact:hover:not(:disabled) {
+    background: #0056b3;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.nav-btn-compact:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+    box-shadow: none;
+}
+
+.nav-btn-compact:active:not(:disabled) {
+    transform: scale(0.95);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .controls {
+        width: 100%;
+    }
+    
+    .finish-options {
+        height: calc(100vh - 20px - 50px); /* Kleinerer Header auf mobil */
+        top: 50px;
+    }
+    
+    .finish-layout-container {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        min-height: 350px;
+        padding: 15px;
+    }
+    
+    .cancel-section {
+        order: 3;
+        height: auto;
+        width: auto;
+    }
+    
+    .preview-center-section {
+        order: 1;
+        height: auto;
+        justify-content: flex-start;
+    }
+    
+    .action-buttons-section {
+        order: 2;
+        flex-direction: row;
+        gap: 10px;
+        height: auto;
+        min-width: auto;
+        width: auto;
+        justify-content: center;
+    }
+    
+    .action-buttons-section .btn {
+        flex: 1;
+        min-width: 140px;
+    }
+    
+    .preview-section-compact {
+        max-width: 100%;
+    }
+    
+    .preview-container-compact {
+        min-height: 150px;
+        max-height: calc(100vh - 250px);
+    }
+}

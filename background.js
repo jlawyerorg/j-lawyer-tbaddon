@@ -1047,6 +1047,42 @@ browser.runtime.onMessage.addListener((message) => {
         });
     }
 
+    // Neue Message-Handler für Bildbearbeitung - Storage-basierte Kommunikation
+    if (message.type === "overlay-ready") {
+        console.log("Background: overlay-ready message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "load-image") {
+        console.log("Background: load-image message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "image-cropped") {
+        console.log("Background: image-cropped message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "skip-image") {
+        console.log("Background: skip-image message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "finish-editing") {
+        console.log("Background: finish-editing message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "cancel-editing") {
+        console.log("Background: cancel-editing message received - using storage-based communication");
+        return;
+    }
+
+    if (message.type === "show-finish-options") {
+        console.log("Background: show-finish-options message received - using storage-based communication");
+        return;
+    }
+
     if ((message.type === "saveToCaseAfterSend") && (message.source === "popup_compose")) {
         extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
         let documentsInSelectedCase = [];
