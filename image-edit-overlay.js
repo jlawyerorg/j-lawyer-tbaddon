@@ -33,6 +33,7 @@ class ImageEditOverlay {
         this.sessionData = null;
         this.currentImageIndex = 0;
         this.editedImages = [];
+        this.nonImageAttachments = [];
         
         // Zoom-Parameter
         this.zoomLevel = 1.0;
@@ -176,7 +177,8 @@ class ImageEditOverlay {
             
             if (result.imageEditSession && result.imageEditSession.sessionActive) {
                 this.sessionData = result.imageEditSession;
-                console.log('Session data loaded:', this.sessionData.images.length, 'images');
+                this.nonImageAttachments = result.imageEditSession.nonImageAttachments || [];
+                console.log('Session data loaded:', this.sessionData.images.length, 'images,', this.nonImageAttachments.length, 'non-image attachments');
                 
                 // Erstes Bild laden
                 if (this.sessionData.images.length > 0) {
@@ -647,6 +649,17 @@ class ImageEditOverlay {
                 console.log('Creating PDF with images...');
                 await this.createAndUploadPDF(pdfFileName);
                 console.log('PDF creation and upload completed');
+                
+                // Auch nicht-Bild-Dateien einzeln hochladen
+                if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+                    console.log('Uploading non-image attachments...');
+                    const timestampPrefix = this.generateTimestampPrefix();
+                    for (const attachment of this.nonImageAttachments) {
+                        const timestampedFileName = `${timestampPrefix}${attachment.name}`;
+                        await this.uploadSingleFile(attachment.blob, timestampedFileName, attachment.contentType);
+                    }
+                    console.log('Non-image attachments uploaded');
+                }
             } else {
                 console.log('Uploading individual images...');
                 await this.uploadIndividualImages();
@@ -670,12 +683,52 @@ class ImageEditOverlay {
         document.querySelector('.main-content').style.display = 'none';
         document.getElementById('finishOptions').style.display = 'block';
         
-        document.getElementById('progressText').textContent = `${imageCount} Bilder bearbeitet`;
+        // Status-Text mit allen Dateien
+        let statusText = `${imageCount} Bild(er) bearbeitet`;
+        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+            statusText += ` + ${this.nonImageAttachments.length} weitere Datei(en)`;
+        }
+        document.getElementById('progressText').textContent = statusText;
         
+        // Button-Text anpassen
+        let pdfButtonText;
         if (imageCount === 1) {
-            this.elements.createPdfBtn.textContent = 'Als PDF speichern';
+            pdfButtonText = 'Als PDF speichern';
         } else {
-            this.elements.createPdfBtn.textContent = `${imageCount} Bilder als PDF zusammenfassen`;
+            pdfButtonText = `${imageCount} Bilder als PDF zusammenfassen`;
+        }
+        
+        // Zusatz für andere Dateien hinzufügen
+        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+            pdfButtonText += ` + ${this.nonImageAttachments.length} weitere Datei(en)`;
+        }
+        
+        this.elements.createPdfBtn.textContent = pdfButtonText;
+        
+        // Einzeln hochladen Button Text anpassen
+        let uploadText = 'Einzeln hochladen';
+        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+            const totalFiles = imageCount + this.nonImageAttachments.length;
+            uploadText = `Alle ${totalFiles} Dateien einzeln hochladen`;
+        }
+        this.elements.uploadIndividualBtn.textContent = uploadText;
+        
+        // Upload-Info anzeigen
+        const uploadInfo = document.getElementById('uploadInfo');
+        const additionalFilesInfo = document.getElementById('additionalFilesInfo');
+        
+        if (uploadInfo) {
+            uploadInfo.style.display = 'block';
+            
+            if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+                if (additionalFilesInfo) {
+                    additionalFilesInfo.style.display = 'block';
+                }
+            } else {
+                if (additionalFilesInfo) {
+                    additionalFilesInfo.style.display = 'none';
+                }
+            }
         }
         
         // Bildvorschau initialisieren
@@ -824,9 +877,19 @@ class ImageEditOverlay {
 
     async uploadIndividualImages() {
         const timestampPrefix = this.generateTimestampPrefix();
+        
+        // Erst die bearbeiteten Bilder hochladen
         for (const image of this.editedImages) {
             const timestampedFileName = `${timestampPrefix}${image.name}`;
             await this.uploadSingleFile(image.blob, timestampedFileName, image.contentType);
+        }
+        
+        // Dann die nicht-Bild-Dateien hochladen
+        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+            for (const attachment of this.nonImageAttachments) {
+                const timestampedFileName = `${timestampPrefix}${attachment.name}`;
+                await this.uploadSingleFile(attachment.blob, timestampedFileName, attachment.contentType);
+            }
         }
     }
 

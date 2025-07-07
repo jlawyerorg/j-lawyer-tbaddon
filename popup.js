@@ -167,8 +167,37 @@ document.addEventListener("DOMContentLoaded", async function() {
                 const toggleState = await browser.storage.local.get("imageEditEnabled");
                 
                 if (toggleState.imageEditEnabled) {
-                    // Neue Bildbearbeitungslogik
-                    feedback.textContent = "Bildbearbeitung wird gestartet...";
+                    // Überprüfung auf Bildanhänge vor der Bildbearbeitungslogik
+                    feedback.textContent = "Überprüfe Anhänge...";
+                    feedback.style.color = "blue";
+                    
+                    const messageData = await getDisplayedMessageFromActiveTab();
+                    const attachments = await browser.messages.listAttachments(messageData.id);
+                    
+                    // Filtert Bild- und Nicht-Bildanhänge
+                    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
+                    const imageAttachments = attachments.filter(attachment => 
+                        imageTypes.includes(attachment.contentType.toLowerCase()) || 
+                        attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                    );
+                    const nonImageAttachments = attachments.filter(attachment => 
+                        !imageTypes.includes(attachment.contentType.toLowerCase()) && 
+                        !attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                    );
+                    
+                    if (imageAttachments.length === 0) {
+                        feedback.textContent = "Keine Bildanhänge in der Nachricht gefunden. Bildbearbeitung ist nur für Bilddateien verfügbar.";
+                        feedback.style.color = "orange";
+                        return;
+                    }
+                    
+                    // Status-Update mit Anzahl der Dateien
+                    let statusText = `Bildbearbeitung wird gestartet... (${imageAttachments.length} Bild(er)`;
+                    if (nonImageAttachments.length > 0) {
+                        statusText += `, ${nonImageAttachments.length} weitere Datei(en)`;
+                    }
+                    statusText += `)`;
+                    feedback.textContent = statusText;
                     feedback.style.color = "blue";
                     
                     // Warten bis AttachmentImageProcessor verfügbar ist

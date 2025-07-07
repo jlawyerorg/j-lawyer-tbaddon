@@ -28,6 +28,7 @@ class AttachmentImageProcessor {
             const attachments = await browser.messages.listAttachments(messageData.id);
             
             const imageAttachments = await this.filterImageAttachments(attachments, messageData.id);
+            const nonImageAttachments = await this.filterNonImageAttachments(attachments, messageData.id);
             
             if (imageAttachments.length === 0) {
                 browser.runtime.sendMessage({ 
@@ -37,7 +38,7 @@ class AttachmentImageProcessor {
                 return;
             }
 
-            await this.showImageEditOverlay(imageAttachments, caseData, selectedCaseFolderID);
+            await this.showImageEditOverlay(imageAttachments, nonImageAttachments, caseData, selectedCaseFolderID);
             
         } catch (error) {
             console.error("Fehler beim Verarbeiten der Bilder:", error);
@@ -109,8 +110,47 @@ class AttachmentImageProcessor {
         return imageAttachments;
     }
 
-    async showImageEditOverlay(imageAttachments, caseData, selectedCaseFolderID) {
+    async filterNonImageAttachments(attachments, messageId) {
+        console.log('filterNonImageAttachments called with', attachments.length, 'attachments');
+        
+        const nonImageAttachments = [];
+        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
+        
+        for (const attachment of attachments) {
+            console.log('Checking attachment:', attachment.name, 'type:', attachment.contentType);
+            
+            const isImage = imageTypes.includes(attachment.contentType.toLowerCase()) || 
+                           attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+            
+            console.log('Is image:', isImage);
+            
+            if (!isImage) {
+                try {
+                    console.log('Loading non-image attachment:', attachment.name);
+                    const attachmentFile = await browser.messages.getAttachmentFile(messageId, attachment.partName);
+                    const blob = new Blob([attachmentFile], { type: attachment.contentType });
+                    
+                    console.log('Non-image loaded successfully:', attachment.name, 'blob size:', blob.size);
+                    
+                    nonImageAttachments.push({
+                        name: attachment.name,
+                        contentType: attachment.contentType,
+                        blob: blob,
+                        size: attachment.size
+                    });
+                } catch (error) {
+                    console.error(`Fehler beim Laden der Datei ${attachment.name}:`, error);
+                }
+            }
+        }
+        
+        console.log('Filtered', nonImageAttachments.length, 'non-image attachments');
+        return nonImageAttachments;
+    }
+
+    async showImageEditOverlay(imageAttachments, nonImageAttachments, caseData, selectedCaseFolderID) {
         this.originalImages = imageAttachments;
+        this.nonImageAttachments = nonImageAttachments;
         this.editedImages = [];
         this.currentImageIndex = 0;
         this.caseData = caseData;
@@ -130,6 +170,7 @@ class AttachmentImageProcessor {
         await browser.storage.local.set({
             imageEditSession: {
                 images: images,
+                nonImageAttachments: nonImageAttachments,
                 caseData: caseData,
                 selectedCaseFolderID: selectedCaseFolderID,
                 sessionActive: true
@@ -239,6 +280,12 @@ class AttachmentImageProcessor {
         try {
             if (createPDF && this.editedImages.length > 0) {
                 await this.createAndUploadPDF();
+                // Auch nicht-Bild-Dateien einzeln hochladen
+                if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+                    for (const attachment of this.nonImageAttachments) {
+                        await this.uploadSingleFile(attachment.blob, attachment.name, attachment.contentType);
+                    }
+                }
             } else {
                 await this.uploadIndividualImages();
             }
@@ -302,8 +349,16 @@ class AttachmentImageProcessor {
     }
 
     async uploadIndividualImages() {
+        // Erst die bearbeiteten Bilder hochladen
         for (const image of this.editedImages) {
             await this.uploadSingleFile(image.blob, image.name, image.contentType);
+        }
+        
+        // Dann die nicht-Bild-Dateien hochladen
+        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+            for (const attachment of this.nonImageAttachments) {
+                await this.uploadSingleFile(attachment.blob, attachment.name, attachment.contentType);
+            }
         }
     }
 
