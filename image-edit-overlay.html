@@ -64,6 +64,7 @@
                             <div class="preview-header">
                                 <span class="preview-title">Vorschau:</span>
                                 <span id="previewInfo" class="preview-info-compact">Bild 1 von 1</span>
+                                <button id="renameBtn" class="btn btn-secondary btn-small">Umbenennen</button>
                             </div>
                             <div class="preview-container-compact">
                                 <button id="prevImageBtn" class="nav-btn-compact" disabled>◀</button>
@@ -89,6 +90,44 @@
     <div id="loadingSpinner" class="loading-spinner" style="display: none;">
         <div class="spinner"></div>
         <p>Bild wird verarbeitet...</p>
+    </div>
+
+    <!-- Rename Dialog -->
+    <div id="renameDialog" class="rename-dialog" style="display: none;">
+        <div class="rename-dialog-content">
+            <h3>Datei umbenennen</h3>
+            <div class="rename-form">
+                <label for="filenameInput">Neuer Dateiname:</label>
+                <input type="text" id="filenameInput" class="filename-input-full" placeholder="Dateiname eingeben">
+                <div class="filename-suggestion">
+                    <small>Vorschlag mit Zeitstempel: <span id="filenameSuggestion"></span></small>
+                </div>
+                <div class="rename-buttons">
+                    <button id="useSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
+                    <button id="cancelRenameBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="confirmRenameBtn" class="btn btn-primary">Umbenennen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Rename Dialog -->
+    <div id="pdfRenameDialog" class="rename-dialog" style="display: none;">
+        <div class="rename-dialog-content">
+            <h3>PDF-Dateiname festlegen</h3>
+            <div class="rename-form">
+                <label for="pdfFilenameInput">PDF-Dateiname:</label>
+                <input type="text" id="pdfFilenameInput" class="filename-input-full" placeholder="PDF-Dateiname eingeben">
+                <div class="filename-suggestion">
+                    <small>Vorschlag mit Zeitstempel: <span id="pdfFilenameSuggestion"></span></small>
+                </div>
+                <div class="rename-buttons">
+                    <button id="usePdfSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
+                    <button id="cancelPdfRenameBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="confirmPdfRenameBtn" class="btn btn-primary">PDF erstellen</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="image-edit-overlay.js"></script>

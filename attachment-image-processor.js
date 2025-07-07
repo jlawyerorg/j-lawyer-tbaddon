@@ -349,6 +349,13 @@ class AttachmentImageProcessor {
             browser.runtime.onMessage.removeListener(this.messageListener);
         }
         
+        // Session-Daten bereinigen
+        try {
+            await browser.storage.local.remove('imageEditSession');
+        } catch (error) {
+            console.error('Fehler beim Bereinigen der Session-Daten:', error);
+        }
+        
         browser.runtime.sendMessage({ 
             type: "error", 
             content: "Bildbearbeitung abgebrochen." 

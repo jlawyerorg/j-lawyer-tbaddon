@@ -65,6 +65,23 @@ class ImageEditOverlay {
         const previewInfo = document.getElementById('previewInfo');
         const prevImageBtn = document.getElementById('prevImageBtn');
         const nextImageBtn = document.getElementById('nextImageBtn');
+        const renameBtn = document.getElementById('renameBtn');
+        
+        // Rename Dialog Elemente
+        const renameDialog = document.getElementById('renameDialog');
+        const filenameInput = document.getElementById('filenameInput');
+        const filenameSuggestion = document.getElementById('filenameSuggestion');
+        const useSuggestionBtn = document.getElementById('useSuggestionBtn');
+        const cancelRenameBtn = document.getElementById('cancelRenameBtn');
+        const confirmRenameBtn = document.getElementById('confirmRenameBtn');
+        
+        // PDF Rename Dialog Elemente
+        const pdfRenameDialog = document.getElementById('pdfRenameDialog');
+        const pdfFilenameInput = document.getElementById('pdfFilenameInput');
+        const pdfFilenameSuggestion = document.getElementById('pdfFilenameSuggestion');
+        const usePdfSuggestionBtn = document.getElementById('usePdfSuggestionBtn');
+        const cancelPdfRenameBtn = document.getElementById('cancelPdfRenameBtn');
+        const confirmPdfRenameBtn = document.getElementById('confirmPdfRenameBtn');
         
         this.elements = {
             resetCropBtn,
@@ -79,7 +96,20 @@ class ImageEditOverlay {
             previewImage,
             previewInfo,
             prevImageBtn,
-            nextImageBtn
+            nextImageBtn,
+            renameBtn,
+            renameDialog,
+            filenameInput,
+            filenameSuggestion,
+            useSuggestionBtn,
+            cancelRenameBtn,
+            confirmRenameBtn,
+            pdfRenameDialog,
+            pdfFilenameInput,
+            pdfFilenameSuggestion,
+            usePdfSuggestionBtn,
+            cancelPdfRenameBtn,
+            confirmPdfRenameBtn
         };
         
         // Vorschau-State
@@ -97,11 +127,36 @@ class ImageEditOverlay {
         this.elements.cancelBtn.addEventListener('click', () => this.cancelEditing()); // Finish-Options Abbrechen
         this.elements.cancelBtnNormal.addEventListener('click', () => this.cancelEditing()); // Normaler Abbrechen
         this.elements.uploadIndividualBtn.addEventListener('click', () => this.finishEditing(false));
-        this.elements.createPdfBtn.addEventListener('click', () => this.finishEditing(true));
+        this.elements.createPdfBtn.addEventListener('click', () => this.showPdfRenameDialog());
         
         // Vorschau-Navigation Event Listeners
         this.elements.prevImageBtn.addEventListener('click', () => this.showPreviousPreview());
         this.elements.nextImageBtn.addEventListener('click', () => this.showNextPreview());
+        this.elements.renameBtn.addEventListener('click', () => this.showRenameDialog());
+        
+        // Rename Dialog Event Listeners
+        this.elements.useSuggestionBtn.addEventListener('click', () => this.useSuggestion());
+        this.elements.cancelRenameBtn.addEventListener('click', () => this.hideRenameDialog());
+        this.elements.confirmRenameBtn.addEventListener('click', () => this.confirmRename());
+        this.elements.filenameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.confirmRename();
+            } else if (e.key === 'Escape') {
+                this.hideRenameDialog();
+            }
+        });
+        
+        // PDF Rename Dialog Event Listeners
+        this.elements.usePdfSuggestionBtn.addEventListener('click', () => this.usePdfSuggestion());
+        this.elements.cancelPdfRenameBtn.addEventListener('click', () => this.hidePdfRenameDialog());
+        this.elements.confirmPdfRenameBtn.addEventListener('click', () => this.confirmPdfRename());
+        this.elements.pdfFilenameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.confirmPdfRename();
+            } else if (e.key === 'Escape') {
+                this.hidePdfRenameDialog();
+            }
+        });
         
         this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
@@ -566,13 +621,23 @@ class ImageEditOverlay {
         console.log('Image processed:', this.currentFileName, 'Total images:', this.editedImages.length);
     }
 
-    cancelEditing() {
+    async cancelEditing() {
+        // Session-Daten bereinigen
+        try {
+            await browser.storage.local.remove('imageEditSession');
+        } catch (error) {
+            console.error('Fehler beim Bereinigen der Session-Daten:', error);
+        }
+        
         browser.runtime.sendMessage({
             type: 'cancel-editing'
         });
+        
+        // Overlay-Fenster schließen
+        window.close();
     }
 
-    async finishEditing(createPDF) {
+    async finishEditing(createPDF, pdfFileName = null) {
         this.showLoading(true);
         
         try {
@@ -580,7 +645,7 @@ class ImageEditOverlay {
             
             if (createPDF && this.editedImages.length > 0) {
                 console.log('Creating PDF with images...');
-                await this.createAndUploadPDF();
+                await this.createAndUploadPDF(pdfFileName);
                 console.log('PDF creation and upload completed');
             } else {
                 console.log('Uploading individual images...');
@@ -687,7 +752,7 @@ class ImageEditOverlay {
         }
     }
 
-    async createAndUploadPDF() {
+    async createAndUploadPDF(customFileName = null) {
         try {
             console.log('Starting PDF creation with', this.editedImages.length, 'images');
             const { jsPDF } = window.jspdf;
@@ -736,8 +801,15 @@ class ImageEditOverlay {
             
             console.log('PDF creation completed, generating blob...');
             const pdfBlob = pdf.output('blob');
-            const timestampPrefix = this.generateTimestampPrefix();
-            const pdfFileName = `${timestampPrefix}Bilder.pdf`;
+            
+            // Dateiname festlegen
+            let pdfFileName;
+            if (customFileName) {
+                pdfFileName = customFileName;
+            } else {
+                const timestampPrefix = this.generateTimestampPrefix();
+                pdfFileName = `${timestampPrefix}Bilder.pdf`;
+            }
             
             console.log('PDF file size:', pdfBlob.size, 'bytes');
             console.log('Uploading PDF file:', pdfFileName);
@@ -892,6 +964,126 @@ class ImageEditOverlay {
             img.onerror = reject;
             img.src = src;
         });
+    }
+    
+    showRenameDialog() {
+        if (this.editedImages.length === 0) return;
+        
+        const currentImage = this.editedImages[this.previewIndex];
+        const timestampPrefix = this.generateTimestampPrefix();
+        
+        // Dateiname aufteilen
+        const fileName = currentImage.name;
+        const lastDotIndex = fileName.lastIndexOf('.');
+        const nameWithoutExtension = lastDotIndex > -1 ? fileName.substring(0, lastDotIndex) : fileName;
+        const extension = lastDotIndex > -1 ? fileName.substring(lastDotIndex) : '';
+        
+        // Vorschlag mit Zeitstempel erstellen
+        const suggestion = timestampPrefix + nameWithoutExtension + extension;
+        this.elements.filenameSuggestion.textContent = suggestion;
+        
+        // Input-Feld mit aktuellem kompletten Namen füllen
+        this.elements.filenameInput.value = fileName;
+        this.elements.filenameInput.select();
+        
+        // Dialog anzeigen
+        this.elements.renameDialog.style.display = 'flex';
+        this.elements.filenameInput.focus();
+    }
+    
+    hideRenameDialog() {
+        this.elements.renameDialog.style.display = 'none';
+    }
+    
+    useSuggestion() {
+        // Vorschlag in das Input-Feld übernehmen
+        const suggestion = this.elements.filenameSuggestion.textContent;
+        this.elements.filenameInput.value = suggestion;
+        this.elements.filenameInput.select();
+        this.elements.filenameInput.focus();
+    }
+    
+    confirmRename() {
+        const newFileName = this.elements.filenameInput.value.trim();
+        
+        if (!newFileName) {
+            alert('Bitte geben Sie einen gültigen Dateinamen ein.');
+            return;
+        }
+        
+        // Ungültige Zeichen prüfen
+        const invalidChars = /[<>:"/\\|?*]/;
+        if (invalidChars.test(newFileName)) {
+            alert('Der Dateiname enthält ungültige Zeichen: < > : " / \\ | ? *');
+            return;
+        }
+        
+        // Aktuelles Bild umbenennen
+        if (this.previewIndex < this.editedImages.length) {
+            this.editedImages[this.previewIndex].name = newFileName;
+            console.log('Image renamed to:', newFileName);
+        }
+        
+        // Dialog schließen
+        this.hideRenameDialog();
+    }
+    
+    showPdfRenameDialog() {
+        const timestampPrefix = this.generateTimestampPrefix();
+        
+        // Vorschlag mit Zeitstempel erstellen
+        const suggestion = `${timestampPrefix}Bilder.pdf`;
+        this.elements.pdfFilenameSuggestion.textContent = suggestion;
+        
+        // Input-Feld mit Vorschlag füllen
+        this.elements.pdfFilenameInput.value = suggestion;
+        this.elements.pdfFilenameInput.select();
+        
+        // Dialog anzeigen
+        this.elements.pdfRenameDialog.style.display = 'flex';
+        this.elements.pdfFilenameInput.focus();
+    }
+    
+    hidePdfRenameDialog() {
+        this.elements.pdfRenameDialog.style.display = 'none';
+    }
+    
+    usePdfSuggestion() {
+        // Vorschlag in das Input-Feld übernehmen
+        const suggestion = this.elements.pdfFilenameSuggestion.textContent;
+        this.elements.pdfFilenameInput.value = suggestion;
+        this.elements.pdfFilenameInput.select();
+        this.elements.pdfFilenameInput.focus();
+    }
+    
+    async confirmPdfRename() {
+        const pdfFileName = this.elements.pdfFilenameInput.value.trim();
+        
+        if (!pdfFileName) {
+            alert('Bitte geben Sie einen gültigen PDF-Dateinamen ein.');
+            return;
+        }
+        
+        // Ungültige Zeichen prüfen
+        const invalidChars = /[<>:"/\\|?*]/;
+        if (invalidChars.test(pdfFileName)) {
+            alert('Der Dateiname enthält ungültige Zeichen: < > : " / \\ | ? *');
+            return;
+        }
+        
+        // Sicherstellen, dass die Datei mit .pdf endet
+        let finalFileName = pdfFileName;
+        if (!finalFileName.toLowerCase().endsWith('.pdf')) {
+            finalFileName += '.pdf';
+        }
+        
+        console.log('PDF will be created with filename:', finalFileName);
+        
+        // Dialog schließen
+        this.hidePdfRenameDialog();
+        
+        // PDF mit dem gewählten Namen erstellen
+        await this.finishEditing(true, finalFileName);
     }
 }
 
