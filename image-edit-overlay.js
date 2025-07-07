@@ -952,6 +952,93 @@ class ImageEditOverlay {
 
         const result = await response.json();
         console.log(`Datei ${fileName} erfolgreich hochgeladen:`, result);
+        
+        // Tags anwenden falls vorhanden
+        if (result.id && this.sessionData.selectedTags && this.sessionData.selectedTags.length > 0) {
+            console.log('Applying tags to document:', result.id, 'tags:', this.sessionData.selectedTags);
+            await this.applyTagsToDocument(result.id, this.sessionData.selectedTags);
+        }
+        
+        // Ordner zuweisen falls vorhanden (zusätzliche Sicherheit, da bereits beim Upload gesetzt)
+        // Dies ist konsistent mit der Implementierung in background.js
+        if (result.id && this.sessionData.selectedCaseFolderID && this.sessionData.selectedCaseFolderID.length > 0) {
+            console.log('Assigning folder to document (additional safety check):', result.id, 'folderId:', this.sessionData.selectedCaseFolderID);
+            await this.assignFolderToDocument(result.id, this.sessionData.selectedCaseFolderID);
+        }
+    }
+
+    async applyTagsToDocument(documentId, tags) {
+        console.log('applyTagsToDocument called for document:', documentId, 'with tags:', tags);
+        
+        const settings = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(settings.username + ':' + settings.password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        try {
+            // Jeden Tag einzeln anwenden (wie in background.js)
+            for (const tag of tags) {
+                const url = settings.serverAddress + '/j-lawyer-io/rest/v5/cases/documents/' + documentId + '/tags';
+                const payload = { name: tag };
+
+                console.log('Applying tag:', tag, 'to document:', documentId, 'at URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Tag application failed for tag:', tag, 'status:', response.status, 'response:', errorText);
+                    throw new Error(`Failed to apply tag "${tag}": ${response.status} - ${errorText}`);
+                }
+
+                console.log('Tag applied successfully:', tag, 'to document:', documentId);
+            }
+        } catch (error) {
+            console.error('Error applying tags to document:', documentId, error);
+            // Fehler nicht weiterwerfen, damit Upload nicht komplett fehlschlägt
+        }
+    }
+
+    async assignFolderToDocument(documentId, folderId) {
+        console.log('assignFolderToDocument called for document:', documentId, 'with folderId:', folderId);
+        
+        const settings = await browser.storage.local.get(["username", "password", "serverAddress"]);
+        const headers = new Headers();
+        const loginBase64Encoded = btoa(unescape(encodeURIComponent(settings.username + ':' + settings.password)));
+        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
+        headers.append('Content-Type', 'application/json');
+
+        try {
+            const url = settings.serverAddress + '/j-lawyer-io/rest/v1/cases/document/update';
+            const payload = {
+                id: documentId,
+                folderId: folderId
+            };
+
+            console.log('Assigning folder to document:', documentId, 'folderId:', folderId, 'at URL:', url);
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Folder assignment failed for document:', documentId, 'status:', response.status, 'response:', errorText);
+                throw new Error(`Failed to assign folder to document "${documentId}": ${response.status} - ${errorText}`);
+            }
+
+            console.log('Folder assigned successfully to document:', documentId, 'folderId:', folderId);
+        } catch (error) {
+            console.error('Error assigning folder to document:', documentId, error);
+            // Fehler nicht weiterwerfen, damit Upload nicht komplett fehlschlägt
+        }
     }
 
     generateTimestampPrefix() {

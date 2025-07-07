@@ -156,6 +156,10 @@ class AttachmentImageProcessor {
         this.caseData = caseData;
         this.selectedCaseFolderID = selectedCaseFolderID;
 
+        // Tags aus dem Storage laden
+        const settings = await browser.storage.local.get(["selectedTags"]);
+        const selectedTags = settings.selectedTags || [];
+
         // Daten im Storage für das Overlay speichern
         const imageDataPromises = imageAttachments.map(async img => ({
             name: img.name,
@@ -173,6 +177,7 @@ class AttachmentImageProcessor {
                 nonImageAttachments: nonImageAttachments,
                 caseData: caseData,
                 selectedCaseFolderID: selectedCaseFolderID,
+                selectedTags: selectedTags,
                 sessionActive: true
             }
         });
