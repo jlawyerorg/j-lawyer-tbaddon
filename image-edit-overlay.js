@@ -831,15 +831,31 @@ class ImageEditOverlay {
                     const pdfWidth = pdf.internal.pageSize.getWidth();
                     const pdfHeight = pdf.internal.pageSize.getHeight();
                     
-                    // Optimale Bildgröße für PDF berechnen
-                    const maxWidth = pdfWidth * 0.9;
-                    const maxHeight = pdfHeight * 0.9;
+                    // Bildabmessungen aus komprimiertem Bild ermitteln
+                    const tempImg = await this.loadImageElement(compressedImageData);
+                    const imgAspectRatio = tempImg.width / tempImg.height;
+                    const pdfAspectRatio = pdfWidth / pdfHeight;
                     
-                    const x = (pdfWidth - maxWidth) / 2;
-                    const y = (pdfHeight - maxHeight) / 2;
+                    // Optimale Bildgröße unter Beibehaltung des Seitenverhältnisses berechnen
+                    let imgWidth, imgHeight;
+                    const maxScale = 0.9; // 90% der Seitengröße verwenden
                     
-                    // Komprimiertes Bild zur PDF hinzufügen
-                    pdf.addImage(compressedImageData, 'JPEG', x, y, maxWidth, maxHeight);
+                    if (imgAspectRatio > pdfAspectRatio) {
+                        // Bild ist breiter als PDF-Seite - an Breite anpassen
+                        imgWidth = pdfWidth * maxScale;
+                        imgHeight = imgWidth / imgAspectRatio;
+                    } else {
+                        // Bild ist höher als PDF-Seite - an Höhe anpassen
+                        imgHeight = pdfHeight * maxScale;
+                        imgWidth = imgHeight * imgAspectRatio;
+                    }
+                    
+                    // Zentrieren
+                    const x = (pdfWidth - imgWidth) / 2;
+                    const y = (pdfHeight - imgHeight) / 2;
+                    
+                    // Komprimiertes Bild zur PDF hinzufügen mit korrekten Proportionen
+                    pdf.addImage(compressedImageData, 'JPEG', x, y, imgWidth, imgHeight);
                     
                     console.log('Compressed image added to PDF successfully:', image.name);
                     

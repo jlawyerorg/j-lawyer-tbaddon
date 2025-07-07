@@ -319,16 +319,21 @@ class AttachmentImageProcessor {
                 const imgAspectRatio = img.width / img.height;
                 const pdfAspectRatio = pdfWidth / pdfHeight;
                 
+                // Optimale Bildgröße unter Beibehaltung des Seitenverhältnisses berechnen
                 let imgWidth, imgHeight;
+                const maxScale = 0.9; // 90% der Seitengröße verwenden
                 
                 if (imgAspectRatio > pdfAspectRatio) {
-                    imgWidth = pdfWidth;
-                    imgHeight = pdfWidth / imgAspectRatio;
+                    // Bild ist breiter als PDF-Seite - an Breite anpassen
+                    imgWidth = pdfWidth * maxScale;
+                    imgHeight = imgWidth / imgAspectRatio;
                 } else {
-                    imgHeight = pdfHeight;
-                    imgWidth = pdfHeight * imgAspectRatio;
+                    // Bild ist höher als PDF-Seite - an Höhe anpassen
+                    imgHeight = pdfHeight * maxScale;
+                    imgWidth = imgHeight * imgAspectRatio;
                 }
                 
+                // Zentrieren
                 const x = (pdfWidth - imgWidth) / 2;
                 const y = (pdfHeight - imgHeight) / 2;
                 
