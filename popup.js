@@ -186,8 +186,23 @@ document.addEventListener("DOMContentLoaded", async function() {
                     );
                     
                     if (imageAttachments.length === 0) {
-                        feedback.textContent = "Keine Bildanhänge in der Nachricht gefunden. Bildbearbeitung ist nur für Bilddateien verfügbar.";
-                        feedback.style.color = "orange";
+                        // Keine Bilder vorhanden - normale Attachment-Speicherung verwenden
+                        feedback.textContent = "Keine Bildanhänge gefunden. Speichere Anhänge normal...";
+                        feedback.style.color = "blue";
+                        
+                        // Normale Attachment-Speicherung wie bei deaktiviertem Toggle
+                        browser.runtime.sendMessage({
+                            type: "saveAttachments",
+                            source: "popup",
+                            content: currentSelectedCase.fileNumber, 
+                            selectedCaseFolderID: selectedCaseFolderID,
+                            username: settings.username,
+                            password: settings.password,
+                            serverAddress: settings.serverAddress
+                        });
+                        
+                        feedback.textContent = "Speichern...";
+                        feedback.style.color = "blue";
                         return;
                     }
                     
