@@ -26,6 +26,9 @@ class ImageEditOverlay {
         this.dragStart = { x: 0, y: 0 };
         this.cropStart = { x: 0, y: 0, width: 0, height: 0 };
         this.resizeHandle = null;
+        this.isDraggingCorner = false;
+        this.cornerDragStart = { x: 0, y: 0 };
+        this.initialCropBox = { left: 0, top: 0, width: 0, height: 0 };
         this.imageScale = 1;
         this.imageOffset = { x: 0, y: 0 };
         
@@ -160,12 +163,38 @@ class ImageEditOverlay {
         });
         
         this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        this.canvas.addEventListener('mouseup', () => this.onMouseUp());
-        this.canvas.addEventListener('mouseleave', () => this.onMouseUp());
+        // Canvas mousemove und mouseup deaktiviert - nur globale Events verwenden
+        // this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        // this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+        // this.canvas.addEventListener('mouseleave', () => this.onMouseUp());
         this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
         
         this.cropBox.addEventListener('mousedown', (e) => this.onCropBoxMouseDown(e));
+        
+        // Globale Mouse Events für bessere Drag-Unterstützung
+        document.addEventListener('mousemove', (e) => {
+            if (this.isDraggingCorner) {
+                console.log('GLOBAL: Corner dragging detected');
+                this.handleCornerDrag(e);
+            } else if (this.isDragging) {
+                console.log('GLOBAL: Initial dragging detected');
+                this.handleInitialDrag(e);
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            console.log('GLOBAL: Mouse up - isDragging:', this.isDragging, 'isDraggingCorner:', this.isDraggingCorner);
+            if (this.isDraggingCorner) {
+                console.log('GLOBAL: Stopping corner drag');
+                this.isDraggingCorner = false;
+                this.resizeHandle = null;
+                document.body.style.cursor = 'default';
+            }
+            if (this.isDragging) {
+                console.log('GLOBAL: Stopping initial drag');
+                this.onMouseUp();
+            }
+        });
         
         browser.runtime.onMessage.addListener((message) => this.handleMessage(message));
     }
@@ -305,21 +334,29 @@ class ImageEditOverlay {
     }
 
     onMouseDown(e) {
+        console.log('onMouseDown called, target:', e.target, 'canvas:', this.canvas);
+        
         // Prüfe ob es ein resize handle ist
         if (e.target.classList.contains('resize-handle')) {
+            console.log('onMouseDown: resize handle detected');
             this.handleResizeStart(e);
             return;
         }
         
         // Prüfe ob es die cropBox selbst ist (für Verschieben)
         if (e.target === this.cropBox) {
+            console.log('onMouseDown: cropBox detected');
             this.handleCropBoxMove(e);
             return;
         }
         
         // Nur Canvas-Klicks für neue Crop-Box
-        if (e.target !== this.canvas) return;
+        if (e.target !== this.canvas) {
+            console.log('onMouseDown: not canvas, target:', e.target);
+            return;
+        }
         
+        console.log('onMouseDown: starting new crop box');
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -340,6 +377,7 @@ class ImageEditOverlay {
         console.log('onMouseDown - Canvas rect:', canvasRect);
         console.log('onMouseDown - Wrapper rect:', wrapperRect);
         console.log('onMouseDown - CropBox start:', cropBoxStartX, cropBoxStartY);
+        console.log('onMouseDown - isDragging set to:', this.isDragging);
         
         this.cropBox.style.left = cropBoxStartX + 'px';
         this.cropBox.style.top = cropBoxStartY + 'px';
@@ -350,50 +388,48 @@ class ImageEditOverlay {
     }
 
     onMouseMove(e) {
-        if (!this.isDragging && !this.isResizing) return;
+        // Diese Methode wird nicht mehr verwendet - alles läuft über globale Events
+        console.log('onMouseMove called (should not happen)');
+    }
+    
+    handleInitialDrag(e) {
+        // Direkte Berechnung der CropBox Position basierend auf globalen Koordinaten
+        const wrapperRect = this.canvas.parentElement.getBoundingClientRect();
+        const currentCropBoxX = e.clientX - wrapperRect.left;
+        const currentCropBoxY = e.clientY - wrapperRect.top;
         
-        if (this.isDragging) {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            // Aktuelle CropBox Position berechnen (gleich wie in onMouseDown)
-            const canvasRect = this.canvas.getBoundingClientRect();
-            const wrapperRect = this.canvas.parentElement.getBoundingClientRect();
-            const currentCropBoxX = canvasRect.left - wrapperRect.left + x;
-            const currentCropBoxY = canvasRect.top - wrapperRect.top + y;
-            
-            // Korrekte Berechnung für alle Richtungen
-            const startX = this.cropBoxDragStart.x;
-            const startY = this.cropBoxDragStart.y;
-            const endX = currentCropBoxX;
-            const endY = currentCropBoxY;
-            
-            // Immer die kleineren Werte als Position verwenden
-            const left = Math.min(startX, endX);
-            const top = Math.min(startY, endY);
-            const width = Math.abs(endX - startX);
-            const height = Math.abs(endY - startY);
-            
-            console.log('onMouseMove - Canvas coords:', x, y);
-            console.log('onMouseMove - Current cropBox:', currentCropBoxX, currentCropBoxY);
-            console.log('onMouseMove - Start:', startX, startY, 'End:', endX, endY);
-            console.log('onMouseMove - Final box:', {left, top, width, height});
-            
-            this.cropBox.style.left = left + 'px';
-            this.cropBox.style.top = top + 'px';
-            this.cropBox.style.width = width + 'px';
-            this.cropBox.style.height = height + 'px';
-        }
+        // Korrekte Berechnung für alle Richtungen
+        const startX = this.cropBoxDragStart.x;
+        const startY = this.cropBoxDragStart.y;
+        const endX = currentCropBoxX;
+        const endY = currentCropBoxY;
+        
+        // Immer die kleineren Werte als Position verwenden
+        const left = Math.min(startX, endX);
+        const top = Math.min(startY, endY);
+        const width = Math.abs(endX - startX);
+        const height = Math.abs(endY - startY);
+        
+        console.log('handleInitialDrag - Global coords:', e.clientX, e.clientY);
+        console.log('handleInitialDrag - Current cropBox:', currentCropBoxX, currentCropBoxY);
+        console.log('handleInitialDrag - Start:', startX, startY, 'End:', endX, endY);
+        console.log('handleInitialDrag - Final box:', {left, top, width, height});
+        
+        this.cropBox.style.left = left + 'px';
+        this.cropBox.style.top = top + 'px';
+        this.cropBox.style.width = width + 'px';
+        this.cropBox.style.height = height + 'px';
     }
 
     onMouseUp() {
+        const wasInitialDrag = this.isDragging;
+        
         this.isDragging = false;
         this.isResizing = false;
         this.resizeHandle = null;
         
-        // Handles nur hinzufügen wenn cropBox groß genug ist
-        if (this.cropBox.style.display === 'block' && 
+        // Handles nur hinzufügen wenn cropBox groß genug ist und es initial drag war
+        if (wasInitialDrag && this.cropBox.style.display === 'block' && 
             parseInt(this.cropBox.style.width) > 10 && 
             parseInt(this.cropBox.style.height) > 10) {
             this.addResizeHandles();
@@ -401,30 +437,17 @@ class ImageEditOverlay {
     }
 
     handleResizeStart(e) {
+        // Diese Methode wird nicht mehr verwendet - Resize funktioniert über onCornerMouseDown
+        console.log('handleResizeStart called (deprecated - use onCornerMouseDown)');
         e.stopPropagation();
         e.preventDefault();
-        
-        this.isResizing = true;
-        this.resizeHandle = e.target;
-        this.dragStart = { x: e.clientX, y: e.clientY };
-        
-        console.log('Starting resize with handle:', e.target.className);
     }
 
     handleCropBoxMove(e) {
+        // Diese Methode wird nicht mehr verwendet - CropBox Move funktioniert über onCropBoxMouseDown
+        console.log('handleCropBoxMove called (deprecated - use onCropBoxMouseDown)');
         e.stopPropagation();
         e.preventDefault();
-        
-        this.isDragging = true;
-        this.dragStart = { x: e.clientX, y: e.clientY };
-        
-        // Aktuelle Position der CropBox merken
-        this.cropBoxStart = {
-            left: parseInt(this.cropBox.style.left),
-            top: parseInt(this.cropBox.style.top)
-        };
-        
-        console.log('Starting crop box move');
     }
 
     onWheel(e) {
@@ -446,9 +469,7 @@ class ImageEditOverlay {
         e.preventDefault();
         
         if (e.target.classList.contains('resize-handle')) {
-            this.isResizing = true;
-            this.resizeHandle = e.target;
-            this.dragStart = { x: e.clientX, y: e.clientY };
+            return;
         } else {
             this.isDragging = true;
             this.dragStart = { x: e.clientX, y: e.clientY };
@@ -461,7 +482,109 @@ class ImageEditOverlay {
             };
         }
     }
-
+    
+    onCornerMouseDown(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        this.isDraggingCorner = true;
+        this.resizeHandle = e.target;
+        this.cornerDragStart = { x: e.clientX, y: e.clientY };
+        
+        // Aktuelle CropBox Werte speichern
+        this.initialCropBox = {
+            left: parseInt(this.cropBox.style.left),
+            top: parseInt(this.cropBox.style.top),
+            width: parseInt(this.cropBox.style.width),
+            height: parseInt(this.cropBox.style.height)
+        };
+        
+        // Cursor für bessere UX setzen
+        document.body.style.cursor = getComputedStyle(e.target).cursor;
+        
+        console.log('Corner drag started:', this.resizeHandle.className, 'initial:', this.initialCropBox);
+    }
+    
+    handleCornerDrag(e) {
+        if (!this.isDraggingCorner || !this.resizeHandle) return;
+        
+        e.preventDefault();
+        
+        const deltaX = e.clientX - this.cornerDragStart.x;
+        const deltaY = e.clientY - this.cornerDragStart.y;
+        
+        let newLeft = this.initialCropBox.left;
+        let newTop = this.initialCropBox.top;
+        let newWidth = this.initialCropBox.width;
+        let newHeight = this.initialCropBox.height;
+        
+        const handleClass = this.resizeHandle.className;
+        
+        if (handleClass.includes('top-left')) {
+            newLeft = this.initialCropBox.left + deltaX;
+            newTop = this.initialCropBox.top + deltaY;
+            newWidth = this.initialCropBox.width - deltaX;
+            newHeight = this.initialCropBox.height - deltaY;
+        } else if (handleClass.includes('top-right')) {
+            newTop = this.initialCropBox.top + deltaY;
+            newWidth = this.initialCropBox.width + deltaX;
+            newHeight = this.initialCropBox.height - deltaY;
+        } else if (handleClass.includes('bottom-left')) {
+            newLeft = this.initialCropBox.left + deltaX;
+            newWidth = this.initialCropBox.width - deltaX;
+            newHeight = this.initialCropBox.height + deltaY;
+        } else if (handleClass.includes('bottom-right')) {
+            newWidth = this.initialCropBox.width + deltaX;
+            newHeight = this.initialCropBox.height + deltaY;
+        }
+        
+        // Mindestgröße sicherstellen
+        if (newWidth < 10) {
+            newWidth = 10;
+            if (handleClass.includes('left')) {
+                newLeft = this.initialCropBox.left + this.initialCropBox.width - 10;
+            }
+        }
+        if (newHeight < 10) {
+            newHeight = 10;
+            if (handleClass.includes('top')) {
+                newTop = this.initialCropBox.top + this.initialCropBox.height - 10;
+            }
+        }
+        
+        // Canvas-Grenzen prüfen
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const wrapperRect = this.canvas.parentElement.getBoundingClientRect();
+        const canvasLeft = canvasRect.left - wrapperRect.left;
+        const canvasTop = canvasRect.top - wrapperRect.top;
+        const canvasRight = canvasLeft + canvasRect.width;
+        const canvasBottom = canvasTop + canvasRect.height;
+        
+        // Grenzen einhalten
+        if (newLeft < canvasLeft) {
+            newWidth = newWidth - (canvasLeft - newLeft);
+            newLeft = canvasLeft;
+        }
+        if (newTop < canvasTop) {
+            newHeight = newHeight - (canvasTop - newTop);
+            newTop = canvasTop;
+        }
+        if (newLeft + newWidth > canvasRight) {
+            newWidth = canvasRight - newLeft;
+        }
+        if (newTop + newHeight > canvasBottom) {
+            newHeight = canvasBottom - newTop;
+        }
+        
+        // Anwenden
+        this.cropBox.style.left = newLeft + 'px';
+        this.cropBox.style.top = newTop + 'px';
+        this.cropBox.style.width = newWidth + 'px';
+        this.cropBox.style.height = newHeight + 'px';
+        
+        console.log('Corner drag:', handleClass, 'new box:', {newLeft, newTop, newWidth, newHeight});
+    }
+    
     addResizeHandles() {
         this.cropBox.innerHTML = `
             <div class="resize-handle top-left"></div>
@@ -471,7 +594,7 @@ class ImageEditOverlay {
         `;
         
         this.cropBox.querySelectorAll('.resize-handle').forEach(handle => {
-            handle.addEventListener('mousedown', (e) => this.onCropBoxMouseDown(e));
+            handle.addEventListener('mousedown', (e) => this.onCornerMouseDown(e));
         });
     }
 

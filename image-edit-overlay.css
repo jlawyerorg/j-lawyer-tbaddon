@@ -113,6 +113,19 @@ body {
     background: #007bff;
     border: 2px solid white;
     border-radius: 50%;
+    z-index: 15;
+}
+
+.crop-box .resize-handle::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: -5px;
+    left: -5px;
+    background: transparent;
+    border-radius: 50%;
+    pointer-events: auto;
 }
 
 .crop-box .resize-handle.top-left {
