@@ -254,13 +254,10 @@ class AttachmentImageProcessor {
     }
 
     skipCurrentImage() {
+        // Bild überspringen: NICHT zu editedImages hinzufügen
         const originalImage = this.originalImages[this.currentImageIndex];
-        this.editedImages.push({
-            name: originalImage.name,
-            blob: originalImage.blob,
-            contentType: originalImage.contentType
-        });
-        
+        console.log('AttachmentImageProcessor: skipping image (not saved):', originalImage && originalImage.name);
+
         this.currentImageIndex++;
         this.sendImageToOverlay(this.currentImageIndex);
     }

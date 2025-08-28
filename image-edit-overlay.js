@@ -630,27 +630,11 @@ class ImageEditOverlay {
     }
 
     async skipImage() {
-        // Original Bild ohne Änderungen zu editedImages hinzufügen
+        // Bild überspringen: NICHT speichern, NICHT zur PDF hinzufügen
         if (this.currentImage) {
-            const originalCanvas = document.createElement('canvas');
-            const originalCtx = originalCanvas.getContext('2d');
-            
-            originalCanvas.width = this.currentImage.width;
-            originalCanvas.height = this.currentImage.height;
-            
-            originalCtx.drawImage(this.currentImage, 0, 0);
-            const processedImageData = originalCanvas.toDataURL('image/png');
-            
-            const blob = this.dataURLtoBlob(processedImageData);
-            this.editedImages.push({
-                name: this.currentFileName,
-                blob: blob,
-                contentType: 'image/png'
-            });
-            
-            console.log('Image skipped (original kept):', this.currentFileName);
+            console.log('Image skipped (not saved):', this.currentFileName);
         }
-        
+
         // Zum nächsten Bild
         this.currentImageIndex++;
         if (this.currentImageIndex >= this.sessionData.images.length) {
@@ -826,13 +810,26 @@ class ImageEditOverlay {
             pdfButtonText += ` + ${this.nonImageAttachments.length} weitere Datei(en)`;
         }
         
-        this.elements.createPdfBtn.textContent = pdfButtonText;
+        // PDF-Button je nach Bildanzahl steuern
+        if (imageCount === 0) {
+            // Keine Bilder übernommen: PDF-Button ausblenden
+            this.elements.createPdfBtn.style.display = 'none';
+        } else {
+            this.elements.createPdfBtn.style.display = 'inline-block';
+            this.elements.createPdfBtn.disabled = false;
+            this.elements.createPdfBtn.textContent = pdfButtonText;
+        }
         
-        // Einzeln hochladen Button Text anpassen
+        // Einzeln hochladen Button Text/Status anpassen
+        const nonImageCount = (this.nonImageAttachments && this.nonImageAttachments.length) ? this.nonImageAttachments.length : 0;
+        const totalFiles = imageCount + nonImageCount;
         let uploadText = 'Einzeln hochladen';
-        if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
-            const totalFiles = imageCount + this.nonImageAttachments.length;
-            uploadText = `Alle ${totalFiles} Dateien einzeln hochladen`;
+        if (totalFiles > 0) {
+            uploadText = nonImageCount > 0 ? `Alle ${totalFiles} Dateien einzeln hochladen` : 'Einzeln hochladen';
+            this.elements.uploadIndividualBtn.disabled = false;
+        } else {
+            uploadText = 'Keine Dateien zum Hochladen';
+            this.elements.uploadIndividualBtn.disabled = true;
         }
         this.elements.uploadIndividualBtn.textContent = uploadText;
         
@@ -841,7 +838,8 @@ class ImageEditOverlay {
         const additionalFilesInfo = document.getElementById('additionalFilesInfo');
         
         if (uploadInfo) {
-            uploadInfo.style.display = 'block';
+            // Nur anzeigen, wenn es überhaupt Bilder für eine PDF gibt
+            uploadInfo.style.display = imageCount > 0 ? 'block' : 'none';
             
             if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
                 if (additionalFilesInfo) {
@@ -870,10 +868,12 @@ class ImageEditOverlay {
             this.elements.previewInfo.textContent = 'Keine Bilder verfügbar';
             this.elements.prevImageBtn.disabled = true;
             this.elements.nextImageBtn.disabled = true;
+            if (this.elements.renameBtn) this.elements.renameBtn.disabled = true;
             return;
         }
         
         this.previewIndex = 0;
+        if (this.elements.renameBtn) this.elements.renameBtn.disabled = false;
         this.updatePreview();
     }
 
@@ -1318,6 +1318,10 @@ class ImageEditOverlay {
     }
     
     showPdfRenameDialog() {
+        // Keine Aktion, wenn keine Bilder übernommen wurden
+        if (!this.editedImages || this.editedImages.length === 0) {
+            return;
+        }
         const timestampPrefix = this.generateTimestampPrefix();
         
         // Vorschlag mit Zeitstempel erstellen
