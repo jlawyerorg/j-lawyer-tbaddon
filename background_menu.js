@@ -25,36 +25,76 @@ let selectedCaseFolderID_bundle = null;
 
 //  ************************* ZUORDNEN MENU ************************* 
 
-// Erstellt einen Kontextmenüeintrag für ausgewählte Nachrichten
-browser.menus.create({
-    id: "mehrere_messages_zuordnen",
-    title: "Nachrichten an j-Lawyer senden...",
-    contexts: ["message_list"]
-});
+// Erstellt/gewährleistet den Kontextmenüeintrag für ausgewählte Nachrichten
+async function ensureMessageListMenu() {
+    try {
+        await browser.menus.create({
+            id: "mehrere_messages_zuordnen",
+            title: "Nachrichten an j-Lawyer senden...",
+            contexts: ["message_list"],
+            icons: {
+                "16": "icons/icon-16.png",
+                "24": "icons/icon-24.png",
+                "32": "icons/icon-32.png"
+            }
+        });
+    } catch (e) {
+        // Duplicate ID ist ok, ansonsten loggen
+        if (!(e && String(e).toLowerCase().includes('duplicate'))) {
+            console.error('Fehler beim Erstellen des message_list-Menüs:', e);
+        }
+    } finally {
+        try { await browser.menus.refresh(); } catch (e) { /* ignore */ }
+    }
+}
+
+ensureMessageListMenu();
+
+browser.runtime.onInstalled.addListener(() => { ensureMessageListMenu(); });
+browser.runtime.onStartup.addListener(() => { ensureMessageListMenu(); });
 
 
 // Fügt einen Event-Listener hinzu, der ausgelöst wird, wenn der Menüeintrag angeklickt wird
 browser.menus.onClicked.addListener(async (info, tab) => {
-    
-    if (info.menuItemId === "mehrere_messages_zuordnen") {
-        let win = await browser.windows.create({
+    if (info.menuItemId !== "mehrere_messages_zuordnen") return;
+
+    try {
+        await browser.windows.create({
             url: browser.runtime.getURL("popup_menu_bundle_save.html"),
             type: "popup",
             width: 700,
             height: 650
         });
-        
 
-        let messages = await browser.mailTabs.getSelectedMessages(tab.id);
-        console.log(messages);
+        // Nachrichten bestimmen: bevorzugt info.selectedMessages, sonst via mailTabId, sonst aktiver Mail-Tab
+        let selection = info.selectedMessages;
+        if (!selection) {
+            const mailTabId = info.mailTabId ?? tab?.id;
+            if (mailTabId) {
+                selection = await browser.mailTabs.getSelectedMessages(mailTabId);
+            } else {
+                const mailTabs = await browser.mailTabs.query({ active: true, currentWindow: true });
+                if (mailTabs && mailTabs[0]) {
+                    selection = await browser.mailTabs.getSelectedMessages(mailTabs[0].id);
+                }
+            }
+        }
 
-        messagesToSaveObjects = messages;
+        if (!selection || !selection.messages || selection.messages.length === 0) {
+            console.warn('Keine ausgewählten Nachrichten gefunden.');
+            return;
+        }
 
-        let result = messages.messages.map(message => ({id: message.id, subject: message.subject}));
-        console.log(result);
+        console.log('Ausgewählte Nachrichten:', selection);
+        messagesToSaveObjects = selection;
 
-        messagesToSaveIds = messages.messages.map(message => ({id: message.id}));
+        let meta = selection.messages.map(message => ({ id: message.id, subject: message.subject }));
+        console.log(meta);
+
+        messagesToSaveIds = selection.messages.map(message => ({ id: message.id }));
         console.log(messagesToSaveIds);
+    } catch (e) {
+        console.error('Fehler beim Verarbeiten des Menü-Klicks:', e);
     }
 });
 
@@ -538,7 +578,6 @@ async function logActivity(action, details) {
 
     await browser.storage.local.set({ activityLog });
 }
-
 
 
 

@@ -26,6 +26,21 @@ let documentToAddToMessage = null;
 let documentsInSelectedCase = [];
 let IdOfDocumentToAddToMail = null;
 let isMenuClickListenerRegistered = false;
+// Track only compose-related menu item IDs we create, so we can remove them
+// without wiping unrelated menus (like the message_list context entry).
+const composeMenuIds = new Set();
+
+async function createComposeMenuItem(opts) {
+    try {
+        await browser.menus.create(opts);
+        if (opts && opts.id) composeMenuIds.add(opts.id);
+    } catch (e) {
+        // Ignore duplicate id errors, log others
+        if (!(e && String(e).toLowerCase().includes('duplicate'))) {
+            console.error('Error creating compose menu item', opts?.id, e);
+        }
+    }
+}
 
 // Initial beim Laden der Erweiterung
 createMenuEntries();
@@ -1152,8 +1167,13 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
 
 async function createMenuEntries() {
     try {
-        // Erst alle existierenden Menüeinträge löschen
-        await browser.menus.removeAll();
+        // Entferne nur die von uns erzeugten Compose-Menüeinträge gezielt
+        if (composeMenuIds.size > 0) {
+            for (const id of Array.from(composeMenuIds)) {
+                try { await browser.menus.remove(id); } catch (e) { /* ignore */ }
+            }
+            composeMenuIds.clear();
+        }
 
         // Templates und Dokumente aus dem Storage holen
         const data = await browser.storage.local.get(["emailTemplates", "documentsInSelectedCase"]);
@@ -1163,7 +1183,7 @@ async function createMenuEntries() {
         // Menüeinträge für Vorlagen erstellen, falls vorhanden
         if (emailTemplates.length > 0) {
             try {
-                await browser.menus.create({
+                await createComposeMenuItem({
                     id: "vorlagen-menu",
                     title: "Vorlagen",
                     contexts: ["compose_action"],
@@ -1176,7 +1196,7 @@ async function createMenuEntries() {
             for (const template of emailTemplates) {
                 try {
                     const displayName = template.name.replace(/\.xml$/, '');
-                    await browser.menus.create({
+                    await createComposeMenuItem({
                         id: `vorlage-${template.id}`,
                         parentId: "vorlagen-menu",
                         title: `${displayName} einfügen`,
@@ -1244,7 +1264,7 @@ async function createMenuEntries() {
             if (!folderHasDocsOrNonEmptyChildren(folder)) return; // Leere Ordner überspringen
 
             const id = folder.id || "root";
-            await browser.menus.create({
+            await createComposeMenuItem({
                 id: `dokumente-folder-${id}`,
                 parentId,
                 title: folder.name || "Dokumente",
@@ -1255,7 +1275,7 @@ async function createMenuEntries() {
             // Dateien in diesem Ordner (umgekehrt sortiert)
             const docs = (docsByFolder[id] || []).sort((a, b) => b.name.localeCompare(a.name));
             for (const doc of docs) {
-                await browser.menus.create({
+                await createComposeMenuItem({
                     id: `dokument-${doc.id}`,
                     parentId: `dokumente-folder-${id}`,
                     title: `${getEmojiForFile(doc.name)} ${doc.name}`,
@@ -1278,7 +1298,7 @@ async function createMenuEntries() {
         // Hauptmenü für Dokumente
         if (documentsInSelectedCase.length > 0) {
             try {
-                await browser.menus.create({
+                await createComposeMenuItem({
                     id: "dokumente-menu",
                     title: "Dokumente",
                     contexts: ["compose_action"],
@@ -1309,7 +1329,7 @@ async function createMenuEntries() {
                     doc => rootFolderIds.includes(doc.folderId)
                 ).sort((a, b) => b.name.localeCompare(a.name));
                 for (const doc of rootDocs) {
-                    await browser.menus.create({
+                    await createComposeMenuItem({
                         id: `dokument-${doc.id}`,
                         parentId: "dokumente-menu",
                         title: `${getEmojiForFile(doc.name)} ${doc.name}`,
@@ -1320,7 +1340,7 @@ async function createMenuEntries() {
             } else {
                 // Fallback: alles unter "Dokumente"
                 for (const doc of documentsInSelectedCase) {
-                    await browser.menus.create({
+                    await createComposeMenuItem({
                         id: `dokument-${doc.id}`,
                         parentId: "dokumente-menu",
                         title: `${getEmojiForFile(doc.name)} ${doc.name}`,
@@ -1402,6 +1422,8 @@ async function createMenuEntries() {
         }
     } catch (err) {
         console.error("Fehler in createMenuEntries:", err);
+    } finally {
+        try { await browser.menus.refresh(); } catch (e) { /* ignore */ }
     }
 }
 
