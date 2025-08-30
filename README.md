@@ -26,21 +26,16 @@ Wichtig: Zugangsdaten werden lokal und unverschlüsselt in Thunderbird gespeiche
 ## Installation
 
 1) Aus dem Mozilla Hub für Thunderbird Erweiterungen herunterladen. Updates werden je nach Einstellung in TB automatisch installiert.
-2) Letztes Release als `.xpi` herunterladen (j-Lawyer-Thunderbird.xpi). In Thunderbird: Add-ons öffnen und „Aus Datei installieren…“ wählen
 
-   <img width="397" alt="Screen2" src="https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/976805db-ff94-425e-a710-43c40f568fd8">
+2) Letztes Release als `.xpi` herunterladen (j-Lawyer-Thunderbird.xpi). In Thunderbird: Add-ons öffnen und „Aus Datei installieren…“ wählen
 
 3) Einstellungen der Erweiterung öffnen und konfigurieren:
    - Serveradresse inkl. Protokoll und Port, z. B. `http://192.168.1.10:8080`
    - Benutzername und Passwort
    - Optional: „E-Mail nach Zuordnung in Papierkorb verschieben“ aktivieren
 
-   ![Einstellungen](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/a2b2c2b4-bdec-4b14-b94a-ab15f33676e3)
-
 4) Erster Datenabgleich wird bei bestehender Verbindung automatisch und dann jeden Tag vorgenommen. 
    Kann manuell ausgelöst werden. Sollte manuell ausgelöst werden bei neu angelegten Akten.
-
-   ![Datenaktualisierung](https://github.com/jlawyerorg/j-lawyer-tbaddon/assets/71747937/43b2c296-bb85-4b62-9ddb-70355075aaf1)
 
 5) SSH-Tunnel/Port: Falls der j-lawyer-Server via SSH-Port erreichbar ist, in Thunderbird den Port freigeben:
    - Menü „Bearbeiten“ → „Einstellungen“ → Tab „Allgemein“ → „Konfiguration bearbeiten…“
