@@ -27,7 +27,7 @@ Wichtig: Zugangsdaten werden lokal und unverschlüsselt in Thunderbird gespeiche
 
 1) Aus dem Mozilla Hub für Thunderbird Erweiterungen herunterladen. Updates werden je nach Einstellung in TB automatisch installiert.
 
-2) Letztes Release als `.xpi` herunterladen (j-Lawyer-Thunderbird.xpi). In Thunderbird: Add-ons öffnen und „Aus Datei installieren…“ wählen
+2) ODER: Letztes Release als `.xpi` herunterladen (j-Lawyer-Thunderbird.xpi). In Thunderbird: Add-ons öffnen und „Aus Datei installieren…“ wählen
 
 3) Einstellungen der Erweiterung öffnen und konfigurieren:
    - Serveradresse inkl. Protokoll und Port, z. B. `http://192.168.1.10:8080`
