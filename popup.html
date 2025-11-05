@@ -93,6 +93,113 @@
             font-size: 14px;
         }
 
+        /* Stil für Suggestions Container */
+        #suggestionsContainer {
+            margin: 15px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        #suggestionsContainer h4 {
+            margin: 0 0 10px 0;
+            color: white;
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        #suggestionsList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .suggestionItem {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .suggestionItem:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .suggestionItem.selected {
+            background: #007bff;
+            color: white;
+        }
+
+        .suggestionItem.selected .confidenceBadge {
+            background: white;
+            color: #007bff;
+        }
+
+        .suggestionItem.noMatch {
+            background: #fff3cd;
+            color: #856404;
+            cursor: default;
+            justify-content: center;
+        }
+
+        .suggestionItem.noMatch:hover {
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .caseInfo {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .caseInfo strong {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .caseDetails {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .suggestionItem.selected .caseDetails {
+            color: #e0e0e0;
+        }
+
+        .confidenceBadge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .confidence-high {
+            background: #28a745;
+            color: white;
+        }
+
+        .confidence-medium {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .confidence-low {
+            background: #dc3545;
+            color: white;
+        }
+
         /* Stil für die Ergebnisliste */
         #resultsList {
             max-height: 170px;  /* Begrenzt die Höhe der Liste */
@@ -126,8 +233,19 @@
             margin-top: 10px; /* Abstand zum Feedback-Container */
             margin-bottom: 10px; /* Abstand zu den Buttons */
         }
-     
-        
+
+        /* Zentriere die Speichern-Buttons */
+        .button-row {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        #recommendCaseButton, #saveOnlyMessageButton, #saveAttachmentsButton {
+            display: inline-block;
+            margin: 5px;
+        }
+
+
     </style>
     
     <!-- Code für den TreeContainer -->
@@ -204,8 +322,15 @@
         <input type="text" id="searchInput" placeholder="Fall suchen...">
         <div id="resultsList"></div>
 
-        <p id="customizableLabel">kein Vorschlag</p>
-        
+        <!-- Automatische Vorschläge -->
+        <div id="suggestionsContainer" style="display: none;">
+            <h4>Automatische Vorschläge (bitte prüfen)</h4>
+            <div id="suggestionsList"></div>
+        </div>
+
+        <!-- Ausgewählte Akte -->
+        <p id="customizableLabel" style="font-weight: bold; margin: 15px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
+
         <!-- Bildbearbeitung Toggle -->
         <div id="imageEditToggleContainer" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
             <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px;">
@@ -213,10 +338,12 @@
                 <span>🖼️ Bildanhänge vor Speichern bearbeiten</span>
             </label>
         </div>
-        
-        <button id="recommendCaseButton">Speichern</button>
-        <button id="saveOnlyMessageButton">Nur Nachricht</button>
-        <button id="saveAttachmentsButton">Nur Anhang</button>
+
+        <div class="button-row">
+            <button id="recommendCaseButton">Speichern</button>
+            <button id="saveOnlyMessageButton">Nur Nachricht</button>
+            <button id="saveAttachmentsButton">Nur Anhang</button>
+        </div>
         <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
 
         <p id="feedback"></p>

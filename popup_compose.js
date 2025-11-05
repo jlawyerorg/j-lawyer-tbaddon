@@ -1,4 +1,4 @@
-{/* j-Lawyer Thunderbird Extension - saves Messages to j-Lawyer Server Cases.
+/* j-Lawyer Thunderbird Extension - saves Messages to j-Lawyer Server Cases.
 Copyright (C) 2023, Maximilian Steinert
 
 This program is free software: you can redistribute it and/or modify
@@ -12,7 +12,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>. */}
+along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 
 let currentSelectedCase = null;  // Speichert den aktuell ausgewählten Case
@@ -951,6 +951,475 @@ async function updateData(feedback, progressBar) {
     }
 }
 
+// Hilfsfunktion: Extrahiert Empfänger-Name und E-Mail aus To/CC-Felder
+function parseRecipientsFromComposeDetails(composeDetails) {
+    const recipients = [];
+
+    try {
+        // Sammle alle Empfänger (To, Cc)
+        const allRecipients = [...(composeDetails.to || []), ...(composeDetails.cc || [])];
+
+        for (const recipient of allRecipients) {
+            const parsed = {
+                name: '',
+                email: '',
+                lastName: ''
+            };
+
+            // Format 1: "Max Mustermann" <max@example.com>
+            const nameEmailMatch = recipient.match(/^"?([^"<]+)"?\s*<([^>]+)>/);
+            if (nameEmailMatch) {
+                parsed.name = nameEmailMatch[1].trim();
+                parsed.email = nameEmailMatch[2].trim();
+
+                // Extrahiere Nachnamen (letztes Wort)
+                const nameParts = parsed.name.split(/\s+/);
+                parsed.lastName = nameParts[nameParts.length - 1];
+            } else {
+                // Format 2: max@example.com (nur E-Mail)
+                const emailOnlyMatch = recipient.match(/([^\s<>]+@[^\s<>]+)/);
+                if (emailOnlyMatch) {
+                    parsed.email = emailOnlyMatch[1].trim();
+
+                    // Versuche Namen aus E-Mail zu extrahieren
+                    const emailPrefix = parsed.email.split('@')[0];
+                    parsed.name = emailPrefix.replace(/[._-]/g, ' ');
+                    parsed.lastName = parsed.name.split(/\s+/).pop();
+                }
+            }
+
+            if (parsed.email) {
+                recipients.push(parsed);
+            }
+        }
+    } catch (error) {
+        console.log("Fehler beim Parsen der Empfänger:", error);
+    }
+
+    return recipients;
+}
+
+// Hilfsfunktion: Extrahiert Namen nach Slash (Edge-Case: /Name Format)
+function extractSlashNames(text) {
+    const slashPattern = /\/([A-Za-zÄÖÜäöüß]{3,})/g;
+    const names = new Set();
+
+    let match;
+    while ((match = slashPattern.exec(text)) !== null) {
+        names.add(match[1].toLowerCase());
+    }
+
+    return Array.from(names);
+}
+
+// Hilfsfunktion: Reverse-Suche - Findet Worte aus case.name im Text
+function matchCaseNameInText(caseName, emailText) {
+    if (!caseName || !emailText) return 0;
+
+    // Extrahiere bedeutungsvolle Worte aus case.name (>3 Zeichen, keine Stopwords)
+    const stopwords = ['und', 'oder', 'der', 'die', 'das', 'gegen', 'für', 'mit', 'von', 'bei'];
+    const caseWords = caseName
+        .split(/[\s\-_,;.()]+/)
+        .filter(word => word.length > 3 && !stopwords.includes(word.toLowerCase()))
+        .map(word => word.toLowerCase());
+
+    if (caseWords.length === 0) return 0;
+
+    const emailTextLower = emailText.toLowerCase();
+    let matchedWords = 0;
+
+    for (const word of caseWords) {
+        if (emailTextLower.includes(word)) {
+            matchedWords++;
+        }
+    }
+
+    const matchRatio = matchedWords / caseWords.length;
+
+    // Scoring basierend auf Match-Ratio
+    if (matchRatio >= 1.0) {
+        return 45; // Alle Worte gefunden
+    } else if (matchRatio >= 0.5) {
+        return 35; // Mindestens 50% der Worte
+    } else if (matchRatio >= 0.3) {
+        return 25; // 30-50% der Worte
+    }
+
+    return 0;
+}
+
+// Hilfsfunktion: Vergleicht Empfänger mit case.name (Fuzzy-Matching)
+function matchRecipientWithCaseName(recipient, caseName) {
+    if (!recipient.name && !recipient.email) return 0;
+    if (!caseName) return 0;
+
+    const caseNameLower = caseName.toLowerCase();
+    let score = 0;
+
+    // Strategie 1: Nachname im case.name
+    if (recipient.lastName && recipient.lastName.length > 2) {
+        const lastNameLower = recipient.lastName.toLowerCase();
+        if (caseNameLower.includes(lastNameLower)) {
+            score = 40;
+            console.log(`Empfänger-Match (Nachname): "${recipient.lastName}" in "${caseName}"`);
+            return score;
+        }
+    }
+
+    // Strategie 2: Vollständiger Name
+    if (recipient.name && recipient.name.length > 3) {
+        const nameLower = recipient.name.toLowerCase();
+
+        if (caseNameLower.includes(nameLower)) {
+            score = 45;
+            console.log(`Empfänger-Match (Voller Name): "${recipient.name}" in "${caseName}"`);
+            return score;
+        }
+
+        // Einzelne Worte prüfen
+        const nameWords = recipient.name.split(/\s+/).filter(word => word.length > 2);
+        let matchedWords = 0;
+
+        for (const word of nameWords) {
+            if (caseNameLower.includes(word.toLowerCase())) {
+                matchedWords++;
+            }
+        }
+
+        if (nameWords.length > 0 && matchedWords >= nameWords.length / 2) {
+            score = 30;
+            console.log(`Empfänger-Match (Teil-Name): ${matchedWords}/${nameWords.length} Worte in "${caseName}"`);
+            return score;
+        }
+    }
+
+    // Strategie 3: E-Mail-Prefix
+    if (recipient.email) {
+        const emailPrefix = recipient.email.split('@')[0].toLowerCase();
+
+        if (emailPrefix.length > 3 && caseNameLower.includes(emailPrefix)) {
+            score = 25;
+            console.log(`Empfänger-Match (E-Mail-Prefix): "${emailPrefix}" in "${caseName}"`);
+            return score;
+        }
+
+        const emailParts = emailPrefix.split(/[._-]/).filter(part => part.length > 2);
+        let matchedParts = 0;
+
+        for (const part of emailParts) {
+            if (caseNameLower.includes(part)) {
+                matchedParts++;
+            }
+        }
+
+        if (emailParts.length > 0 && matchedParts > 0) {
+            score = 20;
+            console.log(`Empfänger-Match (E-Mail-Teile): ${matchedParts}/${emailParts.length} Teile in "${caseName}"`);
+            return score;
+        }
+    }
+
+    return 0;
+}
+
+// Hilfsfunktion: Extrahiert potenzielle Aktenzeichen aus Text mit Regex-Mustern
+function extractFileNumberPatterns(text) {
+    const patterns = [
+        // AZ: / Az.: / Aktenzeichen Präfixe mit verschiedenen Formaten
+        /(?:AZ|Az|Aktenzeichen)[:\.\s]+([0-9]{1,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)/gi,
+        // Bracket-Format: [2024/123] oder [2024-123-ABC]
+        /\[([0-9]{1,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)\]/g,
+        // Jahr/Nummer Format (häufigster Fall): 2024/123 oder 2024-123 etc.
+        /\b([0-9]{2,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)\b/g
+    ];
+
+    const extractedNumbers = new Set();
+
+    for (const pattern of patterns) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            // Match kann in Gruppe 1 sein (bei Präfix-Patterns) oder Gruppe 0 (bei direkten Patterns)
+            const fileNumber = match[1] || match[0];
+            if (fileNumber && fileNumber.trim()) {
+                extractedNumbers.add(fileNumber.trim());
+            }
+        }
+    }
+
+    return Array.from(extractedNumbers);
+}
+
+// Hilfsfunktion: Berechnet Confidence-Prozent basierend auf Score
+function calculateConfidence(score) {
+    // Max Score: 100 (Betreff) + 15 (Empfänger-Bonus 30% von 45) = 115
+    // Mapping Score → Confidence %
+    if (score >= 100) return Math.min(100, Math.round(85 + (score - 100) * 1.5)); // 85-100%
+    if (score >= 50) return Math.round(60 + (score - 50) * 0.5); // 60-85%
+    if (score >= 25) return Math.round(40 + (score - 25) * 0.8); // 40-60%
+    if (score >= 5) return Math.round(20 + (score - 5)); // 20-40%
+    return Math.round(score * 4); // 0-20%
+}
+
+// Hilfsfunktion: Findet Top N Matches mit case-insensitive Suche und Regex-Fallback
+function findBestMatchesInSubject(subject, casesArray, composeDetails, maxResults = 3) {
+    // Performance: toLowerCase nur einmal
+    const subjectLower = subject.toLowerCase();
+    let extractedNumbers = null; // Lazy loading - nur bei Bedarf extrahieren
+
+    // Parse Empfänger (To/CC) aus composeDetails
+    const recipients = composeDetails ? parseRecipientsFromComposeDetails(composeDetails) : [];
+    console.log("Parsed Recipients:", recipients);
+
+    const allMatches = [];
+
+    for (let item of casesArray) {
+        const fileNumber = item.fileNumber;
+        const fileNumberLower = fileNumber.toLowerCase();
+        let score = 0;
+        let method = '';
+        let recipientScore = 0;
+
+        // Exakte Suche (case-insensitive)
+        if (subjectLower.includes(fileNumberLower)) {
+            score = 100;
+            method = 'Exakter Match im Betreff';
+        } else {
+            // Fallback: Regex-Extraktion (lazy - nur einmal ausführen)
+            if (extractedNumbers === null) {
+                extractedNumbers = extractFileNumberPatterns(subject);
+            }
+
+            for (const extracted of extractedNumbers) {
+                if (extracted.toLowerCase() === fileNumberLower) {
+                    score = 50;
+                    method = 'Regex-Extraktion';
+                    break;
+                }
+            }
+        }
+
+        // Reverse-Suche: case.name im Betreff
+        let caseNameScore = 0;
+        if (score === 0) { // Nur wenn kein Aktenzeichen gefunden
+            caseNameScore = matchCaseNameInText(item.name, subject);
+            if (caseNameScore > 0) {
+                score = caseNameScore;
+                method = 'case.name im Betreff';
+            }
+        }
+
+        // Edge-Case: /Name Format im Betreff
+        let slashNameScore = 0;
+        if (score === 0) { // Nur wenn noch kein Match
+            const slashNames = extractSlashNames(subject);
+            if (slashNames.length > 0) {
+                // Prüfe ob einer der slash-Namen in case.name vorkommt
+                for (const name of slashNames) {
+                    if (item.name.toLowerCase().includes(name)) {
+                        slashNameScore = 35;
+                        score = slashNameScore;
+                        method = '/Name Format';
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Empfänger-Matching: Vergleiche mit case.name
+        // Prüfe alle Empfänger, nimm höchsten Score
+        if (recipients.length > 0) {
+            for (const recipient of recipients) {
+                const currentRecipientScore = matchRecipientWithCaseName(recipient, item.name);
+                if (currentRecipientScore > recipientScore) {
+                    recipientScore = currentRecipientScore;
+                }
+            }
+        }
+
+        // Kombiniere Scores:
+        // - Aktenzeichen (100-50): Höchste Priorität
+        // - case.name Match (45-35): Mittlere Priorität
+        // - Empfänger/Slash (40-35): Als Bonus oder Haupt-Score
+        let finalScore = score;
+        let matchType = method;
+
+        if (score >= 50 && recipientScore > 0) {
+            // Aktenzeichen + Empfänger: Bonus
+            finalScore = score + Math.round(recipientScore * 0.3);
+            matchType = method + ' + Empfänger-Bonus';
+        } else if (score > 0 && score < 50 && recipientScore > 0) {
+            // case.name/Regex + Empfänger: Addiere beide
+            finalScore = score + recipientScore;
+            matchType = method + ' + Empfänger';
+        } else if (score === 0 && recipientScore > 0) {
+            // Nur Empfänger: Verwende Empfänger-Score
+            finalScore = recipientScore;
+            matchType = 'Empfänger-Match';
+        }
+
+        // Sammle alle Matches mit Score > 0
+        if (finalScore > 0) {
+            allMatches.push({
+                item: item,
+                score: finalScore,
+                method: matchType,
+                recipientScore: recipientScore,
+                confidence: calculateConfidence(finalScore)
+            });
+        }
+    }
+
+    // Sortiere nach Score (höchster zuerst)
+    allMatches.sort((a, b) => b.score - a.score);
+
+    // Gib Top N zurück
+    const topMatches = allMatches.slice(0, maxResults);
+
+    console.log(`Gefundene Matches: ${allMatches.length}, Top ${maxResults}:`, topMatches);
+
+    return topMatches;
+}
+
+// Funktion: Wählt einen Vorschlag aus und lädt den Case
+async function selectSuggestion(match, loginData, tabId) {
+    const item = match.item;
+
+    console.log("Vorschlag gewählt - ID: " + item.id);
+    console.log("Vorschlag gewählt - Name: " + item.name);
+    console.log("Match Score: " + match.score + ", Confidence: " + match.confidence + "%");
+
+    currentSelectedCase = {
+        id: item.id,
+        name: item.name,
+        fileNumber: item.fileNumber
+    };
+
+    // Lade Case-Details (metadata bereits vorhanden wenn aus displaySuggestions)
+    let caseMetaData;
+    if (match.metadata) {
+        caseMetaData = match.metadata;
+    } else {
+        caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
+    }
+    console.log("caseMetaData:", caseMetaData);
+
+    // Aktualisiere den currentSelectedCase mit dem reason
+    currentSelectedCase.reason = caseMetaData.reason;
+
+    // Ordner des Cases laden
+    caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);
+    displayTreeStructure(caseFolders);
+
+    // Beteiligte anzeigen
+    displayParties(item.id);
+
+    // Label aktualisieren
+    const customizableLabel = document.getElementById("customizableLabel");
+    if (customizableLabel) {
+        customizableLabel.textContent = `${item.fileNumber}: ${item.name} (${caseMetaData.reason || '?'} - ${caseMetaData.lawyer || '?'})`;
+    }
+
+    // Automatisch Speichern nach Senden aktivieren
+    browser.runtime.sendMessage({
+        type: "saveToCaseAfterSend",
+        source: "popup_compose",
+        content: currentSelectedCase.fileNumber,
+        selectedCaseFolderID: selectedCaseFolderID,
+        username: loginData.username,
+        password: loginData.password,
+        serverAddress: loginData.serverAddress,
+        currentSelectedCase: currentSelectedCase
+    });
+
+    // Feedback anzeigen
+    const feedback = document.getElementById("feedback");
+    feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+    feedback.style.color = "green";
+
+    return {
+        id: item.id,
+        name: item.name,
+        fileNumber: item.fileNumber,
+        reason: caseMetaData.reason
+    };
+}
+
+// Funktion: Zeigt Top-N Vorschläge im UI an
+async function displaySuggestions(matches, loginData, tabId) {
+    const suggestionsContainer = document.getElementById("suggestionsContainer");
+    const suggestionsList = document.getElementById("suggestionsList");
+
+    // Clear existing suggestions
+    suggestionsList.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
+        suggestionsContainer.style.display = 'block';
+        suggestionsList.innerHTML = '<div class="suggestionItem noMatch">❌ Keine Vorschläge gefunden (bitte manuell suchen)</div>';
+        return;
+    }
+
+    suggestionsContainer.style.display = 'block';
+
+    // Lade Metadata für alle Vorschläge parallel
+    console.log("Lade Metadata für Top-3 Vorschläge...");
+    const metadataPromises = matches.map(match =>
+        getCaseMetaData(match.item.id, loginData.username, loginData.password, loginData.serverAddress)
+            .catch(err => {
+                console.error(`Fehler beim Laden von Metadata für Case ${match.item.id}:`, err);
+                return { reason: '?', lawyer: '?' };
+            })
+    );
+
+    const metadataResults = await Promise.all(metadataPromises);
+
+    matches.forEach((match, index) => {
+        const item = match.item;
+        const metadata = metadataResults[index];
+        const div = document.createElement("div");
+        div.className = "suggestionItem";
+
+        // Confidence-Badge mit Farbe
+        let confidenceClass = 'confidence-low';
+        if (match.confidence >= 85) confidenceClass = 'confidence-high';
+        else if (match.confidence >= 60) confidenceClass = 'confidence-medium';
+
+        // Format (zweizeilig):
+        // CaseName (FileNumber)          [XX%]
+        // Reason - Lawyer
+        div.innerHTML = `
+            <span class="caseInfo">
+                <strong>${item.name}</strong> (${item.fileNumber})
+                <span class="caseDetails">${metadata.reason || '?'} - ${metadata.lawyer || '?'}</span>
+            </span>
+            <span class="confidenceBadge ${confidenceClass}">${match.confidence}%</span>
+        `;
+
+        // Speichere metadata im match-Objekt für später
+        match.metadata = metadata;
+
+        // Click-Handler
+        div.addEventListener("click", async function() {
+            // Entferne vorherige Selektion
+            document.querySelectorAll(".suggestionItem").forEach(el => el.classList.remove("selected"));
+            // Markiere als ausgewählt
+            div.classList.add("selected");
+
+            // Lade Case (metadata bereits vorhanden)
+            await selectSuggestion(match, loginData, tabId);
+        });
+
+        suggestionsList.appendChild(div);
+    });
+
+    // Auto-select first suggestion if confidence >= 85%
+    if (matches.length > 0 && matches[0].confidence >= 85) {
+        console.log("Auto-selecting top suggestion (confidence >= 85%)");
+        setTimeout(() => {
+            suggestionsList.firstChild.click();
+        }, 100);
+    }
+}
+
 // Funktion zum Auslesen des Betreffs im Compose-Fenster und Suche nach einem Aktenzeichen
 async function findFileNumberInComposeMessage() {
     try {
@@ -991,74 +1460,97 @@ async function findFileNumberInComposeMessage() {
             return null;
         }
         
-        // Durch alle Cases iterieren und prüfen, ob das Aktenzeichen im Betreff vorkommt
-        for (let item of casesArray) {
-            if (subject.includes(item.fileNumber)) {
-                console.log("Aktenzeichen im Betreff gefunden:", item.fileNumber);
-                
-                // Case-Informationen speichern
-                currentSelectedCase = {
-                    id: item.id,
-                    name: item.name,
-                    fileNumber: item.fileNumber
-                };
-                
-                console.log("Matching ID:", item.id);
-                console.log("Matching Name:", item.name);
-                
-                // Weitere Metadaten und Ordner des Cases laden
-                const caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
-                console.log("caseMetaData:", caseMetaData);
-                
-                // Aktualisiere den currentSelectedCase mit dem reason
-                currentSelectedCase.reason = caseMetaData.reason;
-                
-                // Ordner des Cases laden
-                caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);
-                displayTreeStructure(caseFolders);
-                
-                // UI-Elemente aktualisieren
-                const customizableLabel = document.getElementById("customizableLabel");
-                const labelText = `${item.fileNumber}: ${item.name}${caseMetaData.reason ? ` - ${caseMetaData.reason}` : ''}`;
-                customizableLabel.textContent = labelText;
-                
-                // Betreff aktualisieren, aber nur wenn die Aktenzeichen-Nummer nicht bereits im Betreff enthalten ist
-                // (Wir haben bereits oben geprüft, dass die Nummer im Betreff ist, daher aktualisieren wir hier nicht)
-                
-                // Beteiligte anzeigen
-                displayParties(item.id);
-                
-                // Automatisch Speichern nach Senden aktivieren
-                browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-                    browser.runtime.sendMessage({
-                        type: "saveToCaseAfterSend",
-                        source: "popup_compose",
-                        content: currentSelectedCase.fileNumber,
-                        selectedCaseFolderID: selectedCaseFolderID,
-                        username: result.username,
-                        password: result.password,
-                        serverAddress: result.serverAddress,
-                        currentSelectedCase: currentSelectedCase
-                    });
-                    
-                    // Feedback anzeigen
-                    const feedback = document.getElementById("feedback");
-                    feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
-                    feedback.style.color = "green";
-                });
-                
-                return {
-                    id: item.id,
-                    name: item.name,
-                    fileNumber: item.fileNumber,
-                    reason: caseMetaData.reason
-                };
-            }
+        // Verwende neue Matching-Funktion für Top 3 Vorschläge
+        const topMatches = findBestMatchesInSubject(subject, casesArray, composeDetails, 3);
+
+        // Zeige Vorschläge im UI
+        await displaySuggestions(topMatches, loginData, tabId);
+
+        // Gib Top-Match zurück (für Kompatibilität)
+        if (topMatches.length > 0) {
+            return {
+                id: topMatches[0].item.id,
+                name: topMatches[0].item.name,
+                fileNumber: topMatches[0].item.fileNumber
+            };
         }
-        
+
+        console.log("Keine Übereinstimmung gefunden");
+        return null;
+
+        // LEGACY CODE entfernt - wird nicht mehr verwendet
+        /*
+
+        if (matchResult) {
+            const item = matchResult.item;
+
+            console.log("Aktenzeichen im Betreff gefunden:", item.fileNumber);
+            console.log("Match Score:", matchResult.score);
+            console.log("Match Methode:", matchResult.method);
+
+            // Case-Informationen speichern
+            currentSelectedCase = {
+                id: item.id,
+                name: item.name,
+                fileNumber: item.fileNumber
+            };
+
+            console.log("Matching ID:", item.id);
+            console.log("Matching Name:", item.name);
+
+            // Weitere Metadaten und Ordner des Cases laden
+            const caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
+            console.log("caseMetaData:", caseMetaData);
+
+            // Aktualisiere den currentSelectedCase mit dem reason
+            currentSelectedCase.reason = caseMetaData.reason;
+
+            // Ordner des Cases laden
+            caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);
+            displayTreeStructure(caseFolders);
+
+            // UI-Elemente aktualisieren
+            const customizableLabel = document.getElementById("customizableLabel");
+            const labelText = `${item.fileNumber}: ${item.name}${caseMetaData.reason ? ` - ${caseMetaData.reason}` : ''}`;
+            customizableLabel.textContent = labelText;
+
+            // Betreff aktualisieren, aber nur wenn die Aktenzeichen-Nummer nicht bereits im Betreff enthalten ist
+            // (Wir haben bereits oben geprüft, dass die Nummer im Betreff ist, daher aktualisieren wir hier nicht)
+
+            // Beteiligte anzeigen
+            displayParties(item.id);
+
+            // Automatisch Speichern nach Senden aktivieren
+            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
+                browser.runtime.sendMessage({
+                    type: "saveToCaseAfterSend",
+                    source: "popup_compose",
+                    content: currentSelectedCase.fileNumber,
+                    selectedCaseFolderID: selectedCaseFolderID,
+                    username: result.username,
+                    password: result.password,
+                    serverAddress: result.serverAddress,
+                    currentSelectedCase: currentSelectedCase
+                });
+
+                // Feedback anzeigen
+                const feedback = document.getElementById("feedback");
+                feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+                feedback.style.color = "green";
+            });
+
+            return {
+                id: item.id,
+                name: item.name,
+                fileNumber: item.fileNumber,
+                reason: caseMetaData.reason
+            };
+        }
+
         // Wenn kein Aktenzeichen gefunden wurde
         console.log("Kein Aktenzeichen im Betreff gefunden");
         return null;
+        */
     } catch (error) {
         console.error("Fehler bei der Suche nach Aktenzeichen:", error);
         return null;

@@ -54,9 +54,10 @@ console.log('popup.js loaded, AttachmentImageProcessor available:', !!window.Att
 
 // Event Listener für Buttons
 document.addEventListener("DOMContentLoaded", async function() {
-    const recommendCaseButton = document.getElementById("recommendCaseButton"); 
+    const recommendCaseButton = document.getElementById("recommendCaseButton");
+    const saveOnlyMessageButton = document.getElementById("saveOnlyMessageButton");
     const feedback = document.getElementById("feedback");
-    const customizableLabel = document.getElementById("customizableLabel"); 
+    const customizableLabel = document.getElementById("customizableLabel");
     const updateDataButton = document.getElementById("updateDataButton");
     const saveAttachmentsButton = document.getElementById("saveAttachmentsButton");
     const progressBar = document.getElementById("progressBar");
@@ -88,7 +89,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     // Code für den recommendCaseButton
-    if (recommendCaseButton && customizableLabel) {
+    if (recommendCaseButton) {
         recommendCaseButton.addEventListener("click", function() {
             
             if (!currentSelectedCase) {
@@ -120,7 +121,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     
 
     // Code für den saveOnlyMessageButton
-    if (saveOnlyMessageButton && customizableLabel) {
+    if (saveOnlyMessageButton) {
         saveOnlyMessageButton.addEventListener("click", function() {
             
             if (!currentSelectedCase) {
@@ -151,7 +152,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     // Event Listener für den 2. "Nur Anhänge speichern" Button
-    if (saveAttachmentsButton && customizableLabel) {
+    if (saveAttachmentsButton) {
         saveAttachmentsButton.addEventListener("click", async function() {
             
             const feedback = document.getElementById("feedback");
@@ -382,51 +383,542 @@ browser.runtime.onMessage.addListener((message) => {
 });
 
 
+// Hilfsfunktion: Extrahiert Absender-Name und E-Mail aus From-Header
+function parseSenderFromHeader(rawMessage) {
+    const sender = {
+        name: '',
+        email: '',
+        lastName: ''
+    };
+
+    try {
+        // Suche From-Header im ersten Teil der Nachricht
+        const fromMatch = rawMessage.substring(0, 5000).match(/^From:\s*(.*)$/im);
+
+        if (fromMatch) {
+            const fromValue = fromMatch[1].trim();
+
+            // Format 1: "Max Mustermann" <max@example.com>
+            const nameEmailMatch = fromValue.match(/^"?([^"<]+)"?\s*<([^>]+)>/);
+            if (nameEmailMatch) {
+                sender.name = nameEmailMatch[1].trim();
+                sender.email = nameEmailMatch[2].trim();
+
+                // Extrahiere Nachnamen (letztes Wort des Namens)
+                const nameParts = sender.name.split(/\s+/);
+                sender.lastName = nameParts[nameParts.length - 1];
+            } else {
+                // Format 2: max@example.com (nur E-Mail)
+                const emailOnlyMatch = fromValue.match(/([^\s<>]+@[^\s<>]+)/);
+                if (emailOnlyMatch) {
+                    sender.email = emailOnlyMatch[1].trim();
+
+                    // Versuche Namen aus E-Mail zu extrahieren (vor @)
+                    const emailPrefix = sender.email.split('@')[0];
+                    // Ersetze Punkte/Unterstriche durch Leerzeichen
+                    sender.name = emailPrefix.replace(/[._-]/g, ' ');
+                    sender.lastName = sender.name.split(/\s+/).pop();
+                }
+            }
+        }
+    } catch (error) {
+        console.log("Fehler beim Parsen des From-Headers:", error);
+    }
+
+    return sender;
+}
+
+// Hilfsfunktion: Extrahiert Namen nach Slash (Edge-Case: /Name Format)
+function extractSlashNames(text) {
+    const slashPattern = /\/([A-Za-zÄÖÜäöüß]{3,})/g;
+    const names = new Set();
+
+    let match;
+    while ((match = slashPattern.exec(text)) !== null) {
+        names.add(match[1].toLowerCase());
+    }
+
+    return Array.from(names);
+}
+
+// Hilfsfunktion: Reverse-Suche - Findet Worte aus case.name im Text
+function matchCaseNameInText(caseName, emailText) {
+    if (!caseName || !emailText) return 0;
+
+    // Extrahiere bedeutungsvolle Worte aus case.name (>3 Zeichen, keine Stopwords)
+    const stopwords = ['und', 'oder', 'der', 'die', 'das', 'gegen', 'für', 'mit', 'von', 'bei'];
+    const caseWords = caseName
+        .split(/[\s\-_,;.()]+/)
+        .filter(word => word.length > 3 && !stopwords.includes(word.toLowerCase()))
+        .map(word => word.toLowerCase());
+
+    if (caseWords.length === 0) return 0;
+
+    const emailTextLower = emailText.toLowerCase();
+    let matchedWords = 0;
+
+    for (const word of caseWords) {
+        if (emailTextLower.includes(word)) {
+            matchedWords++;
+        }
+    }
+
+    const matchRatio = matchedWords / caseWords.length;
+
+    // Scoring basierend auf Match-Ratio
+    if (matchRatio >= 1.0) {
+        return 45; // Alle Worte gefunden
+    } else if (matchRatio >= 0.5) {
+        return 35; // Mindestens 50% der Worte
+    } else if (matchRatio >= 0.3) {
+        return 25; // 30-50% der Worte
+    }
+
+    return 0;
+}
+
+// Hilfsfunktion: Vergleicht Absender-Name mit case.name (Fuzzy-Matching)
+function matchSenderWithCaseName(sender, caseName) {
+    if (!sender.name && !sender.email) return 0;
+    if (!caseName) return 0;
+
+    const caseNameLower = caseName.toLowerCase();
+    let score = 0;
+
+    // Strategie 1: Nachname im case.name enthalten (höchste Priorität)
+    if (sender.lastName && sender.lastName.length > 2) {
+        const lastNameLower = sender.lastName.toLowerCase();
+        if (caseNameLower.includes(lastNameLower)) {
+            score = 40; // Starker Match
+            console.log(`Absender-Match (Nachname): "${sender.lastName}" in "${caseName}"`);
+            return score;
+        }
+    }
+
+    // Strategie 2: Vollständiger Name im case.name
+    if (sender.name && sender.name.length > 3) {
+        const nameLower = sender.name.toLowerCase();
+
+        // Prüfe ob kompletter Name vorkommt
+        if (caseNameLower.includes(nameLower)) {
+            score = 45; // Sehr starker Match
+            console.log(`Absender-Match (Voller Name): "${sender.name}" in "${caseName}"`);
+            return score;
+        }
+
+        // Prüfe einzelne Worte des Namens (mind. 3 Zeichen)
+        const nameWords = sender.name.split(/\s+/).filter(word => word.length > 2);
+        let matchedWords = 0;
+
+        for (const word of nameWords) {
+            if (caseNameLower.includes(word.toLowerCase())) {
+                matchedWords++;
+            }
+        }
+
+        // Wenn mindestens 50% der Worte matchen
+        if (nameWords.length > 0 && matchedWords >= nameWords.length / 2) {
+            score = 30; // Mittlerer Match
+            console.log(`Absender-Match (Teil-Name): ${matchedWords}/${nameWords.length} Worte in "${caseName}"`);
+            return score;
+        }
+    }
+
+    // Strategie 3: E-Mail-Prefix im case.name (z.B. "max.mustermann")
+    if (sender.email) {
+        const emailPrefix = sender.email.split('@')[0].toLowerCase();
+
+        // Prüfe ob E-Mail-Prefix vorkommt (mind. 4 Zeichen)
+        if (emailPrefix.length > 3 && caseNameLower.includes(emailPrefix)) {
+            score = 25; // Schwacher Match
+            console.log(`Absender-Match (E-Mail-Prefix): "${emailPrefix}" in "${caseName}"`);
+            return score;
+        }
+
+        // Prüfe Teile des E-Mail-Prefix (durch . oder _ getrennt)
+        const emailParts = emailPrefix.split(/[._-]/).filter(part => part.length > 2);
+        let matchedParts = 0;
+
+        for (const part of emailParts) {
+            if (caseNameLower.includes(part)) {
+                matchedParts++;
+            }
+        }
+
+        if (emailParts.length > 0 && matchedParts > 0) {
+            score = 20; // Sehr schwacher Match
+            console.log(`Absender-Match (E-Mail-Teile): ${matchedParts}/${emailParts.length} Teile in "${caseName}"`);
+            return score;
+        }
+    }
+
+    return 0; // Kein Match
+}
+
+// Hilfsfunktion: Extrahiert potenzielle Aktenzeichen aus Text mit Regex-Mustern
+function extractFileNumberPatterns(text) {
+    const patterns = [
+        // AZ: / Az.: / Aktenzeichen Präfixe mit verschiedenen Formaten
+        /(?:AZ|Az|Aktenzeichen)[:\.\s]+([0-9]{1,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)/gi,
+        // Bracket-Format: [2024/123] oder [2024-123-ABC]
+        /\[([0-9]{1,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)\]/g,
+        // Jahr/Nummer Format (häufigster Fall): 2024/123 oder 2024-123 etc.
+        /\b([0-9]{2,4}[\/\-_][0-9]{1,6}(?:[\/\-_][A-Za-z0-9]+)?)\b/g
+    ];
+
+    const extractedNumbers = new Set();
+
+    for (const pattern of patterns) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            // Match kann in Gruppe 1 sein (bei Präfix-Patterns) oder Gruppe 0 (bei direkten Patterns)
+            const fileNumber = match[1] || match[0];
+            if (fileNumber && fileNumber.trim()) {
+                extractedNumbers.add(fileNumber.trim());
+            }
+        }
+    }
+
+    return Array.from(extractedNumbers);
+}
+
+// Hilfsfunktion: Parst E-Mail in strukturierte Teile für Priorisierung
+function parseEmailStructure(rawMessage) {
+    const structure = {
+        subject: '',
+        subjectLower: '',
+        headers: '',
+        headersLower: '',
+        bodyStart: '',
+        bodyStartLower: '',
+        bodyRest: '',
+        bodyRestLower: ''
+    };
+
+    try {
+        // Performance: Begrenze auf erste 10000 Zeichen (schließt Anhänge aus)
+        // Aktenzeichen stehen praktisch immer im Header oder Body-Anfang
+        const searchableContent = rawMessage.substring(0, 10000);
+
+        // Suche nach Betreff-Header
+        const subjectMatch = searchableContent.match(/^Subject:\s*(.*)$/im);
+        if (subjectMatch) {
+            structure.subject = subjectMatch[1];
+            structure.subjectLower = subjectMatch[1].toLowerCase();
+        }
+
+        // Extrahiere Header-Bereich (bis zur ersten Leerzeile)
+        const headerEndIndex = searchableContent.indexOf('\n\n');
+        if (headerEndIndex > -1) {
+            structure.headers = searchableContent.substring(0, headerEndIndex);
+            structure.headersLower = structure.headers.toLowerCase();
+
+            // Body nach den Headers (aus searchableContent)
+            const bodyText = searchableContent.substring(headerEndIndex + 2);
+
+            // Erste 500 Zeichen des Body (höhere Priorität)
+            structure.bodyStart = bodyText.substring(0, 500);
+            structure.bodyStartLower = structure.bodyStart.toLowerCase();
+
+            // Rest des Body (aus searchableContent, nicht kompletter rawMessage!)
+            structure.bodyRest = bodyText.substring(500);
+            structure.bodyRestLower = structure.bodyRest.toLowerCase();
+        } else {
+            // Fallback: searchableContent als Body behandeln
+            structure.bodyRest = searchableContent;
+            structure.bodyRestLower = searchableContent.toLowerCase();
+        }
+    } catch (error) {
+        console.log("Fehler beim Parsen der E-Mail-Struktur:", error);
+        // Fallback: Erste 10000 Zeichen als bodyRest
+        const searchableContent = rawMessage.substring(0, 10000);
+        structure.bodyRest = searchableContent;
+        structure.bodyRestLower = searchableContent.toLowerCase();
+    }
+
+    return structure;
+}
+
+// Hilfsfunktion: Berechnet Confidence-Prozent basierend auf Score
+function calculateConfidence(score) {
+    // Max Score: 100 (Betreff) + 15 (Absender-Bonus 30% von 45) = 115
+    // Mapping Score → Confidence %
+    if (score >= 100) return Math.min(100, Math.round(85 + (score - 100) * 1.5)); // 85-100%
+    if (score >= 50) return Math.round(60 + (score - 50) * 0.5); // 60-85%
+    if (score >= 25) return Math.round(40 + (score - 25) * 0.8); // 40-60%
+    if (score >= 5) return Math.round(20 + (score - 5)); // 20-40%
+    return Math.round(score * 4); // 0-20%
+}
+
+// Hilfsfunktion: Findet Top N Matches mit Scoring nach Fundort
+function findBestMatchingCases(rawMessage, casesArray, maxResults = 3) {
+    const emailStructure = parseEmailStructure(rawMessage);
+
+    // Performance: Regex nur auf relevante Teile (Subject + Headers), nicht auf Body mit Anhängen
+    const regexSearchContent = emailStructure.subject + '\n' + emailStructure.headers;
+    let extractedNumbers = null; // Lazy loading - nur bei Bedarf extrahieren
+
+    // Parse Absender einmal (Performance)
+    const sender = parseSenderFromHeader(rawMessage);
+    console.log("Parsed Sender:", sender);
+
+    const allMatches = [];
+
+    for (let item of casesArray) {
+        const fileNumber = item.fileNumber;
+        const fileNumberLower = fileNumber.toLowerCase();
+        let score = 0;
+        let foundLocation = '';
+        let senderScore = 0;
+
+        // Scoring nach Fundort (nutze vorberechnete toLowerCase-Varianten)
+        if (emailStructure.subjectLower.includes(fileNumberLower)) {
+            score = 100;
+            foundLocation = 'Betreff';
+        } else if (emailStructure.headersLower.includes(fileNumberLower)) {
+            score = 50;
+            foundLocation = 'Header';
+        } else if (emailStructure.bodyStartLower.includes(fileNumberLower)) {
+            score = 25;
+            foundLocation = 'Body (Anfang)';
+        } else if (emailStructure.bodyRestLower.includes(fileNumberLower)) {
+            score = 10;
+            foundLocation = 'Body';
+        }
+
+        // Wenn kein exakter Match, versuche Regex-Extraktion (lazy)
+        if (score === 0) {
+            // Extrahiere nur einmal, beim ersten Mal wenn benötigt
+            if (extractedNumbers === null) {
+                extractedNumbers = extractFileNumberPatterns(regexSearchContent);
+            }
+
+            for (const extracted of extractedNumbers) {
+                // Case-insensitive Vergleich
+                if (extracted.toLowerCase() === fileNumberLower) {
+                    // Bonus für Regex-Match, aber niedriger als exakte Matches
+                    score = 5;
+                    foundLocation = 'Regex-Extraktion';
+                    break;
+                }
+            }
+        }
+
+        // Reverse-Suche: case.name im E-Mail-Text (Betreff + Headers)
+        let caseNameScore = 0;
+        if (score === 0) { // Nur wenn kein Aktenzeichen gefunden
+            caseNameScore = matchCaseNameInText(item.name, regexSearchContent);
+            if (caseNameScore > 0) {
+                score = caseNameScore;
+                foundLocation = 'case.name im Text';
+            }
+        }
+
+        // Edge-Case: /Name Format im Betreff
+        let slashNameScore = 0;
+        if (score === 0) { // Nur wenn noch kein Match
+            const slashNames = extractSlashNames(emailStructure.subject);
+            if (slashNames.length > 0) {
+                // Prüfe ob einer der slash-Namen in case.name vorkommt
+                for (const name of slashNames) {
+                    if (item.name.toLowerCase().includes(name)) {
+                        slashNameScore = 35;
+                        score = slashNameScore;
+                        foundLocation = '/Name Format';
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Absender-Matching: Vergleiche mit case.name
+        senderScore = matchSenderWithCaseName(sender, item.name);
+
+        // Kombiniere Scores:
+        // - Aktenzeichen (100-50): Höchste Priorität
+        // - case.name Match (45-35): Mittlere Priorität
+        // - Absender/Slash (40-35): Als Bonus oder Haupt-Score
+        let finalScore = score;
+        let matchType = foundLocation;
+
+        if (score >= 50 && senderScore > 0) {
+            // Aktenzeichen + Absender: Bonus
+            finalScore = score + Math.round(senderScore * 0.3);
+            matchType = foundLocation + ' + Absender-Bonus';
+        } else if (score > 0 && score < 50 && senderScore > 0) {
+            // case.name/Regex + Absender: Addiere beide
+            finalScore = score + senderScore;
+            matchType = foundLocation + ' + Absender';
+        } else if (score === 0 && senderScore > 0) {
+            // Nur Absender: Verwende Absender-Score
+            finalScore = senderScore;
+            matchType = 'Absender-Match';
+        }
+
+        // Sammle alle Matches mit Score > 0
+        if (finalScore > 0) {
+            allMatches.push({
+                item: item,
+                score: finalScore,
+                location: matchType,
+                senderScore: senderScore,
+                confidence: calculateConfidence(finalScore)
+            });
+        }
+    }
+
+    // Sortiere nach Score (höchster zuerst)
+    allMatches.sort((a, b) => b.score - a.score);
+
+    // Gib Top N zurück
+    const topMatches = allMatches.slice(0, maxResults);
+
+    console.log(`Gefundene Matches: ${allMatches.length}, Top ${maxResults}:`, topMatches);
+
+    return topMatches;
+}
+
+// Funktion: Wählt einen Vorschlag aus und lädt den Case
+async function selectSuggestion(match, loginData) {
+    const item = match.item;
+
+    console.log("Vorschlag gewählt - ID: " + item.id);
+    console.log("Vorschlag gewählt - Name: " + item.name);
+    console.log("Match Score: " + match.score + ", Confidence: " + match.confidence + "%");
+
+    currentSelectedCase = {
+        id: item.id,
+        name: item.name,
+        fileNumber: item.fileNumber
+    };
+
+    // Lade Case-Details
+    caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
+    console.log("caseMetaData: " + caseMetaData.lawyer + " " + caseMetaData.reason);
+
+    caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);
+    console.log("caseFolders: " + caseFolders);
+
+    displayTreeStructure(caseFolders);
+
+    // Label aktualisieren
+    const customizableLabel = document.getElementById("customizableLabel");
+    if (customizableLabel) {
+        customizableLabel.textContent = `${item.fileNumber}: ${item.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+    }
+
+    return {
+        id: item.id,
+        name: item.name
+    };
+}
+
+// Funktion: Zeigt Top-N Vorschläge im UI an
+async function displaySuggestions(matches, loginData) {
+    const suggestionsContainer = document.getElementById("suggestionsContainer");
+    const suggestionsList = document.getElementById("suggestionsList");
+
+    // Clear existing suggestions
+    suggestionsList.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
+        suggestionsContainer.style.display = 'block';
+        suggestionsList.innerHTML = '<div class="suggestionItem noMatch">❌ Keine Vorschläge gefunden (bitte manuell suchen)</div>';
+        return;
+    }
+
+    suggestionsContainer.style.display = 'block';
+
+    // Lade Metadata für alle Vorschläge parallel
+    console.log("Lade Metadata für Top-3 Vorschläge...");
+    const metadataPromises = matches.map(match =>
+        getCaseMetaData(match.item.id, loginData.username, loginData.password, loginData.serverAddress)
+            .catch(err => {
+                console.error(`Fehler beim Laden von Metadata für Case ${match.item.id}:`, err);
+                return { reason: '?', lawyer: '?' };
+            })
+    );
+
+    const metadataResults = await Promise.all(metadataPromises);
+
+    matches.forEach((match, index) => {
+        const item = match.item;
+        const metadata = metadataResults[index];
+        const div = document.createElement("div");
+        div.className = "suggestionItem";
+
+        // Confidence-Badge mit Farbe
+        let confidenceClass = 'confidence-low';
+        if (match.confidence >= 85) confidenceClass = 'confidence-high';
+        else if (match.confidence >= 60) confidenceClass = 'confidence-medium';
+
+        // Format (zweizeilig):
+        // CaseName (FileNumber)          [XX%]
+        // Reason - Lawyer
+        div.innerHTML = `
+            <span class="caseInfo">
+                <strong>${item.name}</strong> (${item.fileNumber})
+                <span class="caseDetails">${metadata.reason || '?'} - ${metadata.lawyer || '?'}</span>
+            </span>
+            <span class="confidenceBadge ${confidenceClass}">${match.confidence}%</span>
+        `;
+
+        // Speichere metadata im match-Objekt für später
+        match.metadata = metadata;
+
+        // Click-Handler
+        div.addEventListener("click", async function() {
+            // Entferne vorherige Selektion
+            document.querySelectorAll(".suggestionItem").forEach(el => el.classList.remove("selected"));
+            // Markiere als ausgewählt
+            div.classList.add("selected");
+
+            // Lade Case (metadata bereits vorhanden)
+            await selectSuggestion(match, loginData);
+        });
+
+        suggestionsList.appendChild(div);
+    });
+
+    // Auto-select first suggestion if confidence >= 85%
+    if (matches.length > 0 && matches[0].confidence >= 85) {
+        console.log("Auto-selecting top suggestion (confidence >= 85%)");
+        setTimeout(() => {
+            suggestionsList.firstChild.click();
+        }, 100);
+    }
+}
+
 // Funktion zum Suchen des Aktenzeichens in der Nachricht
-// und Rückgabe des gefundenen Falls
+// und Anzeige von Vorschlägen
 async function findFileNumberInRawMessage() {
     // Nachrichteninhalt abrufen
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
-  
+
     let rawMessage = await messenger.messages.getRaw(messageData.id);
-    
+
     // die gespeicherte Daten aus browser.storage.local abrufen
     let storedData = await browser.storage.local.get("cases");
     let loginData = await browser.storage.local.get(["username", "password", "serverAddress"]);
-    
-    // die gespeicherten Daten in einem Array namens 'cases' 
+
+    // die gespeicherten Daten in einem Array namens 'cases'
     let casesArray = storedData.cases;
-  
-    for (let item of casesArray) {
-      if (rawMessage.includes(item.fileNumber)) {
-        
-        currentSelectedCase = {
-            id: item.id,
-            name: item.name,
-            fileNumber: item.fileNumber
-          };
 
+    // Verwende neue Matching-Funktion für Top 3 Vorschläge
+    const topMatches = findBestMatchingCases(rawMessage, casesArray, 3);
 
-        console.log("Matching ID: " + item.id);
-        console.log("Matching Name: " + item.name);
-            
-        caseMetaData = await getCaseMetaData(item.id, loginData.username, loginData.password, loginData.serverAddress);
-        console.log("caseMetaData: " + caseMetaData.lawyer + " " + caseMetaData.reason);
-        caseFolders = await getCaseFolders(item.id, loginData.username, loginData.password, loginData.serverAddress);        
-        console.log("caseFolders: " + caseFolders);
-        displayTreeStructure(caseFolders);
+    // Zeige Vorschläge im UI
+    displaySuggestions(topMatches, loginData);
 
-        // Aktualisieren des Label "Recommended Case" mit dem gefundenen Aktenzeichen
-        const customizableLabel = document.getElementById("customizableLabel");
-        customizableLabel.textContent = item.name + ": " + item.fileNumber + " (" + caseMetaData.reason + " - " + caseMetaData.lawyer + ")";
-
+    // Gib Top-Match zurück (für Kompatibilität)
+    if (topMatches.length > 0) {
         return {
-          id: item.id,
-          name: item.name
+            id: topMatches[0].item.id,
+            name: topMatches[0].item.name
         };
-      }
     }
+
     console.log("Keine Übereinstimmung gefunden");
     return null;
 }
@@ -625,7 +1117,6 @@ async function searchCases(query) {
             document.getElementById("resultsList").style.display = "none";
 
             // Label aktualisieren
-            const customizableLabel = document.getElementById("customizableLabel");
             customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
         });
     });

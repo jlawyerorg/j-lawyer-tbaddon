@@ -69,11 +69,118 @@
             font-size: 14px;
         }
 
+        /* Stil für Suggestions Container */
+        #suggestionsContainer {
+            margin: 15px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        #suggestionsContainer h4 {
+            margin: 0 0 10px 0;
+            color: white;
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        #suggestionsList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .suggestionItem {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .suggestionItem:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .suggestionItem.selected {
+            background: #007bff;
+            color: white;
+        }
+
+        .suggestionItem.selected .confidenceBadge {
+            background: white;
+            color: #007bff;
+        }
+
+        .suggestionItem.noMatch {
+            background: #fff3cd;
+            color: #856404;
+            cursor: default;
+            justify-content: center;
+        }
+
+        .suggestionItem.noMatch:hover {
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .caseInfo {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .caseInfo strong {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .caseDetails {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .suggestionItem.selected .caseDetails {
+            color: #e0e0e0;
+        }
+
+        .confidenceBadge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .confidence-high {
+            background: #28a745;
+            color: white;
+        }
+
+        .confidence-medium {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .confidence-low {
+            background: #dc3545;
+            color: white;
+        }
+
         /* Stil für die Ergebnisliste */
         #resultsList {
-            max-height: 170px;  
+            max-height: 170px;
             width: 95%;
-            overflow-y: auto; 
+            overflow-y: auto;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -206,7 +313,17 @@
         <input type="text" id="searchInput" placeholder="Fall suchen...">
         <div id="resultsList"></div>
 
-        <p id="customizableLabel">kein Vorschlag</p>
+        <!-- Automatische Vorschläge -->
+        <div id="suggestionsContainer" style="display: none;">
+            <h4>Automatische Vorschläge (bitte prüfen)</h4>
+            <div id="suggestionsList"></div>
+        </div>
+
+        <!-- Ausgewählte Akte -->
+        <p id="customizableLabel" style="font-weight: bold; margin: 15px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
+
+        <button id="recommendCaseButtonAfterSend" style="background-color: #4CAF50; color: white; padding: 8px 15px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer; display: block; margin-left: auto; margin-right: auto;">Nach Senden speichern</button>
+
         <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
         <p id="feedback"></p>
         <div id="buttonContainer">
