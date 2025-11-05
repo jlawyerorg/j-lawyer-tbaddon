@@ -49,30 +49,52 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     // Code für den recommendCaseButtonAfterSend
     if (recommendCaseButtonAfterSend && customizableLabel) {
-        recommendCaseButtonAfterSend.addEventListener("click", function() {
-            
+        recommendCaseButtonAfterSend.addEventListener("click", async function() {
+
             if (!currentSelectedCase) {
                 feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
                 feedback.style.color = "red";
                 return;
             }
-    
-            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-                browser.runtime.sendMessage({
-                    type: "saveToCaseAfterSend",
-                    source: "popup_compose",
-                    content: currentSelectedCase.fileNumber, 
-                    selectedCaseFolderID: selectedCaseFolderID,
-                    username: result.username,
-                    password: result.password,
-                    serverAddress: result.serverAddress,
-                    currentSelectedCase: currentSelectedCase
-                });
-    
-                feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
-                feedback.style.color = "green";
+
+            // Prüfe, ob Umbenennen erlaubt ist
+            const settings = await browser.storage.local.get(["username", "password", "serverAddress", "allowRename"]);
+            let customFilename = null;
+
+            if (settings.allowRename) {
+                // Zeige Rename-Dialog
+                const tabs = await browser.tabs.query({active: true, currentWindow: true});
+                if (tabs.length > 0) {
+                    const tabId = tabs[0].id;
+                    const composeDetails = await browser.compose.getComposeDetails(tabId);
+                    const originalSubject = composeDetails.subject || "nachricht";
+                    const originalFilename = `${originalSubject}.eml`;
+
+                    customFilename = await showRenameDialog(originalFilename);
+
+                    if (customFilename === null) {
+                        // Benutzer hat abgebrochen
+                        feedback.textContent = "Speichern abgebrochen";
+                        feedback.style.color = "orange";
+                        return;
+                    }
+                }
+            }
+
+            browser.runtime.sendMessage({
+                type: "saveToCaseAfterSend",
+                source: "popup_compose",
+                content: currentSelectedCase.fileNumber,
+                selectedCaseFolderID: selectedCaseFolderID,
+                username: settings.username,
+                password: settings.password,
+                serverAddress: settings.serverAddress,
+                currentSelectedCase: currentSelectedCase,
+                customFilename: customFilename
             });
-            
+
+            feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+            feedback.style.color = "green";
         });
     }
 
@@ -1566,4 +1588,70 @@ async function logActivity(action, details) {
     activityLog.push(logEntry);
 
     await browser.storage.local.set({ activityLog });
+}
+
+// Funktion zum Anzeigen des Rename-Dialogs
+async function showRenameDialog(originalFilename) {
+    return new Promise((resolve) => {
+        const dialog = document.getElementById("renameDialog");
+        const filenameInput = document.getElementById("filenameInput");
+        const filenameSuggestion = document.getElementById("filenameSuggestion");
+        const useSuggestionBtn = document.getElementById("useSuggestionBtn");
+        const cancelRenameBtn = document.getElementById("cancelRenameBtn");
+        const confirmRenameBtn = document.getElementById("confirmRenameBtn");
+
+        // Zeitstempel-basierter Vorschlag
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+
+        // Dateiendung beibehalten
+        const lastDotIndex = originalFilename.lastIndexOf('.');
+        const extension = lastDotIndex > 0 ? originalFilename.substring(lastDotIndex) : '';
+        const nameWithoutExt = lastDotIndex > 0 ? originalFilename.substring(0, lastDotIndex) : originalFilename;
+
+        const suggestedFilename = `${timestamp}_${nameWithoutExt}${extension}`;
+
+        // UI vorbereiten
+        filenameInput.value = originalFilename;
+        filenameSuggestion.textContent = suggestedFilename;
+        dialog.style.display = "flex";
+        filenameInput.focus();
+        filenameInput.select();
+
+        // Event Listener (einmalig)
+        const cleanup = () => {
+            dialog.style.display = "none";
+            useSuggestionBtn.replaceWith(useSuggestionBtn.cloneNode(true));
+            cancelRenameBtn.replaceWith(cancelRenameBtn.cloneNode(true));
+            confirmRenameBtn.replaceWith(confirmRenameBtn.cloneNode(true));
+        };
+
+        // Vorschlag verwenden
+        document.getElementById("useSuggestionBtn").addEventListener("click", function() {
+            cleanup();
+            resolve(suggestedFilename);
+        }, { once: true });
+
+        // Abbrechen
+        document.getElementById("cancelRenameBtn").addEventListener("click", function() {
+            cleanup();
+            resolve(null); // null = abgebrochen
+        }, { once: true });
+
+        // Umbenennen bestätigen
+        document.getElementById("confirmRenameBtn").addEventListener("click", function() {
+            const newFilename = filenameInput.value.trim();
+            cleanup();
+            resolve(newFilename || originalFilename);
+        }, { once: true });
+
+        // Enter-Taste
+        filenameInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                const newFilename = filenameInput.value.trim();
+                cleanup();
+                resolve(newFilename || originalFilename);
+            }
+        }, { once: true });
+    });
 }

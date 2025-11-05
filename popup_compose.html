@@ -302,6 +302,94 @@
         #updateDataButton:hover, #settingsButton:hover {
             background-color: rgba(0, 0, 0, 0.1);
         }
+
+        /* Rename Dialog Styles */
+        .rename-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .rename-dialog-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+        }
+
+        .rename-dialog-content h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .rename-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filename-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .filename-suggestion {
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .filename-suggestion span {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .rename-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
     </style>
 
 </head>
@@ -344,6 +432,25 @@
     <div id="tagsContainer">
         <p>Etiketten:</p>
         <select id="tagsSelect" multiple size="15" style="width: 100%;"></select>
+    </div>
+
+    <!-- Rename Dialog -->
+    <div id="renameDialog" class="rename-dialog" style="display: none;">
+        <div class="rename-dialog-content">
+            <h3>Datei umbenennen</h3>
+            <div class="rename-form">
+                <label for="filenameInput">Neuer Dateiname:</label>
+                <input type="text" id="filenameInput" class="filename-input" placeholder="Dateiname eingeben">
+                <div class="filename-suggestion">
+                    <small>Vorschlag mit Zeitstempel: <span id="filenameSuggestion"></span></small>
+                </div>
+                <div class="rename-buttons">
+                    <button id="useSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
+                    <button id="cancelRenameBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="confirmRenameBtn" class="btn btn-primary">Umbenennen</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="popup_compose.js"></script>

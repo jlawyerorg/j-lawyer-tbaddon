@@ -45,7 +45,7 @@ async function createComposeMenuItem(opts) {
 // Initial beim Laden der Erweiterung
 createMenuEntries();
 
-async function sendEmailToServer(caseId, username, password, serverAddress) {
+async function sendEmailToServer(caseId, username, password, serverAddress, customFilename = null) {
 
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
@@ -64,8 +64,20 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     console.log("DateString: " + dateString);
 
     // Dateinamen erstellen
-    let fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
-    fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    let fileName;
+    if (customFilename) {
+        // Benutzer hat einen benutzerdefinierten Namen angegeben
+        fileName = customFilename;
+        // Stelle sicher, dass .eml Endung vorhanden ist
+        if (!fileName.toLowerCase().endsWith('.eml')) {
+            fileName += '.eml';
+        }
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    } else {
+        // Automatischer Dateiname
+        fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    }
 
     let fileNamesArray = [];
 
@@ -113,7 +125,12 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+            // Nur Ordner aktualisieren, wenn ein Ordner ausgewählt wurde
+            if (selectedCaseFolderID && selectedCaseFolderID !== null && selectedCaseFolderID !== "null") {
+                await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+            } else {
+                console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
+            }
             await logActivity("sendEmailToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
@@ -149,14 +166,14 @@ async function sendEmailToServer(caseId, username, password, serverAddress) {
     logActivity("sendEmailToServer", { caseId, fileName});
 }
 
-async function sendOnlyMessageToServer(caseId, username, password, serverAddress) {
+async function sendOnlyMessageToServer(caseId, username, password, serverAddress, customFilename = null) {
     console.log("Case ID: " + caseId);
     const url = serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
 
     const messageData = await getDisplayedMessageFromActiveTab();
     console.log("Message Id: " + messageData.id);
 
-   
+
     let rawMessage = await messenger.messages.getRaw(messageData.id, { decrypt: true });
 
     // let message = rawMessage.message;
@@ -181,8 +198,20 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
     console.log("DateString: " + dateString);
 
     // Dateinamen erstellen
-    fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
-    fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    let fileName;
+    if (customFilename) {
+        // Benutzer hat einen benutzerdefinierten Namen angegeben
+        fileName = customFilename;
+        // Stelle sicher, dass .eml Endung vorhanden ist
+        if (!fileName.toLowerCase().endsWith('.eml')) {
+            fileName += '.eml';
+        }
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    } else {
+        // Automatischer Dateiname
+        fileName = dateString + "_" + messageData.author + messageData.subject + ".eml";
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    }
 
     // get documents in case
     let fileNamesArray = [];
@@ -232,7 +261,12 @@ async function sendOnlyMessageToServer(caseId, username, password, serverAddress
             documentUploadedId = data.id;
             console.log("Dokument ID: " + data.id);
 
-            await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+            // Nur Ordner aktualisieren, wenn ein Ordner ausgewählt wurde
+            if (selectedCaseFolderID && selectedCaseFolderID !== null && selectedCaseFolderID !== "null") {
+                await updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+            } else {
+                console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
+            }
             await logActivity("sendOnlyMessageToServer", 'Email gespeichert: ' + fileName);
 
             browser.runtime.sendMessage({ type: "success" });
@@ -427,7 +461,7 @@ async function sendAttachmentsToServer(caseId, username, password, serverAddress
 }
 
 
-async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseFolderIDAfterSend, username, password, serverAddress) {
+async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseFolderIDAfterSend, username, password, serverAddress, customFilename = null) {
     console.log("Es wird versucht, die Email in der Akte zu speichern");
     console.log("selectedCaseFolderIDAfterSend: " + selectedCaseFolderIDAfterSend);
     selectedCaseFolderID = selectedCaseFolderIDAfterSend;
@@ -445,7 +479,7 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseF
     let date = new Date();
 
     let year = date.getFullYear();
-    let month = ("0" + (date.getMonth() + 1)).slice(-2); 
+    let month = ("0" + (date.getMonth() + 1)).slice(-2);
     let day = ("0" + date.getDate()).slice(-2);
     let hours = ("0" + date.getHours()).slice(-2);
     let minutes = ("0" + date.getMinutes()).slice(-2);
@@ -455,8 +489,20 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseF
     console.log(dateString); // Gibt das Datum und die Uhrzeit im Format YYYY-MM-DD_HH-MM aus
 
     // Dateinamen erstellen
-    fileName = dateString + "_" + lastMessageData.messages[0].subject + ".eml";
-    fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    let fileName;
+    if (customFilename) {
+        // Benutzer hat einen benutzerdefinierten Namen angegeben
+        fileName = customFilename;
+        // Stelle sicher, dass .eml Endung vorhanden ist
+        if (!fileName.toLowerCase().endsWith('.eml')) {
+            fileName += '.eml';
+        }
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    } else {
+        // Automatischer Dateiname
+        fileName = dateString + "_" + lastMessageData.messages[0].subject + ".eml";
+        fileName = fileName.replace(/[\/\\:*?"<>|@]/g, '_');
+    }
 
     // den Payload erstellen
     const payload = {
@@ -487,7 +533,12 @@ async function sendEmailToServerAfterSend(caseIdToSaveToAfterSend, selectedCaseF
         documentUploadedId = data.id;
         console.log("Dokument ID: " + data.id);
 
-        updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+        // Nur Ordner aktualisieren, wenn ein Ordner ausgewählt wurde
+        if (selectedCaseFolderID && selectedCaseFolderID !== null && selectedCaseFolderID !== "null") {
+            updateDocumentFolder(username, password, serverAddress, selectedCaseFolderID);
+        } else {
+            console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
+        }
 
         console.log("E-Mail wurde erfolgreich gespeichert");
 
@@ -989,7 +1040,7 @@ browser.runtime.onMessage.addListener((message) => {
             console.log("Die ID des gefundenen Aktenzeichens lautet: " + caseId);
     
             if (caseId) {
-                sendEmailToServer(caseId, result.username, result.password, result.serverAddress);
+                sendEmailToServer(caseId, result.username, result.password, result.serverAddress, message.customFilename);
                 
                 // TODO: Move to Trash - add option in options page
                 
@@ -1032,7 +1083,7 @@ browser.runtime.onMessage.addListener((message) => {
             const caseId = await findIdByFileNumber(cases, fileNumber);
     
             if (caseId) {
-                await sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress);
+                await sendOnlyMessageToServer(caseId, result.username, result.password, result.serverAddress, message.customFilename);
             } else {
                 console.log('Keine übereinstimmende ID gefunden');
             }
@@ -1130,8 +1181,14 @@ browser.runtime.onMessage.addListener((message) => {
             }
     
             const caseIdToSaveToAfterSend = await findIdByFileNumber(cases, fileNumber);
-            await browser.storage.local.set({ caseIdToSaveToAfterSend: caseIdToSaveToAfterSend });
+            await browser.storage.local.set({
+                caseIdToSaveToAfterSend: caseIdToSaveToAfterSend,
+                selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
+                customFilenameToSaveAfterSend: message.customFilename || null
+            });
             console.log("caseIdToSaveToAfterSend gesetzt auf: ", caseIdToSaveToAfterSend);
+            console.log("selectedCaseFolderIDAfterSend gesetzt auf: ", message.selectedCaseFolderID);
+            console.log("customFilenameToSaveAfterSend gesetzt auf: ", message.customFilename);
         })(); // Sofortige Ausführung der async-Funktion
     }
 });
@@ -1157,8 +1214,8 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
         lastSentMessageId = sendInfo.messages[0].id;
 
         // speichert E-Mail nach dem Senden in der Akte
-        await browser.storage.local.get(["caseIdToSaveToAfterSend", "selectedCaseFolderIDAfterSend", "username", "password", "serverAddress"]).then(result => {
-            sendEmailToServerAfterSend(result.caseIdToSaveToAfterSend, result.selectedCaseFolderIDAfterSend, result.username, result.password, result.serverAddress);
+        await browser.storage.local.get(["caseIdToSaveToAfterSend", "selectedCaseFolderIDAfterSend", "username", "password", "serverAddress", "customFilenameToSaveAfterSend"]).then(result => {
+            sendEmailToServerAfterSend(result.caseIdToSaveToAfterSend, result.selectedCaseFolderIDAfterSend, result.username, result.password, result.serverAddress, result.customFilenameToSaveAfterSend);
         });
     }
 });

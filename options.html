@@ -40,6 +40,24 @@
             margin-bottom: 10px;
         }
 
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-row label {
+            margin: 0;
+            cursor: pointer;
+            display: inline;
+        }
+
         input[type="text"], input[type="password"] {
             width: calc(100% - 20px); /* Reduzierte Breite um 20px */
             padding: 10px;
@@ -93,8 +111,15 @@
             <label for="serverAddress">Serveradresse und Port (Bsp. http://192.168.1.1:8080):</label>
             <input type="text" id="serverAddress"><br><br>
 
-            <label for="moveToTrash">Email nach Zuordnung in Papierkorb verschieben / direkt Löschen (siehe Konto-Einstellung):</label>
-            <input type="checkbox" id="moveToTrash"><br><br>
+            <div class="checkbox-row">
+                <input type="checkbox" id="moveToTrash">
+                <label for="moveToTrash">Email nach Zuordnung in Papierkorb verschieben / direkt Löschen (siehe Konto-Einstellung)</label>
+            </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="allowRename">
+                <label for="allowRename">Umbenennen erlauben (vor dem Speichern Dateinamen bearbeiten)</label>
+            </div>
 
             <div class="button-group">
                 <input type="button" id="saveButton" value="Speichern">

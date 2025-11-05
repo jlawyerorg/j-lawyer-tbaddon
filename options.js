@@ -3,12 +3,14 @@ document.getElementById("saveButton").addEventListener("click", function () {
   const password = document.getElementById("password").value;
   const serverAddress = document.getElementById("serverAddress").value;
   const moveToTrash = document.getElementById("moveToTrash").checked;
+  const allowRename = document.getElementById("allowRename").checked;
 
   browser.storage.local.set({
     username: username,
     password: password,
     serverAddress: serverAddress,
-    moveToTrash: moveToTrash
+    moveToTrash: moveToTrash,
+    allowRename: allowRename
   }).then(() => {  // Nach dem erfolgreichen Speichern wird der Button-Text geändert => Usability
     // testServerConnection(username, password, serverAddress);
     document.getElementById("saveButton").value = "Login gespeichert";
@@ -51,10 +53,11 @@ document.getElementById("viewUpdatesButton").addEventListener("click", function(
 
 // Beim Laden der Optionen-Seite, werden die gespeicherten Werte in die Eingabefelder gesetzt
 document.addEventListener("DOMContentLoaded", function () {
-  browser.storage.local.get(["username", "password", "serverAddress", "moveToTrash"]).then(result => {
+  browser.storage.local.get(["username", "password", "serverAddress", "moveToTrash", "allowRename"]).then(result => {
     document.getElementById("username").value = result.username || "";
     document.getElementById("password").value = result.password || "";
     document.getElementById("serverAddress").value = result.serverAddress || "";
     document.getElementById("moveToTrash").checked = result.moveToTrash || false;
+    document.getElementById("allowRename").checked = result.allowRename || false;
   });
 });

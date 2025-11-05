@@ -90,31 +90,48 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     // Code für den recommendCaseButton
     if (recommendCaseButton) {
-        recommendCaseButton.addEventListener("click", function() {
-            
+        recommendCaseButton.addEventListener("click", async function() {
+
             if (!currentSelectedCase) {
                 feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
                 feedback.style.color = "red";
                 return;
             }
-    
-            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-                browser.runtime.sendMessage({
-                    type: "case",
-                    source: "popup",
-                    content: currentSelectedCase.fileNumber, 
-                    selectedCaseFolderID: selectedCaseFolderID,
-                    username: result.username,
-                    password: result.password,
-                    serverAddress: result.serverAddress
-                    
-                });
-                // Setzt Feedback zurück, während auf eine Antwort gewartet wird
-                feedback.textContent = "Speichern...";
-                feedback.style.color = "blue";
+
+            // Prüfe, ob Umbenennen erlaubt ist
+            const settings = await browser.storage.local.get(["username", "password", "serverAddress", "allowRename"]);
+            let customFilename = null;
+
+            if (settings.allowRename) {
+                // Zeige Rename-Dialog
+                const messageData = await getDisplayedMessageFromActiveTab();
+                const originalSubject = messageData.subject || "nachricht";
+                const originalFilename = `${originalSubject}.eml`;
+
+                customFilename = await showRenameDialog(originalFilename);
+
+                if (customFilename === null) {
+                    // Benutzer hat abgebrochen
+                    feedback.textContent = "Speichern abgebrochen";
+                    feedback.style.color = "orange";
+                    return;
+                }
+            }
+
+            browser.runtime.sendMessage({
+                type: "case",
+                source: "popup",
+                content: currentSelectedCase.fileNumber,
+                selectedCaseFolderID: selectedCaseFolderID,
+                username: settings.username,
+                password: settings.password,
+                serverAddress: settings.serverAddress,
+                customFilename: customFilename
             });
-            feedback.textContent = "An empfohlene Akte gesendet!";
-            feedback.style.color = "green";
+
+            // Setzt Feedback zurück, während auf eine Antwort gewartet wird
+            feedback.textContent = "Speichern...";
+            feedback.style.color = "blue";
         });
     }
 
@@ -122,32 +139,48 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     // Code für den saveOnlyMessageButton
     if (saveOnlyMessageButton) {
-        saveOnlyMessageButton.addEventListener("click", function() {
-            
+        saveOnlyMessageButton.addEventListener("click", async function() {
+
             if (!currentSelectedCase) {
                 feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
                 feedback.style.color = "red";
                 return;
             }
 
-            browser.storage.local.get(["username", "password", "serverAddress"]).then(result => {
-                browser.runtime.sendMessage({
-                    type: "saveMessageOnly",
-                    source: "popup",
-                    content: currentSelectedCase.fileNumber, 
-                    selectedCaseFolderID: selectedCaseFolderID,
-                    username: result.username,
-                    password: result.password,
-                    serverAddress: result.serverAddress
-                    
-                });
+            // Prüfe, ob Umbenennen erlaubt ist
+            const settings = await browser.storage.local.get(["username", "password", "serverAddress", "allowRename"]);
+            let customFilename = null;
 
-                // Setzt Feedback zurück, während auf eine Antwort gewartet wird
-                feedback.textContent = "Speichern...";
-                feedback.style.color = "blue";
+            if (settings.allowRename) {
+                // Zeige Rename-Dialog
+                const messageData = await getDisplayedMessageFromActiveTab();
+                const originalSubject = messageData.subject || "nachricht";
+                const originalFilename = `${originalSubject}.eml`;
+
+                customFilename = await showRenameDialog(originalFilename);
+
+                if (customFilename === null) {
+                    // Benutzer hat abgebrochen
+                    feedback.textContent = "Speichern abgebrochen";
+                    feedback.style.color = "orange";
+                    return;
+                }
+            }
+
+            browser.runtime.sendMessage({
+                type: "saveMessageOnly",
+                source: "popup",
+                content: currentSelectedCase.fileNumber,
+                selectedCaseFolderID: selectedCaseFolderID,
+                username: settings.username,
+                password: settings.password,
+                serverAddress: settings.serverAddress,
+                customFilename: customFilename
             });
-            feedback.textContent = "An empfohlene Akte gesendet!";
-            feedback.style.color = "green";
+
+            // Setzt Feedback zurück, während auf eine Antwort gewartet wird
+            feedback.textContent = "Speichern...";
+            feedback.style.color = "blue";
         });
     }
 
@@ -1352,4 +1385,70 @@ async function logActivity(action, details) {
     activityLog.push(logEntry);
 
     await browser.storage.local.set({ activityLog });
+}
+
+// Funktion zum Anzeigen des Rename-Dialogs
+async function showRenameDialog(originalFilename) {
+    return new Promise((resolve) => {
+        const dialog = document.getElementById("renameDialog");
+        const filenameInput = document.getElementById("filenameInput");
+        const filenameSuggestion = document.getElementById("filenameSuggestion");
+        const useSuggestionBtn = document.getElementById("useSuggestionBtn");
+        const cancelRenameBtn = document.getElementById("cancelRenameBtn");
+        const confirmRenameBtn = document.getElementById("confirmRenameBtn");
+
+        // Zeitstempel-basierter Vorschlag
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+
+        // Dateiendung beibehalten
+        const lastDotIndex = originalFilename.lastIndexOf('.');
+        const extension = lastDotIndex > 0 ? originalFilename.substring(lastDotIndex) : '';
+        const nameWithoutExt = lastDotIndex > 0 ? originalFilename.substring(0, lastDotIndex) : originalFilename;
+
+        const suggestedFilename = `${timestamp}_${nameWithoutExt}${extension}`;
+
+        // UI vorbereiten
+        filenameInput.value = originalFilename;
+        filenameSuggestion.textContent = suggestedFilename;
+        dialog.style.display = "flex";
+        filenameInput.focus();
+        filenameInput.select();
+
+        // Event Listener (einmalig)
+        const cleanup = () => {
+            dialog.style.display = "none";
+            useSuggestionBtn.replaceWith(useSuggestionBtn.cloneNode(true));
+            cancelRenameBtn.replaceWith(cancelRenameBtn.cloneNode(true));
+            confirmRenameBtn.replaceWith(confirmRenameBtn.cloneNode(true));
+        };
+
+        // Vorschlag verwenden
+        document.getElementById("useSuggestionBtn").addEventListener("click", function() {
+            cleanup();
+            resolve(suggestedFilename);
+        }, { once: true });
+
+        // Abbrechen
+        document.getElementById("cancelRenameBtn").addEventListener("click", function() {
+            cleanup();
+            resolve(null); // null = abgebrochen
+        }, { once: true });
+
+        // Umbenennen bestätigen
+        document.getElementById("confirmRenameBtn").addEventListener("click", function() {
+            const newFilename = filenameInput.value.trim();
+            cleanup();
+            resolve(newFilename || originalFilename);
+        }, { once: true });
+
+        // Enter-Taste
+        filenameInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                const newFilename = filenameInput.value.trim();
+                cleanup();
+                resolve(newFilename || originalFilename);
+            }
+        }, { once: true });
+    });
 }
