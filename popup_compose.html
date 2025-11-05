@@ -61,12 +61,13 @@
 
         /* Stil für das Suchfeld */
         #searchInput {
-            width: 90%;
+            width: 100%;
             padding: 8px 12px;
             margin-bottom: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
+            box-sizing: border-box;
         }
 
         /* Stil für Suggestions Container */
@@ -179,10 +180,11 @@
         /* Stil für die Ergebnisliste */
         #resultsList {
             max-height: 170px;
-            width: 95%;
+            width: 100%;
             overflow-y: auto;
             border: 1px solid #ccc;
             border-radius: 4px;
+            box-sizing: border-box;
         }
 
         /* Stil für jedes Ergebniselement in der Liste */
@@ -401,14 +403,14 @@
         <input type="text" id="searchInput" placeholder="Fall suchen...">
         <div id="resultsList"></div>
 
+        <!-- Ausgewählte Akte -->
+        <p id="customizableLabel" style="font-weight: bold; margin: 10px 0 5px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
+
         <!-- Automatische Vorschläge -->
         <div id="suggestionsContainer" style="display: none;">
             <h4>Automatische Vorschläge (bitte prüfen)</h4>
             <div id="suggestionsList"></div>
         </div>
-
-        <!-- Ausgewählte Akte -->
-        <p id="customizableLabel" style="font-weight: bold; margin: 15px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
 
         <button id="recommendCaseButtonAfterSend" style="background-color: #4CAF50; color: white; padding: 8px 15px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer; display: block; margin-left: auto; margin-right: auto;">Nach Senden speichern</button>
 

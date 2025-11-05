@@ -85,12 +85,13 @@
 
         /* Stil für das Suchfeld */
         #searchInput {
-            width: 90%;
+            width: 100%;
             padding: 8px 12px;
             margin-bottom: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
+            box-sizing: border-box;
         }
 
         /* Stil für Suggestions Container */
@@ -203,10 +204,11 @@
         /* Stil für die Ergebnisliste */
         #resultsList {
             max-height: 170px;  /* Begrenzt die Höhe der Liste */
-            width: 95%;
+            width: 100%;
             overflow-y: auto;  /* Fügt einen Scroll-Balken hinzu, wenn die Liste die maximale Höhe überschreitet */
             border: 1px solid #ccc;
             border-radius: 4px;
+            box-sizing: border-box;
         }
 
         /* Stil für jedes Ergebniselement in der Liste */
@@ -290,7 +292,8 @@
         position: flex;
         right: 10px;
         display: flex;
-        gap: 10px; 
+        align-items: center;
+        gap: 10px;
         margin-top: 30px;
         }
 
@@ -410,21 +413,13 @@
         <input type="text" id="searchInput" placeholder="Fall suchen...">
         <div id="resultsList"></div>
 
+        <!-- Ausgewählte Akte -->
+        <p id="customizableLabel" style="font-weight: bold; margin: 10px 0 5px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
+
         <!-- Automatische Vorschläge -->
         <div id="suggestionsContainer" style="display: none;">
             <h4>Automatische Vorschläge (bitte prüfen)</h4>
             <div id="suggestionsList"></div>
-        </div>
-
-        <!-- Ausgewählte Akte -->
-        <p id="customizableLabel" style="font-weight: bold; margin: 15px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
-
-        <!-- Bildbearbeitung Toggle -->
-        <div id="imageEditToggleContainer" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 13px;">
-                <input type="checkbox" id="imageEditToggle" style="margin-right: 8px;">
-                <span>🖼️ Bildanhänge vor Speichern bearbeiten</span>
-            </label>
         </div>
 
         <div class="button-row">
@@ -438,6 +433,10 @@
         <div id="buttonContainer">
             <button id="updateDataButton">↺</button>
             <button id="settingsButton">&#9881;</button>
+            <label style="display: flex; align-items: center; cursor: pointer; font-size: 12px; margin-left: 15px; margin-top: 14px;">
+                <input type="checkbox" id="imageEditToggle" style="margin-right: 5px;">
+                <span>Bildanhänge vor Speichern bearbeiten</span>
+            </label>
         </div>
     </div>
 
