@@ -243,21 +243,26 @@ async function searchCases(query) {
         const div = document.createElement("div");
         div.className = "resultItem";
         div.setAttribute("data-id", item.id);
+        div.setAttribute("data-file-number", item.fileNumber);
+        div.setAttribute("data-name", item.name);
+        if (item.reason) {
+            div.setAttribute("data-reason", item.reason);
+        }
         div.textContent = `${item.name} (${item.fileNumber})`;
         if (item.reason) {
             div.textContent += ` - ${item.reason}`;
         }
         resultsListElement.appendChild(div);
     });
-    
+
     // Event Handler für Suchergebnisse
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {
             currentSelectedCase = {
                 id: this.getAttribute("data-id"),
-                name: this.textContent.split(" (")[0],
-                fileNumber: this.textContent.split("(")[1].split(")")[0],
-                reason: item.getAttribute("data-tooltip")
+                name: this.getAttribute("data-name"),
+                fileNumber: this.getAttribute("data-file-number"),
+                reason: this.getAttribute("data-reason")
             };
             
             caseMetaData = await getCaseMetaData(currentSelectedCase.id, loginData.username, loginData.password, loginData.serverAddress);

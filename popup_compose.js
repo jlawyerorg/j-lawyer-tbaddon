@@ -272,20 +272,25 @@ async function searchCases(query) {
         const div = document.createElement("div");
         div.className = "resultItem";
         div.setAttribute("data-id", item.id);
+        div.setAttribute("data-file-number", item.fileNumber);
+        div.setAttribute("data-name", item.name);
+        if (item.reason) {
+            div.setAttribute("data-reason", item.reason);
+        }
         div.textContent = `${item.name} (${item.fileNumber})`;
         if (item.reason) {
             div.textContent += ` - ${item.reason}`;
         }
         resultsListElement.appendChild(div);
     });
-    
+
     // Event-Handler für Suchergebnisse
     document.querySelectorAll(".resultItem").forEach(item => {
         item.addEventListener("click", async function() {
             // Setze die ausgewählte Akte basierend auf dem Klick
             const caseId = this.getAttribute("data-id");
-            const caseName = this.textContent.split(" (")[0];
-            const caseFileNumber = this.textContent.split("(")[1].split(")")[0];
+            const caseName = this.getAttribute("data-name");
+            const caseFileNumber = this.getAttribute("data-file-number");
             
             console.log("Ausgewählter Fall - ID:", caseId);
             console.log("Ausgewählter Fall - Name:", caseName);
