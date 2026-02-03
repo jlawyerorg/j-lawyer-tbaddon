@@ -15,444 +15,643 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 class AttachmentImageProcessor {
-    constructor() {
-        this.editedImages = [];
-        this.currentImageIndex = 0;
-        this.originalImages = [];
-        this.overlayWindow = null;
-    }
+  constructor() {
+    this.editedImages = [];
+    this.currentImageIndex = 0;
+    this.originalImages = [];
+    this.overlayWindow = null;
+  }
 
-    async processWithImageEditing(caseData, selectedCaseFolderID) {
-        try {
-            const messageData = await this.getDisplayedMessageFromActiveTab();
-            const attachments = await browser.messages.listAttachments(messageData.id);
-            
-            const imageAttachments = await this.filterImageAttachments(attachments, messageData.id);
-            const nonImageAttachments = await this.filterNonImageAttachments(attachments, messageData.id);
-            
-            if (imageAttachments.length === 0) {
-                browser.runtime.sendMessage({ 
-                    type: "error", 
-                    content: "Keine Bildanhänge in der Nachricht gefunden." 
-                });
-                return;
-            }
+  async processWithImageEditing(caseData, selectedCaseFolderID) {
+    try {
+      const messageData = await this.getDisplayedMessageFromActiveTab();
+      const attachments = await browser.messages.listAttachments(
+        messageData.id,
+      );
 
-            await this.showImageEditOverlay(imageAttachments, nonImageAttachments, caseData, selectedCaseFolderID);
-            
-        } catch (error) {
-            console.error("Fehler beim Verarbeiten der Bilder:", error);
-            browser.runtime.sendMessage({ 
-                type: "error", 
-                content: "Fehler beim Verarbeiten der Bilder: " + error.message 
-            });
-        }
-    }
+      const imageAttachments = await this.filterImageAttachments(
+        attachments,
+        messageData.id,
+      );
+      const nonImageAttachments = await this.filterNonImageAttachments(
+        attachments,
+        messageData.id,
+      );
 
-    async getDisplayedMessageFromActiveTab() {
-        return browser.mailTabs.query({active: true, currentWindow: true})
-        .then((tabs) => {
-            if (tabs.length === 0) {
-                return browser.tabs.query({active: true, currentWindow: true});
-            }
-            return tabs;
-        })
-        .then((tabs) => {
-            if (tabs.length === 0) {
-                throw new Error("Kein aktiver Tab gefunden.");
-            }
-            let currentTabId = tabs[0].id;
-            return browser.messageDisplay.getDisplayedMessage(currentTabId);
-        })
-        .then((message) => {
-            if (!message) {
-                throw new Error("Keine Nachricht im aktiven Tab angezeigt.");
-            }
-            return message;
-        });
-    }
-
-    async filterImageAttachments(attachments, messageId) {
-        console.log('filterImageAttachments called with', attachments.length, 'attachments');
-        
-        const imageAttachments = [];
-        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
-        
-        for (const attachment of attachments) {
-            console.log('Checking attachment:', attachment.name, 'type:', attachment.contentType);
-            
-            const isImage = imageTypes.includes(attachment.contentType.toLowerCase()) || 
-                           attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
-            
-            console.log('Is image:', isImage);
-            
-            if (isImage) {
-                try {
-                    console.log('Loading image attachment:', attachment.name);
-                    const attachmentFile = await browser.messages.getAttachmentFile(messageId, attachment.partName);
-                    const blob = new Blob([attachmentFile], { type: attachment.contentType });
-                    
-                    console.log('Image loaded successfully:', attachment.name, 'blob size:', blob.size);
-                    
-                    imageAttachments.push({
-                        name: attachment.name,
-                        contentType: attachment.contentType,
-                        blob: blob,
-                        size: attachment.size
-                    });
-                } catch (error) {
-                    console.error(`Fehler beim Laden des Bildes ${attachment.name}:`, error);
-                }
-            }
-        }
-        
-        console.log('Filtered', imageAttachments.length, 'image attachments');
-        return imageAttachments;
-    }
-
-    async filterNonImageAttachments(attachments, messageId) {
-        console.log('filterNonImageAttachments called with', attachments.length, 'attachments');
-        
-        const nonImageAttachments = [];
-        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
-        
-        for (const attachment of attachments) {
-            console.log('Checking attachment:', attachment.name, 'type:', attachment.contentType);
-            
-            const isImage = imageTypes.includes(attachment.contentType.toLowerCase()) || 
-                           attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
-            
-            console.log('Is image:', isImage);
-            
-            if (!isImage) {
-                try {
-                    console.log('Loading non-image attachment:', attachment.name);
-                    const attachmentFile = await browser.messages.getAttachmentFile(messageId, attachment.partName);
-                    const blob = new Blob([attachmentFile], { type: attachment.contentType });
-                    
-                    console.log('Non-image loaded successfully:', attachment.name, 'blob size:', blob.size);
-                    
-                    nonImageAttachments.push({
-                        name: attachment.name,
-                        contentType: attachment.contentType,
-                        blob: blob,
-                        size: attachment.size
-                    });
-                } catch (error) {
-                    console.error(`Fehler beim Laden der Datei ${attachment.name}:`, error);
-                }
-            }
-        }
-        
-        console.log('Filtered', nonImageAttachments.length, 'non-image attachments');
-        return nonImageAttachments;
-    }
-
-    async showImageEditOverlay(imageAttachments, nonImageAttachments, caseData, selectedCaseFolderID) {
-        this.originalImages = imageAttachments;
-        this.nonImageAttachments = nonImageAttachments;
-        this.editedImages = [];
-        this.currentImageIndex = 0;
-        this.caseData = caseData;
-        this.selectedCaseFolderID = selectedCaseFolderID;
-
-        // Tags aus dem Storage laden
-        const settings = await browser.storage.local.get(["selectedTags"]);
-        const selectedTags = settings.selectedTags || [];
-
-        // Daten im Storage für das Overlay speichern
-        const imageDataPromises = imageAttachments.map(async img => ({
-            name: img.name,
-            contentType: img.contentType,
-            size: img.size,
-            // Blob als ArrayBuffer speichern
-            data: await img.blob.arrayBuffer()
-        }));
-        
-        const images = await Promise.all(imageDataPromises);
-        
-        await browser.storage.local.set({
-            imageEditSession: {
-                images: images,
-                nonImageAttachments: nonImageAttachments,
-                caseData: caseData,
-                selectedCaseFolderID: selectedCaseFolderID,
-                selectedTags: selectedTags,
-                sessionActive: true
-            }
-        });
-
-        const overlayUrl = browser.runtime.getURL("image-edit-overlay.html");
-        this.overlayWindow = await browser.windows.create({
-            url: overlayUrl,
-            type: "popup",
-            width: 1400,
-            height: 1000
-        });
-
-        // Message Listener für Overlay-Kommunikation
-        this.messageListener = this.handleOverlayMessage.bind(this);
-        browser.runtime.onMessage.addListener(this.messageListener);
-    }
-
-    handleOverlayMessage(message, sender, sendResponse) {
-        if (message.type === "overlay-ready") {
-            this.initializeOverlay();
-        } else if (message.type === "image-cropped") {
-            this.handleImageCropped(message.imageData, message.fileName);
-        } else if (message.type === "skip-image") {
-            this.skipCurrentImage();
-        } else if (message.type === "finish-editing") {
-            this.finishEditing(message.createPDF);
-        } else if (message.type === "cancel-editing") {
-            this.cancelEditing();
-        }
-    }
-
-    initializeOverlay() {
-        console.log('initializeOverlay called, originalImages length:', this.originalImages.length);
-        if (this.originalImages.length > 0) {
-            this.sendImageToOverlay(this.currentImageIndex);
-        } else {
-            console.error('Keine Bilder zum Anzeigen vorhanden');
-        }
-    }
-
-    async sendImageToOverlay(index) {
-        console.log('sendImageToOverlay called with index:', index, 'total images:', this.originalImages.length);
-        
-        if (index >= this.originalImages.length) {
-            this.showFinishOptions();
-            return;
-        }
-
-        const image = this.originalImages[index];
-        console.log('Sending image to overlay:', image.name, 'size:', image.blob.size);
-        
-        const imageUrl = URL.createObjectURL(image.blob);
-        console.log('Created image URL:', imageUrl);
-        
+      if (imageAttachments.length === 0) {
         browser.runtime.sendMessage({
-            type: "load-image",
-            imageUrl: imageUrl,
-            fileName: image.name,
-            currentIndex: index + 1,
-            totalImages: this.originalImages.length
+          type: "error",
+          content: "Keine Bildanhänge in der Nachricht gefunden.",
         });
+        return;
+      }
+
+      await this.showImageEditOverlay(
+        imageAttachments,
+        nonImageAttachments,
+        caseData,
+        selectedCaseFolderID,
+      );
+    } catch (error) {
+      console.error("Fehler beim Verarbeiten der Bilder:", error);
+      browser.runtime.sendMessage({
+        type: "error",
+        content: "Fehler beim Verarbeiten der Bilder: " + error.message,
+      });
+    }
+  }
+
+  async getDisplayedMessageFromActiveTab() {
+    // Prüfe ob Message-ID als URL-Parameter übergeben wurde (eigenständiges Fenster)
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageIdFromUrl = urlParams.get("messageId");
+
+    if (messageIdFromUrl) {
+      // Hole Nachricht direkt per ID
+      const message = await browser.messages.get(parseInt(messageIdFromUrl));
+      if (message) {
+        return message;
+      }
+      throw new Error(
+        "Nachricht mit ID " + messageIdFromUrl + " nicht gefunden.",
+      );
     }
 
-    handleImageCropped(imageData, fileName) {
-        const blob = this.dataURLtoBlob(imageData);
-        this.editedImages.push({
-            name: fileName,
+    // Fallback: Versuche vom aktiven Tab zu lesen (für Popup-Modus)
+    const tabs = await browser.mailTabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    let tabList = tabs;
+    if (tabs.length === 0) {
+      tabList = await browser.tabs.query({ active: true, currentWindow: true });
+    }
+
+    if (tabList.length === 0) {
+      throw new Error("Kein aktiver Tab gefunden.");
+    }
+
+    const currentTabId = tabList[0].id;
+    const message =
+      await browser.messageDisplay.getDisplayedMessage(currentTabId);
+
+    if (!message) {
+      throw new Error("Keine Nachricht im aktiven Tab angezeigt.");
+    }
+    return message;
+  }
+
+  async filterImageAttachments(attachments, messageId) {
+    console.log(
+      "filterImageAttachments called with",
+      attachments.length,
+      "attachments",
+    );
+
+    const imageAttachments = [];
+    const imageTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/bmp",
+      "image/webp",
+    ];
+
+    for (const attachment of attachments) {
+      console.log(
+        "Checking attachment:",
+        attachment.name,
+        "type:",
+        attachment.contentType,
+      );
+
+      const isImage =
+        imageTypes.includes(attachment.contentType.toLowerCase()) ||
+        attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+
+      console.log("Is image:", isImage);
+
+      if (isImage) {
+        try {
+          console.log("Loading image attachment:", attachment.name);
+          const attachmentFile = await browser.messages.getAttachmentFile(
+            messageId,
+            attachment.partName,
+          );
+          const blob = new Blob([attachmentFile], {
+            type: attachment.contentType,
+          });
+
+          console.log(
+            "Image loaded successfully:",
+            attachment.name,
+            "blob size:",
+            blob.size,
+          );
+
+          imageAttachments.push({
+            name: attachment.name,
+            contentType: attachment.contentType,
             blob: blob,
-            contentType: 'image/png'
-        });
-        
-        this.currentImageIndex++;
-        this.sendImageToOverlay(this.currentImageIndex);
-    }
-
-    skipCurrentImage() {
-        // Bild überspringen: NICHT zu editedImages hinzufügen
-        const originalImage = this.originalImages[this.currentImageIndex];
-        console.log('AttachmentImageProcessor: skipping image (not saved):', originalImage && originalImage.name);
-
-        this.currentImageIndex++;
-        this.sendImageToOverlay(this.currentImageIndex);
-    }
-
-    showFinishOptions() {
-        browser.runtime.sendMessage({
-            type: "show-finish-options",
-            imageCount: this.editedImages.length
-        });
-    }
-
-    async finishEditing(createPDF) {
-        if (this.overlayWindow) {
-            await browser.windows.remove(this.overlayWindow.id);
-        }
-        
-        // Message Listener entfernen
-        if (this.messageListener) {
-            browser.runtime.onMessage.removeListener(this.messageListener);
-        }
-
-        try {
-            if (createPDF && this.editedImages.length > 0) {
-                await this.createAndUploadPDF();
-                // Auch nicht-Bild-Dateien einzeln hochladen
-                if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
-                    for (const attachment of this.nonImageAttachments) {
-                        await this.uploadSingleFile(attachment.blob, attachment.name, attachment.contentType);
-                    }
-                }
-            } else {
-                await this.uploadIndividualImages();
-            }
+            size: attachment.size,
+          });
         } catch (error) {
-            console.error("Fehler beim Abschließen der Bearbeitung:", error);
-            browser.runtime.sendMessage({ 
-                type: "error", 
-                content: "Fehler beim Hochladen: " + error.message 
-            });
+          console.error(
+            `Fehler beim Laden des Bildes ${attachment.name}:`,
+            error,
+          );
         }
+      }
     }
 
-    async createAndUploadPDF() {
+    console.log("Filtered", imageAttachments.length, "image attachments");
+    return imageAttachments;
+  }
+
+  async filterNonImageAttachments(attachments, messageId) {
+    console.log(
+      "filterNonImageAttachments called with",
+      attachments.length,
+      "attachments",
+    );
+
+    const nonImageAttachments = [];
+    const imageTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/bmp",
+      "image/webp",
+    ];
+
+    for (const attachment of attachments) {
+      console.log(
+        "Checking attachment:",
+        attachment.name,
+        "type:",
+        attachment.contentType,
+      );
+
+      const isImage =
+        imageTypes.includes(attachment.contentType.toLowerCase()) ||
+        attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+
+      console.log("Is image:", isImage);
+
+      if (!isImage) {
         try {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF();
-            
-            let isFirstPage = true;
-            
-            for (const image of this.editedImages) {
-                if (!isFirstPage) {
-                    pdf.addPage();
-                }
-                
-                const imageUrl = URL.createObjectURL(image.blob);
-                const img = await this.loadImageElement(imageUrl);
-                
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                
-                const imgAspectRatio = img.width / img.height;
-                const pdfAspectRatio = pdfWidth / pdfHeight;
-                
-                // Optimale Bildgröße unter Beibehaltung des Seitenverhältnisses berechnen
-                let imgWidth, imgHeight;
-                const maxScale = 0.9; // 90% der Seitengröße verwenden
-                
-                if (imgAspectRatio > pdfAspectRatio) {
-                    // Bild ist breiter als PDF-Seite - an Breite anpassen
-                    imgWidth = pdfWidth * maxScale;
-                    imgHeight = imgWidth / imgAspectRatio;
-                } else {
-                    // Bild ist höher als PDF-Seite - an Höhe anpassen
-                    imgHeight = pdfHeight * maxScale;
-                    imgWidth = imgHeight * imgAspectRatio;
-                }
-                
-                // Zentrieren
-                const x = (pdfWidth - imgWidth) / 2;
-                const y = (pdfHeight - imgHeight) / 2;
-                
-                pdf.addImage(img, 'PNG', x, y, imgWidth, imgHeight);
-                isFirstPage = false;
-            }
-            
-            const pdfBlob = pdf.output('blob');
-            const timestamp = new Date().toISOString().replace(/[:]/g, '-').split('.')[0];
-            const pdfFileName = `Bilder_${timestamp}.pdf`;
-            
-            await this.uploadSingleFile(pdfBlob, pdfFileName, 'application/pdf');
-            
+          console.log("Loading non-image attachment:", attachment.name);
+          const attachmentFile = await browser.messages.getAttachmentFile(
+            messageId,
+            attachment.partName,
+          );
+          const blob = new Blob([attachmentFile], {
+            type: attachment.contentType,
+          });
+
+          console.log(
+            "Non-image loaded successfully:",
+            attachment.name,
+            "blob size:",
+            blob.size,
+          );
+
+          nonImageAttachments.push({
+            name: attachment.name,
+            contentType: attachment.contentType,
+            blob: blob,
+            size: attachment.size,
+          });
         } catch (error) {
-            console.error("Fehler beim Erstellen der PDF:", error);
-            throw error;
+          console.error(
+            `Fehler beim Laden der Datei ${attachment.name}:`,
+            error,
+          );
         }
+      }
     }
 
-    async uploadIndividualImages() {
-        // Erst die bearbeiteten Bilder hochladen
-        for (const image of this.editedImages) {
-            await this.uploadSingleFile(image.blob, image.name, image.contentType);
-        }
-        
-        // Dann die nicht-Bild-Dateien hochladen
+    console.log(
+      "Filtered",
+      nonImageAttachments.length,
+      "non-image attachments",
+    );
+    return nonImageAttachments;
+  }
+
+  async showImageEditOverlay(
+    imageAttachments,
+    nonImageAttachments,
+    caseData,
+    selectedCaseFolderID,
+  ) {
+    this.originalImages = imageAttachments;
+    this.nonImageAttachments = nonImageAttachments;
+    this.editedImages = [];
+    this.currentImageIndex = 0;
+    this.caseData = caseData;
+    this.selectedCaseFolderID = selectedCaseFolderID;
+
+    // Tags aus dem Storage laden
+    const settings = await browser.storage.local.get(["selectedTags"]);
+    const selectedTags = settings.selectedTags || [];
+
+    // Daten im Storage für das Overlay speichern
+    const imageDataPromises = imageAttachments.map(async (img) => ({
+      name: img.name,
+      contentType: img.contentType,
+      size: img.size,
+      // Blob als ArrayBuffer speichern
+      data: await img.blob.arrayBuffer(),
+    }));
+
+    const images = await Promise.all(imageDataPromises);
+
+    await browser.storage.local.set({
+      imageEditSession: {
+        images: images,
+        nonImageAttachments: nonImageAttachments,
+        caseData: caseData,
+        selectedCaseFolderID: selectedCaseFolderID,
+        selectedTags: selectedTags,
+        sessionActive: true,
+      },
+    });
+
+    const overlayUrl = browser.runtime.getURL("image-edit-overlay.html");
+    this.overlayWindow = await browser.windows.create({
+      url: overlayUrl,
+      type: "popup",
+      width: 1400,
+      height: 1000,
+    });
+
+    // Message Listener für Overlay-Kommunikation
+    this.messageListener = this.handleOverlayMessage.bind(this);
+    browser.runtime.onMessage.addListener(this.messageListener);
+  }
+
+  handleOverlayMessage(message, sender, sendResponse) {
+    if (message.type === "overlay-ready") {
+      this.initializeOverlay();
+    } else if (message.type === "image-cropped") {
+      this.handleImageCropped(message.imageData, message.fileName);
+    } else if (message.type === "skip-image") {
+      this.skipCurrentImage();
+    } else if (message.type === "finish-editing") {
+      this.finishEditing(message.createPDF);
+    } else if (message.type === "cancel-editing") {
+      this.cancelEditing();
+    }
+  }
+
+  initializeOverlay() {
+    console.log(
+      "initializeOverlay called, originalImages length:",
+      this.originalImages.length,
+    );
+    if (this.originalImages.length > 0) {
+      this.sendImageToOverlay(this.currentImageIndex);
+    } else {
+      console.error("Keine Bilder zum Anzeigen vorhanden");
+    }
+  }
+
+  async sendImageToOverlay(index) {
+    console.log(
+      "sendImageToOverlay called with index:",
+      index,
+      "total images:",
+      this.originalImages.length,
+    );
+
+    if (index >= this.originalImages.length) {
+      this.showFinishOptions();
+      return;
+    }
+
+    const image = this.originalImages[index];
+    console.log(
+      "Sending image to overlay:",
+      image.name,
+      "size:",
+      image.blob.size,
+    );
+
+    const imageUrl = URL.createObjectURL(image.blob);
+    console.log("Created image URL:", imageUrl);
+
+    browser.runtime.sendMessage({
+      type: "load-image",
+      imageUrl: imageUrl,
+      fileName: image.name,
+      currentIndex: index + 1,
+      totalImages: this.originalImages.length,
+    });
+  }
+
+  handleImageCropped(imageData, fileName) {
+    const blob = this.dataURLtoBlob(imageData);
+    this.editedImages.push({
+      name: fileName,
+      blob: blob,
+      contentType: "image/png",
+    });
+
+    this.currentImageIndex++;
+    this.sendImageToOverlay(this.currentImageIndex);
+  }
+
+  skipCurrentImage() {
+    // Bild überspringen: NICHT zu editedImages hinzufügen
+    const originalImage = this.originalImages[this.currentImageIndex];
+    console.log(
+      "AttachmentImageProcessor: skipping image (not saved):",
+      originalImage && originalImage.name,
+    );
+
+    this.currentImageIndex++;
+    this.sendImageToOverlay(this.currentImageIndex);
+  }
+
+  showFinishOptions() {
+    browser.runtime.sendMessage({
+      type: "show-finish-options",
+      imageCount: this.editedImages.length,
+    });
+  }
+
+  async finishEditing(createPDF) {
+    if (this.overlayWindow) {
+      await browser.windows.remove(this.overlayWindow.id);
+    }
+
+    // Message Listener entfernen
+    if (this.messageListener) {
+      browser.runtime.onMessage.removeListener(this.messageListener);
+    }
+
+    try {
+      if (createPDF && this.editedImages.length > 0) {
+        await this.createAndUploadPDF();
+        // Auch nicht-Bild-Dateien einzeln hochladen
         if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
-            for (const attachment of this.nonImageAttachments) {
-                await this.uploadSingleFile(attachment.blob, attachment.name, attachment.contentType);
-            }
+          for (const attachment of this.nonImageAttachments) {
+            await this.uploadSingleFile(
+              attachment.blob,
+              attachment.name,
+              attachment.contentType,
+            );
+          }
         }
+      } else {
+        await this.uploadIndividualImages();
+      }
+    } catch (error) {
+      console.error("Fehler beim Abschließen der Bearbeitung:", error);
+      browser.runtime.sendMessage({
+        type: "error",
+        content: "Fehler beim Hochladen: " + error.message,
+      });
     }
+  }
 
-    async uploadSingleFile(blob, fileName, contentType) {
-        const settings = await browser.storage.local.get(["username", "password", "serverAddress"]);
-        
-        const url = settings.serverAddress + '/j-lawyer-io/rest/v1/cases/document/create';
-        const headers = new Headers();
-        const loginBase64Encoded = btoa(unescape(encodeURIComponent(settings.username + ':' + settings.password)));
-        headers.append('Authorization', 'Basic ' + loginBase64Encoded);
-        headers.append('Content-Type', 'application/json');
+  async createAndUploadPDF() {
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
 
-        const base64Content = await this.blobToBase64(blob);
-        
-        const requestData = {
-            base64content: base64Content,
-            caseId: this.caseData.id,
-            fileName: fileName,
-            folderId: this.selectedCaseFolderID
-        };
+      let isFirstPage = true;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(requestData)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+      for (const image of this.editedImages) {
+        if (!isFirstPage) {
+          pdf.addPage();
         }
 
-        const result = await response.json();
-        console.log(`Datei ${fileName} erfolgreich hochgeladen:`, result);
+        const imageUrl = URL.createObjectURL(image.blob);
+        const img = await this.loadImageElement(imageUrl);
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const imgAspectRatio = img.width / img.height;
+        const pdfAspectRatio = pdfWidth / pdfHeight;
+
+        // Optimale Bildgröße unter Beibehaltung des Seitenverhältnisses berechnen
+        let imgWidth, imgHeight;
+        const maxScale = 0.9; // 90% der Seitengröße verwenden
+
+        if (imgAspectRatio > pdfAspectRatio) {
+          // Bild ist breiter als PDF-Seite - an Breite anpassen
+          imgWidth = pdfWidth * maxScale;
+          imgHeight = imgWidth / imgAspectRatio;
+        } else {
+          // Bild ist höher als PDF-Seite - an Höhe anpassen
+          imgHeight = pdfHeight * maxScale;
+          imgWidth = imgHeight * imgAspectRatio;
+        }
+
+        // Zentrieren
+        const x = (pdfWidth - imgWidth) / 2;
+        const y = (pdfHeight - imgHeight) / 2;
+
+        pdf.addImage(img, "PNG", x, y, imgWidth, imgHeight);
+        isFirstPage = false;
+      }
+
+      const pdfBlob = pdf.output("blob");
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:]/g, "-")
+        .split(".")[0];
+      const pdfFileName = `Bilder_${timestamp}.pdf`;
+
+      await this.uploadSingleFile(pdfBlob, pdfFileName, "application/pdf");
+    } catch (error) {
+      console.error("Fehler beim Erstellen der PDF:", error);
+      throw error;
+    }
+  }
+
+  async uploadIndividualImages() {
+    // Erst die bearbeiteten Bilder hochladen
+    for (const image of this.editedImages) {
+      await this.uploadSingleFile(image.blob, image.name, image.contentType);
     }
 
-    async cancelEditing() {
-        if (this.overlayWindow) {
-            await browser.windows.remove(this.overlayWindow.id);
-        }
-        
-        // Message Listener entfernen
-        if (this.messageListener) {
-            browser.runtime.onMessage.removeListener(this.messageListener);
-        }
-        
-        // Session-Daten bereinigen
-        try {
-            await browser.storage.local.remove('imageEditSession');
-        } catch (error) {
-            console.error('Fehler beim Bereinigen der Session-Daten:', error);
-        }
-        
-        browser.runtime.sendMessage({ 
-            type: "error", 
-            content: "Bildbearbeitung abgebrochen." 
-        });
+    // Dann die nicht-Bild-Dateien hochladen
+    if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
+      for (const attachment of this.nonImageAttachments) {
+        await this.uploadSingleFile(
+          attachment.blob,
+          attachment.name,
+          attachment.contentType,
+        );
+      }
+    }
+  }
+
+  async uploadSingleFile(blob, fileName, contentType) {
+    const settings = await browser.storage.local.get([
+      "username",
+      "password",
+      "serverAddress",
+      "performOcr",
+    ]);
+
+    const url =
+      settings.serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(
+      unescape(encodeURIComponent(settings.username + ":" + settings.password)),
+    );
+    headers.append("Authorization", "Basic " + loginBase64Encoded);
+    headers.append("Content-Type", "application/json");
+
+    const base64Content = await this.blobToBase64(blob);
+
+    const requestData = {
+      base64content: base64Content,
+      caseId: this.caseData.id,
+      fileName: fileName,
+      folderId: this.selectedCaseFolderID,
+    };
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify(requestData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    dataURLtoBlob(dataurl) {
-        const arr = dataurl.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while(n--){
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], {type:mime});
+    const result = await response.json();
+    console.log(`Datei ${fileName} erfolgreich hochgeladen:`, result);
+
+    // OCR anstoßen wenn aktiviert und Datei geeignet ist
+    if (settings.performOcr && result.id && this.isOcrEligible(fileName)) {
+      await this.performOcrOnDocument(
+        result.id,
+        settings.username,
+        settings.password,
+        settings.serverAddress,
+      );
     }
 
-    async blobToBase64(blob) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+    return result;
+  }
+
+  // Prüft ob eine Datei für OCR geeignet ist (Bilder und PDFs)
+  isOcrEligible(fileName) {
+    if (!fileName) return false;
+    const ext = fileName.split(".").pop().toLowerCase();
+    const ocrExtensions = [
+      "pdf",
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "tiff",
+      "tif",
+      "bmp",
+    ];
+    return ocrExtensions.includes(ext);
+  }
+
+  // Führt OCR auf einem Dokument aus
+  async performOcrOnDocument(documentId, username, password, serverAddress) {
+    try {
+      const headers = new Headers();
+      const loginBase64Encoded = btoa(
+        unescape(encodeURIComponent(username + ":" + password)),
+      );
+      headers.append("Authorization", "Basic " + loginBase64Encoded);
+      headers.append("Content-Type", "application/json");
+
+      const url = `${serverAddress}/j-lawyer-io/rest/v6/cases/document/${documentId}/perform-ocr`;
+
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: headers,
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(
+          `OCR für Dokument ${documentId} fehlgeschlagen: ${response.status} - ${errorText}`,
+        );
+        return false;
+      }
+
+      console.log(`OCR für Dokument ${documentId} erfolgreich angestoßen`);
+      return true;
+    } catch (error) {
+      console.warn(
+        `OCR für Dokument ${documentId} fehlgeschlagen:`,
+        error.message,
+      );
+      return false;
+    }
+  }
+
+  async cancelEditing() {
+    if (this.overlayWindow) {
+      await browser.windows.remove(this.overlayWindow.id);
     }
 
-    loadImageElement(src) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = src;
-        });
+    // Message Listener entfernen
+    if (this.messageListener) {
+      browser.runtime.onMessage.removeListener(this.messageListener);
     }
+
+    // Session-Daten bereinigen
+    try {
+      await browser.storage.local.remove("imageEditSession");
+    } catch (error) {
+      console.error("Fehler beim Bereinigen der Session-Daten:", error);
+    }
+
+    browser.runtime.sendMessage({
+      type: "error",
+      content: "Bildbearbeitung abgebrochen.",
+    });
+  }
+
+  dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  }
+
+  async blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  loadImageElement(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
 }
 
 window.AttachmentImageProcessor = AttachmentImageProcessor;

@@ -616,7 +616,7 @@ async function sendAttachmentsToServer(
       console.log(`Dokument ID für "${finalFileName}": ${data.id}`);
 
       // Erfolg vermerken
-      documentIdsToTag.push(data.id);
+      documentIdsToTag.push({ id: data.id, fileName: finalFileName });
       processedFiles.push(finalFileName);
     } catch (error) {
       console.error(
@@ -1127,7 +1127,9 @@ async function setDocumentTagsAndFolderForAttachments() {
     // only if selectedTags is not empty
     if (result.selectedTags && result.selectedTags.length > 0) {
       for (let documentTag of result.selectedTags) {
-        for (let documentId of documentIdsToTag) {
+        for (let docInfo of documentIdsToTag) {
+          // Unterstütze sowohl alte Struktur (nur ID) als auch neue Struktur (Objekt mit id und fileName)
+          const documentId = typeof docInfo === "object" ? docInfo.id : docInfo;
           console.log(
             "Das Dokument mit der ID " +
               documentId +
@@ -1188,7 +1190,9 @@ async function setDocumentTagsAndFolderForAttachments() {
     headers.append("Content-Type", "application/json");
 
     if (selectedCaseFolderID && selectedCaseFolderID.length > 0) {
-      for (let documentId of documentIdsToTag) {
+      for (let docInfo of documentIdsToTag) {
+        // Unterstütze sowohl alte Struktur (nur ID) als auch neue Struktur (Objekt mit id und fileName)
+        const documentId = typeof docInfo === "object" ? docInfo.id : docInfo;
         const url =
           result.serverAddress + "/j-lawyer-io/rest/v1/cases/document/update";
 
@@ -1215,6 +1219,37 @@ async function setDocumentTagsAndFolderForAttachments() {
     }
   } catch (error) {
     console.error("Fehler in setDocumentTagsAndFolderForAttachments ", error);
+  }
+
+  // OCR für geeignete Dokumente anstoßen (wenn aktiviert)
+  try {
+    const ocrSettings = await browser.storage.local.get(["performOcr"]);
+    if (ocrSettings.performOcr) {
+      console.log("OCR ist aktiviert, prüfe Dokumente...");
+      for (let docInfo of documentIdsToTag) {
+        // Nur bei neuer Struktur mit fileName
+        if (typeof docInfo === "object" && docInfo.fileName) {
+          if (isOcrEligible(docInfo.fileName)) {
+            console.log(
+              `Starte OCR für: ${docInfo.fileName} (ID: ${docInfo.id})`,
+            );
+            await performOcrOnDocument(
+              docInfo.id,
+              result.username,
+              result.password,
+              result.serverAddress,
+            );
+          } else {
+            console.log(
+              `Überspringe OCR für: ${docInfo.fileName} (kein geeigneter Dateityp)`,
+            );
+          }
+        }
+      }
+    }
+  } catch (ocrError) {
+    console.warn("Fehler beim OCR-Prozess:", ocrError);
+    // Nicht abbrechen - OCR ist optional
   }
 }
 
@@ -1363,6 +1398,65 @@ async function updateDocumentCreationDate(
     console.error("Fehler in updateDocumentCreationDate:", error);
     throw error;
   }
+}
+
+// Führt OCR auf einem Dokument aus (für Bilder und PDFs)
+async function performOcrOnDocument(
+  documentId,
+  username,
+  password,
+  serverAddress,
+) {
+  try {
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(
+      unescape(encodeURIComponent(username + ":" + password)),
+    );
+    headers.append("Authorization", "Basic " + loginBase64Encoded);
+    headers.append("Content-Type", "application/json");
+
+    const url = `${serverAddress}/j-lawyer-io/rest/v6/cases/document/${documentId}/perform-ocr`;
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(
+        `OCR für Dokument ${documentId} fehlgeschlagen: ${response.status} - ${errorText}`,
+      );
+      return false;
+    }
+
+    console.log(`OCR für Dokument ${documentId} erfolgreich angestoßen`);
+    return true;
+  } catch (error) {
+    console.warn(
+      `OCR für Dokument ${documentId} fehlgeschlagen:`,
+      error.message,
+    );
+    return false;
+  }
+}
+
+// Prüft ob eine Datei für OCR geeignet ist (Bilder und PDFs)
+function isOcrEligible(fileName) {
+  if (!fileName) return false;
+  const ext = fileName.split(".").pop().toLowerCase();
+  const ocrExtensions = [
+    "pdf",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "tiff",
+    "tif",
+    "bmp",
+  ];
+  return ocrExtensions.includes(ext);
 }
 
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
@@ -2878,8 +2972,8 @@ nicht über verfügbare Methoden extrahiert werden konnte.`;
         const data = await response.json();
         console.log(`MIME-Part Dokument ID für "${finalFileName}": ${data.id}`);
 
-        // Erfolg vermerken
-        documentIdsToTag.push(data.id);
+        // Erfolg vermerken (mit fileName für OCR-Prüfung)
+        documentIdsToTag.push({ id: data.id, fileName: finalFileName });
         processedFiles.push(finalFileName);
       } catch (error) {
         console.error(

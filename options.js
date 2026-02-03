@@ -4,6 +4,7 @@ document.getElementById("saveButton").addEventListener("click", function () {
   const serverAddress = document.getElementById("serverAddress").value;
   const moveToTrash = document.getElementById("moveToTrash").checked;
   const allowRename = document.getElementById("allowRename").checked;
+  const performOcr = document.getElementById("performOcr").checked;
   const subjectTemplate = document.getElementById("subjectTemplate").value;
 
   browser.storage.local
@@ -13,6 +14,7 @@ document.getElementById("saveButton").addEventListener("click", function () {
       serverAddress: serverAddress,
       moveToTrash: moveToTrash,
       allowRename: allowRename,
+      performOcr: performOcr,
       subjectTemplate: subjectTemplate,
     })
     .then(() => {
@@ -80,6 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "serverAddress",
       "moveToTrash",
       "allowRename",
+      "performOcr",
       "subjectTemplate",
     ])
     .then((result) => {
@@ -91,6 +94,8 @@ document.addEventListener("DOMContentLoaded", function () {
         result.moveToTrash || false;
       document.getElementById("allowRename").checked =
         result.allowRename || false;
+      document.getElementById("performOcr").checked =
+        result.performOcr || false;
       document.getElementById("subjectTemplate").value =
         result.subjectTemplate || "";
     });
