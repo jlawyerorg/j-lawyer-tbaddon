@@ -207,6 +207,26 @@ async function sendEmailToServer(
       } else {
         console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
       }
+
+      // creationDate auf das E-Mail-Datum setzen (nicht den Veraktungszeitpunkt)
+      try {
+        await updateDocumentCreationDate(
+          data.id,
+          date,
+          caseId,
+          username,
+          password,
+          serverAddress,
+        );
+        await logActivity(
+          "sendEmailToServer",
+          "creationDate gesetzt auf: " + date.toISOString(),
+        );
+      } catch (dateError) {
+        console.error("Fehler beim Setzen des creationDate:", dateError);
+        // Nicht abbrechen - das Dokument wurde bereits gespeichert
+      }
+
       await logActivity("sendEmailToServer", "Email gespeichert: " + fileName);
 
       browser.runtime.sendMessage({ type: "success" });
@@ -384,6 +404,26 @@ async function sendOnlyMessageToServer(
       } else {
         console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
       }
+
+      // creationDate auf das E-Mail-Datum setzen (nicht den Veraktungszeitpunkt)
+      try {
+        await updateDocumentCreationDate(
+          data.id,
+          date,
+          caseId,
+          username,
+          password,
+          serverAddress,
+        );
+        await logActivity(
+          "sendOnlyMessageToServer",
+          "creationDate gesetzt auf: " + date.toISOString(),
+        );
+      } catch (dateError) {
+        console.error("Fehler beim Setzen des creationDate:", dateError);
+        // Nicht abbrechen - das Dokument wurde bereits gespeichert
+      }
+
       await logActivity(
         "sendOnlyMessageToServer",
         "Email gespeichert: " + fileName,
@@ -1211,6 +1251,118 @@ async function updateDocumentFolder(
     }
     return response.json();
   });
+}
+
+// Holt die Dokument-Metadaten vom Server
+async function getDocumentMetadata(
+  documentId,
+  username,
+  password,
+  serverAddress,
+) {
+  const headers = new Headers();
+  const loginBase64Encoded = btoa(
+    unescape(encodeURIComponent(username + ":" + password)),
+  );
+  headers.append("Authorization", "Basic " + loginBase64Encoded);
+  headers.append("Content-Type", "application/json");
+
+  const url = `${serverAddress}/j-lawyer-io/rest/v1/cases/document/${documentId}/content`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      "Fehler beim Abrufen der Dokument-Metadaten: " + response.status,
+    );
+  }
+
+  return response.json();
+}
+
+// Aktualisiert das creationDate eines Dokuments auf das E-Mail-Datum
+async function updateDocumentCreationDate(
+  documentId,
+  emailDate,
+  caseId,
+  username,
+  password,
+  serverAddress,
+) {
+  try {
+    // Zuerst die aktuellen Metadaten des Dokuments abrufen
+    const docMetadata = await getDocumentMetadata(
+      documentId,
+      username,
+      password,
+      serverAddress,
+    );
+    console.log("Dokument-Metadaten abgerufen:", docMetadata);
+
+    const headers = new Headers();
+    const loginBase64Encoded = btoa(
+      unescape(encodeURIComponent(username + ":" + password)),
+    );
+    headers.append("Authorization", "Basic " + loginBase64Encoded);
+    headers.append("Content-Type", "application/json");
+
+    const url = `${serverAddress}/j-lawyer-io/rest/v1/cases/document/update-metadata`;
+
+    // E-Mail-Datum als ISO-String formatieren
+    const emailDateISO = emailDate.toISOString();
+    const currentDateISO = new Date().toISOString();
+
+    // Payload mit allen erforderlichen Feldern erstellen
+    // basierend auf dem Muster aus jLClient-JS
+    const payload = {
+      caseId: caseId,
+      changeDate: currentDateISO,
+      creationDate: emailDateISO,
+      externalId: docMetadata.externalId || null,
+      favorite: docMetadata.favorite || false,
+      folderId: docMetadata.folderId || selectedCaseFolderID || null,
+      highlight1:
+        docMetadata.highlight1 !== undefined
+          ? docMetadata.highlight1
+          : -2147483648,
+      highlight2:
+        docMetadata.highlight2 !== undefined
+          ? docMetadata.highlight2
+          : -2147483648,
+      id: documentId,
+      name: docMetadata.name,
+      size: docMetadata.size || 0,
+      version: (docMetadata.version || 0) + 1,
+    };
+
+    console.log("Update-Metadata Payload:", payload);
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        "Fehler beim Aktualisieren des creationDate: " +
+          response.status +
+          " " +
+          errorText,
+      );
+    }
+
+    const result = await response.json();
+    console.log("creationDate erfolgreich aktualisiert auf:", emailDateISO);
+    return result;
+  } catch (error) {
+    console.error("Fehler in updateDocumentCreationDate:", error);
+    throw error;
+  }
 }
 
 // comment: https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
