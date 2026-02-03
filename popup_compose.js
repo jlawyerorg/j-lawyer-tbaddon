@@ -287,27 +287,44 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
-function getCases(username, password, serverAddress) {
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
+// Funktion zum Suchen von Fällen via API
+async function searchCasesApi(
+  username,
+  password,
+  serverAddress,
+  searchString,
+  includeArchived = false,
+) {
+  // API erfordert mindestens 3 Zeichen
+  if (!searchString || searchString.length < 3) {
+    return [];
+  }
+
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/search" +
+    "?searchString=" +
+    encodeURIComponent(searchString) +
+    "&includeArchived=" +
+    includeArchived;
 
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
   );
   headers.append("Authorization", "Basic " + loginBase64Encoded);
-  // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
   headers.append("Content-Type", "application/json");
 
-  return fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headers,
-    timeOut: 30000,
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return response.json();
 }
 
 function getTags(username, password, serverAddress) {
@@ -342,212 +359,223 @@ function getTags(username, password, serverAddress) {
     });
 }
 
+// Debounce-Timer für die Suche
+let searchDebounceTimer = null;
+
 // Event-Listener für die Suche
 document.getElementById("searchInput").addEventListener("input", function () {
   const query = this.value.trim();
-  if (query) {
-    searchCases(query);
+
+  // Debounce: Warte 300ms nach letzter Eingabe bevor API-Call
+  clearTimeout(searchDebounceTimer);
+
+  if (query && query.length >= 3) {
+    searchDebounceTimer = setTimeout(() => {
+      searchCases(query);
+    }, 300);
+  } else if (query.length > 0 && query.length < 3) {
+    // Zeige Hinweis bei weniger als 3 Zeichen
+    const resultsListElement = document.getElementById("resultsList");
+    resultsListElement.style.display = "block";
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: #666; font-style: italic;">Mindestens 3 Zeichen eingeben...</div>';
   } else {
     document.getElementById("resultsList").textContent = "";
+    document.getElementById("resultsList").style.display = "none";
   }
 });
 
-// Funktion zum Suchen von Fällen
+// Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
-  document.getElementById("resultsList").style.display = "block";
-  let storedData = await browser.storage.local.get("cases");
-  let casesArray = storedData.cases;
+  const resultsListElement = document.getElementById("resultsList");
+  resultsListElement.style.display = "block";
+
+  // Lade-Anzeige
+  resultsListElement.innerHTML =
+    '<div class="resultItem" style="color: #666; font-style: italic;">Suche...</div>';
+
   let loginData = await browser.storage.local.get([
     "username",
     "password",
     "serverAddress",
   ]);
 
-  query = query.toUpperCase();
+  try {
+    // API-Suche durchführen
+    const results = await searchCasesApi(
+      loginData.username,
+      loginData.password,
+      loginData.serverAddress,
+      query,
+    );
 
-  let results = casesArray.filter(
-    (item) =>
-      item.name.toUpperCase().includes(query) ||
-      item.fileNumber.toUpperCase().includes(query) ||
-      (item.reason && item.reason.toUpperCase().includes(query)), // Neue Bedingung für reason
-  );
-
-  // Ergebnisse bewerten und sortieren basierend auf Übereinstimmungslänge
-  results = results
-    .map((item) => {
-      let nameMatchLength = getConsecutiveMatchCount(
-        item.name.toUpperCase(),
-        query,
-      );
-      let fileNumberMatchLength = getConsecutiveMatchCount(
-        item.fileNumber.toUpperCase(),
-        query,
-      );
-      let reasonMatchLength = item.reason
-        ? getConsecutiveMatchCount(item.reason.toUpperCase(), query)
-        : 0;
-
-      return {
-        ...item,
-        matchLength: Math.max(
-          nameMatchLength,
-          fileNumberMatchLength,
-          reasonMatchLength,
-        ),
-      };
-    })
-    .filter((item) => item.matchLength > 0)
-    .sort((a, b) => b.matchLength - a.matchLength);
-
-  const resultsListElement = document.getElementById("resultsList");
-  while (resultsListElement.firstChild) {
-    resultsListElement.removeChild(resultsListElement.firstChild);
-  }
-
-  results.forEach((item) => {
-    const div = document.createElement("div");
-    div.className = "resultItem";
-    div.setAttribute("data-id", item.id);
-    div.setAttribute("data-file-number", item.fileNumber);
-    div.setAttribute("data-name", item.name);
-    if (item.reason) {
-      div.setAttribute("data-reason", item.reason);
+    // Ergebnisliste leeren
+    while (resultsListElement.firstChild) {
+      resultsListElement.removeChild(resultsListElement.firstChild);
     }
-    div.textContent = `${item.name} (${item.fileNumber})`;
-    if (item.reason) {
-      div.textContent += ` - ${item.reason}`;
+
+    if (results.length === 0) {
+      resultsListElement.innerHTML =
+        '<div class="resultItem" style="color: #666; font-style: italic;">Keine Ergebnisse gefunden</div>';
+      return;
     }
-    resultsListElement.appendChild(div);
-  });
 
-  // Event-Handler für Suchergebnisse
-  document.querySelectorAll(".resultItem").forEach((item) => {
-    item.addEventListener("click", async function () {
-      // Setze die ausgewählte Akte basierend auf dem Klick
-      const caseId = this.getAttribute("data-id");
-      const caseName = this.getAttribute("data-name");
-      const caseFileNumber = this.getAttribute("data-file-number");
+    results.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "resultItem";
+      div.setAttribute("data-id", item.id);
+      div.setAttribute("data-file-number", item.fileNumber);
+      div.setAttribute("data-name", item.name);
+      if (item.reason) {
+        div.setAttribute("data-reason", item.reason);
+      }
+      div.textContent = `${item.name} (${item.fileNumber})`;
+      if (item.reason) {
+        div.textContent += ` - ${item.reason}`;
+      }
+      resultsListElement.appendChild(div);
+    });
 
-      console.log("Ausgewählter Fall - ID:", caseId);
-      console.log("Ausgewählter Fall - Name:", caseName);
-      console.log("Ausgewählter Fall - Aktenzeichen:", caseFileNumber);
+    // Event-Handler für Suchergebnisse
+    document.querySelectorAll(".resultItem").forEach((item) => {
+      item.addEventListener("click", async function () {
+        // Setze die ausgewählte Akte basierend auf dem Klick
+        const caseId = this.getAttribute("data-id");
+        const caseName = this.getAttribute("data-name");
+        const caseFileNumber = this.getAttribute("data-file-number");
 
-      currentSelectedCase = {
-        id: caseId,
-        name: caseName,
-        fileNumber: caseFileNumber,
-      };
+        console.log("Ausgewählter Fall - ID:", caseId);
+        console.log("Ausgewählter Fall - Name:", caseName);
+        console.log("Ausgewählter Fall - Aktenzeichen:", caseFileNumber);
 
-      const loginData = await browser.storage.local.get([
-        "username",
-        "password",
-        "serverAddress",
-      ]);
+        currentSelectedCase = {
+          id: caseId,
+          name: caseName,
+          fileNumber: caseFileNumber,
+        };
 
-      // Hole die Metadaten des Falls, einschließlich `reason`
-      const caseMetaData = await getCaseMetaData(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
+        const loginData = await browser.storage.local.get([
+          "username",
+          "password",
+          "serverAddress",
+        ]);
 
-      // Aktualisiere die `currentSelectedCase` mit dem `reason`
-      currentSelectedCase.reason = caseMetaData.reason;
+        // Hole die Metadaten des Falls, einschließlich `reason`
+        const caseMetaData = await getCaseMetaData(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
 
-      // Lade die Ordner des ausgewählten Falls und aktualisiere die Struktur
-      caseFolders = await getCaseFolders(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
-      displayTreeStructure(caseFolders);
+        // Aktualisiere die `currentSelectedCase` mit dem `reason`
+        currentSelectedCase.reason = caseMetaData.reason;
 
-      // Aktualisiere das Label mit den Falldetails, einschließlich `reason`, falls vorhanden
-      const customizableLabel = document.getElementById("customizableLabel");
-      customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || "kein Grund angegeben"}`;
+        // Lade die Ordner des ausgewählten Falls und aktualisiere die Struktur
+        caseFolders = await getCaseFolders(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
+        displayTreeStructure(caseFolders);
 
-      // Beteiligte anzeigen
-      displayParties(currentSelectedCase.id);
+        // Aktualisiere das Label mit den Falldetails, einschließlich `reason`, falls vorhanden
+        const customizableLabel = document.getElementById("customizableLabel");
+        customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || "kein Grund angegeben"}`;
 
-      // Aktualisiere den Betreff im Compose-Fenster
-      try {
-        // Aktiven Tab im Compose-Fenster ermitteln
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        if (tabs.length > 0) {
-          const tabId = tabs[0].id;
+        // Beteiligte anzeigen
+        displayParties(currentSelectedCase.id);
 
-          // Aktuelle Compose-Details abrufen
-          const composeDetails = await browser.compose.getComposeDetails(tabId);
+        // Aktualisiere den Betreff im Compose-Fenster
+        try {
+          // Aktiven Tab im Compose-Fenster ermitteln
+          const tabs = await browser.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          if (tabs.length > 0) {
+            const tabId = tabs[0].id;
 
-          console.log("Compose-Details:", composeDetails);
-          console.log("currentSelectedCase für Betreff:", currentSelectedCase);
+            // Aktuelle Compose-Details abrufen
+            const composeDetails =
+              await browser.compose.getComposeDetails(tabId);
 
-          // Betreff nur aktualisieren, wenn die Aktenzeichen-Nummer noch nicht im Betreff steht
-          if (
-            !composeDetails.subject ||
-            !composeDetails.subject.includes(currentSelectedCase.fileNumber)
-          ) {
-            // Betreff-Template aus Einstellungen laden oder Standard verwenden
-            const settings = await browser.storage.local.get("subjectTemplate");
-            const template =
-              settings.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
-
-            // Neuen Betreff mit Template und Platzhalter-Ersetzung erstellen
-            const newSubject = replaceSubjectPlaceholders(
-              template,
+            console.log("Compose-Details:", composeDetails);
+            console.log(
+              "currentSelectedCase für Betreff:",
               currentSelectedCase,
-              caseMetaData,
             );
 
-            // Compose-Details mit neuem Betreff aktualisieren
-            await browser.compose.setComposeDetails(tabId, {
-              subject: newSubject,
-            });
+            // Betreff nur aktualisieren, wenn die Aktenzeichen-Nummer noch nicht im Betreff steht
+            if (
+              !composeDetails.subject ||
+              !composeDetails.subject.includes(currentSelectedCase.fileNumber)
+            ) {
+              // Betreff-Template aus Einstellungen laden oder Standard verwenden
+              const settings =
+                await browser.storage.local.get("subjectTemplate");
+              const template =
+                settings.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
 
-            console.log("Betreff aktualisiert:", newSubject);
+              // Neuen Betreff mit Template und Platzhalter-Ersetzung erstellen
+              const newSubject = replaceSubjectPlaceholders(
+                template,
+                currentSelectedCase,
+                caseMetaData,
+              );
+
+              // Compose-Details mit neuem Betreff aktualisieren
+              await browser.compose.setComposeDetails(tabId, {
+                subject: newSubject,
+              });
+
+              console.log("Betreff aktualisiert:", newSubject);
+            } else {
+              console.log(
+                "Betreff nicht aktualisiert, da die Aktenzeichen-Nummer bereits enthalten ist",
+              );
+            }
           } else {
-            console.log(
-              "Betreff nicht aktualisiert, da die Aktenzeichen-Nummer bereits enthalten ist",
+            console.error(
+              "Kein aktiver Tab gefunden für Betreff-Aktualisierung",
             );
           }
-        } else {
-          console.error("Kein aktiver Tab gefunden für Betreff-Aktualisierung");
+        } catch (error) {
+          console.error("Fehler beim Aktualisieren des Betreffs:", error);
         }
-      } catch (error) {
-        console.error("Fehler beim Aktualisieren des Betreffs:", error);
-      }
 
-      // Führe die Aktion aus, die sonst der Button ausgelöst hätte
-      browser.storage.local
-        .get(["username", "password", "serverAddress"])
-        .then((result) => {
-          browser.runtime.sendMessage({
-            type: "saveToCaseAfterSend",
-            source: "popup_compose",
-            content: currentSelectedCase.fileNumber,
-            selectedCaseFolderID: selectedCaseFolderID,
-            username: result.username,
-            password: result.password,
-            serverAddress: result.serverAddress,
-            currentSelectedCase: currentSelectedCase,
+        // Führe die Aktion aus, die sonst der Button ausgelöst hätte
+        browser.storage.local
+          .get(["username", "password", "serverAddress"])
+          .then((result) => {
+            browser.runtime.sendMessage({
+              type: "saveToCaseAfterSend",
+              source: "popup_compose",
+              content: currentSelectedCase.fileNumber,
+              selectedCaseFolderID: selectedCaseFolderID,
+              username: result.username,
+              password: result.password,
+              serverAddress: result.serverAddress,
+              currentSelectedCase: currentSelectedCase,
+            });
+
+            // Setze Feedback-Text und -Farbe
+            const feedback = document.getElementById("feedback");
+            feedback.textContent =
+              "E-Mail wird nach dem Senden in der Akte gespeichert";
+            feedback.style.color = "green";
           });
 
-          // Setze Feedback-Text und -Farbe
-          const feedback = document.getElementById("feedback");
-          feedback.textContent =
-            "E-Mail wird nach dem Senden in der Akte gespeichert";
-          feedback.style.color = "green";
-        });
-
-      // Blende die Ergebnissliste aus
-      document.getElementById("resultsList").style.display = "none";
+        // Blende die Ergebnissliste aus
+        document.getElementById("resultsList").style.display = "none";
+      });
     });
-  });
+  } catch (error) {
+    console.error("Fehler bei der Suche:", error);
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: red;">Fehler bei der Suche</div>';
+  }
 }
 
 function getConsecutiveMatchCount(str, query) {
@@ -1148,7 +1176,7 @@ async function updateData(feedback, progressBar) {
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
-    const totalTasks = 5;
+    const totalTasks = 4; // Reduziert von 5 auf 4 (Cases werden jetzt per API gesucht)
 
     function updateProgress() {
       tasksCompleted++;
@@ -1162,17 +1190,11 @@ async function updateData(feedback, progressBar) {
     }
 
     // Alle asynchronen Aufgaben parallel ausführen
+    // Hinweis: Cases werden nicht mehr heruntergeladen, sondern per API gesucht
     await Promise.all([
       (async () => {
         await getTags(username, password, serverAddress);
         fillTagsList();
-        updateProgress();
-      })(),
-
-      (async () => {
-        const casesRaw = await getCases(username, password, serverAddress);
-        await browser.storage.local.set({ cases: casesRaw });
-        console.log("Cases heruntergeladen: " + casesRaw);
         updateProgress();
       })(),
 

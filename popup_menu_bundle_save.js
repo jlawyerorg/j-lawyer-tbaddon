@@ -161,29 +161,6 @@ document.addEventListener("keydown", function (event) {
   }
 });
 
-function getCasesFromSelection(username, password, serverAddress) {
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
-
-  const headers = new Headers();
-  const loginBase64Encoded = btoa(
-    unescape(encodeURIComponent(username + ":" + password)),
-  );
-  headers.append("Authorization", "Basic " + loginBase64Encoded);
-  // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
-  headers.append("Content-Type", "application/json");
-
-  return fetch(url, {
-    method: "GET",
-    headers: headers,
-    timeOut: 10000,
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
-  });
-}
-
 async function getTags(username, password, serverAddress) {
   const url =
     serverAddress +
@@ -215,117 +192,121 @@ async function getTags(username, password, serverAddress) {
     });
 }
 
+// Debounce-Timer für die Suche
+let searchDebounceTimer = null;
+
 // Event-Listener für die Suche
 document.getElementById("searchInput").addEventListener("input", function () {
   const query = this.value.trim();
-  if (query) {
-    searchCases(query);
+
+  // Debounce: Warte 300ms nach letzter Eingabe bevor API-Call
+  clearTimeout(searchDebounceTimer);
+
+  if (query && query.length >= 3) {
+    searchDebounceTimer = setTimeout(() => {
+      searchCases(query);
+    }, 300);
+  } else if (query.length > 0 && query.length < 3) {
+    // Zeige Hinweis bei weniger als 3 Zeichen
+    const resultsListElement = document.getElementById("resultsList");
+    resultsListElement.style.display = "block";
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: #666; font-style: italic;">Mindestens 3 Zeichen eingeben...</div>';
   } else {
     document.getElementById("resultsList").textContent = "";
+    document.getElementById("resultsList").style.display = "none";
   }
 });
 
-// Funktion zum Suchen von Fällen
+// Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
-  document.getElementById("resultsList").style.display = "block";
-  let storedData = await browser.storage.local.get("cases");
-  let casesArray = storedData.cases;
+  const resultsListElement = document.getElementById("resultsList");
+  resultsListElement.style.display = "block";
+
+  // Lade-Anzeige
+  resultsListElement.innerHTML =
+    '<div class="resultItem" style="color: #666; font-style: italic;">Suche...</div>';
+
   let loginData = await browser.storage.local.get([
     "username",
     "password",
     "serverAddress",
   ]);
 
-  query = query.toUpperCase();
+  try {
+    // API-Suche durchführen
+    const results = await searchCasesApi(
+      loginData.username,
+      loginData.password,
+      loginData.serverAddress,
+      query,
+    );
 
-  let results = casesArray.filter(
-    (item) =>
-      item.name.toUpperCase().includes(query) ||
-      item.fileNumber.toUpperCase().includes(query) ||
-      (item.reason && item.reason.toUpperCase().includes(query)), // Neue Bedingung für reason
-  );
-
-  // Ergebnisse bewerten und sortieren basierend auf Übereinstimmungslänge
-  results = results
-    .map((item) => {
-      let nameMatchLength = getConsecutiveMatchCount(
-        item.name.toUpperCase(),
-        query,
-      );
-      let fileNumberMatchLength = getConsecutiveMatchCount(
-        item.fileNumber.toUpperCase(),
-        query,
-      );
-      let reasonMatchLength = item.reason
-        ? getConsecutiveMatchCount(item.reason.toUpperCase(), query)
-        : 0;
-
-      return {
-        ...item,
-        matchLength: Math.max(
-          nameMatchLength,
-          fileNumberMatchLength,
-          reasonMatchLength,
-        ),
-      };
-    })
-    .filter((item) => item.matchLength > 0)
-    .sort((a, b) => b.matchLength - a.matchLength);
-
-  const resultsListElement = document.getElementById("resultsList");
-  while (resultsListElement.firstChild) {
-    resultsListElement.removeChild(resultsListElement.firstChild);
-  }
-
-  results.forEach((item) => {
-    const div = document.createElement("div");
-    div.className = "resultItem";
-    div.setAttribute("data-id", item.id);
-    div.setAttribute("data-file-number", item.fileNumber);
-    div.setAttribute("data-name", item.name);
-    if (item.reason) {
-      div.setAttribute("data-reason", item.reason);
+    // Ergebnisliste leeren
+    while (resultsListElement.firstChild) {
+      resultsListElement.removeChild(resultsListElement.firstChild);
     }
-    div.textContent = `${item.name} (${item.fileNumber})`;
-    if (item.reason) {
-      div.textContent += ` - ${item.reason}`;
+
+    if (results.length === 0) {
+      resultsListElement.innerHTML =
+        '<div class="resultItem" style="color: #666; font-style: italic;">Keine Ergebnisse gefunden</div>';
+      return;
     }
-    resultsListElement.appendChild(div);
-  });
 
-  // Event Handler für Suchergebnisse
-  document.querySelectorAll(".resultItem").forEach((item) => {
-    item.addEventListener("click", async function () {
-      currentSelectedCase = {
-        id: this.getAttribute("data-id"),
-        name: this.getAttribute("data-name"),
-        fileNumber: this.getAttribute("data-file-number"),
-        reason: this.getAttribute("data-reason"),
-      };
-
-      caseMetaData = await getCaseMetaData(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
-
-      caseFolders = await getCaseFolders(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
-      console.log("caseFolders:", caseFolders);
-      displayTreeStructure(caseFolders);
-
-      document.getElementById("resultsList").style.display = "none";
-
-      // Label aktualisieren
-      const customizableLabel = document.getElementById("customizableLabel");
-      customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+    results.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "resultItem";
+      div.setAttribute("data-id", item.id);
+      div.setAttribute("data-file-number", item.fileNumber);
+      div.setAttribute("data-name", item.name);
+      if (item.reason) {
+        div.setAttribute("data-reason", item.reason);
+      }
+      div.textContent = `${item.name} (${item.fileNumber})`;
+      if (item.reason) {
+        div.textContent += ` - ${item.reason}`;
+      }
+      resultsListElement.appendChild(div);
     });
-  });
+
+    // Event Handler für Suchergebnisse
+    document.querySelectorAll(".resultItem").forEach((item) => {
+      item.addEventListener("click", async function () {
+        currentSelectedCase = {
+          id: this.getAttribute("data-id"),
+          name: this.getAttribute("data-name"),
+          fileNumber: this.getAttribute("data-file-number"),
+          reason: this.getAttribute("data-reason"),
+        };
+
+        const caseMetaData = await getCaseMetaData(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
+
+        caseFolders = await getCaseFolders(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
+        console.log("caseFolders:", caseFolders);
+        displayTreeStructure(caseFolders);
+
+        document.getElementById("resultsList").style.display = "none";
+
+        // Label aktualisieren
+        const customizableLabel = document.getElementById("customizableLabel");
+        customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+      });
+    });
+  } catch (error) {
+    console.error("Fehler bei der Suche:", error);
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: red;">Fehler bei der Suche</div>';
+  }
 }
 
 function getConsecutiveMatchCount(str, query) {
@@ -609,7 +590,7 @@ async function updateData(feedback, progressBar) {
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
-    const totalTasks = 5;
+    const totalTasks = 4; // Reduziert von 5 auf 4 (Cases werden jetzt per API gesucht)
 
     function updateProgress() {
       tasksCompleted++;
@@ -623,17 +604,11 @@ async function updateData(feedback, progressBar) {
     }
 
     // Alle asynchronen Aufgaben parallel ausführen
+    // Hinweis: Cases werden nicht mehr heruntergeladen, sondern per API gesucht
     await Promise.all([
       (async () => {
         await getTags(username, password, serverAddress);
         fillTagsList();
-        updateProgress();
-      })(),
-
-      (async () => {
-        const casesRaw = await getCases(username, password, serverAddress);
-        await browser.storage.local.set({ cases: casesRaw });
-        console.log("Cases heruntergeladen: " + casesRaw);
         updateProgress();
       })(),
 
@@ -707,27 +682,44 @@ async function updateData(feedback, progressBar) {
   }
 }
 
-async function getCases(username, password, serverAddress) {
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
+// Funktion zum Suchen von Fällen via API
+async function searchCasesApi(
+  username,
+  password,
+  serverAddress,
+  searchString,
+  includeArchived = false,
+) {
+  // API erfordert mindestens 3 Zeichen
+  if (!searchString || searchString.length < 3) {
+    return [];
+  }
+
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/search" +
+    "?searchString=" +
+    encodeURIComponent(searchString) +
+    "&includeArchived=" +
+    includeArchived;
 
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
   );
   headers.append("Authorization", "Basic " + loginBase64Encoded);
-  // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
   headers.append("Content-Type", "application/json");
 
-  return fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headers,
-    timeout: 30000,
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return response.json();
 }
 
 async function logActivity(action, details) {

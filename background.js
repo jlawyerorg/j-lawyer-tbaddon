@@ -798,16 +798,27 @@ function getDisplayedMessageFromActiveTab() {
     });
 }
 
-async function getCases(username, password, serverAddress) {
-  const storageKey = "casesList";
-  const cachedData = await browser.storage.local.get(storageKey);
-
-  if (cachedData[storageKey]) {
-    console.log("Verwende zwischengespeicherte Daten für Fälle");
-    return cachedData[storageKey];
+// Funktion zum Suchen von Fällen via API
+async function searchCasesApi(
+  username,
+  password,
+  serverAddress,
+  searchString,
+  includeArchived = false,
+) {
+  // API erfordert mindestens 3 Zeichen
+  if (!searchString || searchString.length < 3) {
+    return [];
   }
 
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/search" +
+    "?searchString=" +
+    encodeURIComponent(searchString) +
+    "&includeArchived=" +
+    includeArchived;
+
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
@@ -824,22 +835,46 @@ async function getCases(username, password, serverAddress) {
     throw new Error("Network response was not ok");
   }
 
-  const data = await response.json();
-  await browser.storage.local.set({ [storageKey]: data });
-  console.log("Fälle im Speicher gespeichert");
-  return data;
+  return response.json();
 }
 
-async function getStoredCases() {
-  const storageKey = "cases";
-  const cachedData = await browser.storage.local.get(storageKey);
+// Funktion zum Finden einer Case-ID anhand des Aktenzeichens via API
+async function findCaseIdByFileNumber(
+  username,
+  password,
+  serverAddress,
+  fileNumber,
+) {
+  if (!fileNumber || fileNumber.length < 3) {
+    console.log("Aktenzeichen zu kurz für API-Suche: " + fileNumber);
+    return null;
+  }
 
-  if (cachedData[storageKey]) {
-    console.log("Verwende zwischengespeicherte Daten für Fälle");
-    // console.log(cachedData[storageKey]);
-    return cachedData[storageKey];
-  } else {
-    console.log("Keine zwischengespeicherten Daten gefunden");
+  try {
+    const results = await searchCasesApi(
+      username,
+      password,
+      serverAddress,
+      fileNumber,
+    );
+
+    // Suche exakten Match im Ergebnis
+    for (const item of results) {
+      if (item.fileNumber === fileNumber) {
+        console.log(
+          "ID gefunden via API: " +
+            item.id +
+            " für Aktenzeichen: " +
+            fileNumber,
+        );
+        return item.id;
+      }
+    }
+
+    console.log("Kein exakter Match für Aktenzeichen: " + fileNumber);
+    return null;
+  } catch (error) {
+    console.error("Fehler bei API-Suche für Aktenzeichen:", fileNumber, error);
     return null;
   }
 }
@@ -939,18 +974,6 @@ async function getFileByIdToDownload(
     .then((data) => {
       return data;
     });
-}
-
-async function findIdByFileNumber(data, fileNumber) {
-  for (let item of data) {
-    if (item.fileNumber === fileNumber) {
-      console.log(
-        "ID gefunden: " + item.id + " für Dateinummer: " + fileNumber,
-      );
-      return item.id;
-    }
-  }
-  return null;
 }
 
 function findCaseBySubject(data, subject) {
@@ -1279,18 +1302,12 @@ browser.runtime.onMessage.addListener((message) => {
       .then(async (result) => {
         const fileNumber = String(message.content);
 
-        let cases = await getStoredCases();
-        console.log("Die gespeicherten Fälle lauten: ", cases);
-
-        if (!cases) {
-          cases = await getCases(
-            result.username,
-            result.password,
-            result.serverAddress,
-          );
-        }
-
-        const caseId = await findIdByFileNumber(cases, fileNumber);
+        const caseId = await findCaseIdByFileNumber(
+          result.username,
+          result.password,
+          result.serverAddress,
+          fileNumber,
+        );
         console.log("Die ID des gefundenen Aktenzeichens lautet: " + caseId);
 
         if (caseId) {
@@ -1336,17 +1353,12 @@ browser.runtime.onMessage.addListener((message) => {
       .then(async (result) => {
         const fileNumber = String(message.content);
 
-        let cases = await getStoredCases();
-
-        if (!cases) {
-          cases = await getCases(
-            result.username,
-            result.password,
-            result.serverAddress,
-          );
-        }
-
-        const caseId = await findIdByFileNumber(cases, fileNumber);
+        const caseId = await findCaseIdByFileNumber(
+          result.username,
+          result.password,
+          result.serverAddress,
+          fileNumber,
+        );
 
         if (caseId) {
           await sendOnlyMessageToServer(
@@ -1371,17 +1383,12 @@ browser.runtime.onMessage.addListener((message) => {
       .then(async (result) => {
         const fileNumber = String(message.content);
 
-        let cases = await getStoredCases();
-
-        if (!cases) {
-          cases = await getCases(
-            result.username,
-            result.password,
-            result.serverAddress,
-          );
-        }
-
-        const caseId = await findIdByFileNumber(cases, fileNumber);
+        const caseId = await findCaseIdByFileNumber(
+          result.username,
+          result.password,
+          result.serverAddress,
+          fileNumber,
+        );
 
         if (caseId) {
           await sendAttachmentsToServer(
@@ -1486,18 +1493,11 @@ browser.runtime.onMessage.addListener((message) => {
 
       // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
       const fileNumber = String(message.content);
-      let cases = await getStoredCases();
 
-      if (!cases) {
-        cases = await getCases(
-          loginData.username,
-          loginData.password,
-          loginData.serverAddress,
-        );
-      }
-
-      const caseIdToSaveToAfterSend = await findIdByFileNumber(
-        cases,
+      const caseIdToSaveToAfterSend = await findCaseIdByFileNumber(
+        loginData.username,
+        loginData.password,
+        loginData.serverAddress,
         fileNumber,
       );
       await browser.storage.local.set({

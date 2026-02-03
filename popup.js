@@ -387,7 +387,7 @@ async function updateData(feedback, progressBar) {
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
-    const totalTasks = 5;
+    const totalTasks = 4; // Reduziert von 5 auf 4 (Cases werden jetzt per API gesucht)
 
     function updateProgress() {
       tasksCompleted++;
@@ -401,19 +401,11 @@ async function updateData(feedback, progressBar) {
     }
 
     // Alle asynchronen Aufgaben parallel ausführen
+    // Hinweis: Cases werden nicht mehr heruntergeladen, sondern per API gesucht
     await Promise.all([
       (async () => {
         await getTags(username, password, serverAddress);
         fillTagsList();
-        updateProgress();
-      })(),
-
-      (async () => {
-        const casesRaw = await getCases(username, password, serverAddress);
-        console.log("Anzahl der Fälle: " + casesRaw.length);
-
-        await browser.storage.local.set({ cases: casesRaw });
-
         updateProgress();
       })(),
 
@@ -1063,7 +1055,7 @@ async function displaySuggestions(matches, loginData) {
 }
 
 // Funktion zum Suchen des Aktenzeichens in der Nachricht
-// und Anzeige von Vorschlägen
+// und Anzeige von Vorschlägen (API-basiert)
 async function findFileNumberInRawMessage() {
   // Nachrichteninhalt abrufen
   const messageData = await getDisplayedMessageFromActiveTab();
@@ -1071,19 +1063,97 @@ async function findFileNumberInRawMessage() {
 
   let rawMessage = await messenger.messages.getRaw(messageData.id);
 
-  // die gespeicherte Daten aus browser.storage.local abrufen
-  let storedData = await browser.storage.local.get("cases");
   let loginData = await browser.storage.local.get([
     "username",
     "password",
     "serverAddress",
   ]);
 
-  // die gespeicherten Daten in einem Array namens 'cases'
-  let casesArray = storedData.cases;
+  // E-Mail-Struktur parsen für priorisierte Suche
+  const emailStructure = parseEmailStructure(rawMessage);
 
-  // Verwende neue Matching-Funktion für Top 3 Vorschläge
-  const topMatches = findBestMatchingCases(rawMessage, casesArray, 3);
+  console.log("E-Mail Betreff:", emailStructure.subject);
+  console.log(
+    "E-Mail Headers (erste 200 Zeichen):",
+    emailStructure.headers?.substring(0, 200),
+  );
+
+  // Aktenzeichen-Muster aus der E-Mail extrahieren
+  // Priorisiere Betreff > Header > Body
+  const searchTexts = [
+    emailStructure.subject,
+    emailStructure.headers,
+    emailStructure.bodyStart,
+  ].filter((t) => t);
+
+  const extractedPatterns = new Set();
+  for (const text of searchTexts) {
+    const patterns = extractFileNumberPatterns(text);
+    patterns.forEach((p) => extractedPatterns.add(p));
+  }
+
+  console.log(
+    "Extrahierte Aktenzeichen-Muster:",
+    Array.from(extractedPatterns),
+  );
+
+  // Wenn keine Muster gefunden, versuche den Betreff direkt zu suchen (falls >= 3 Zeichen)
+  if (
+    extractedPatterns.size === 0 &&
+    emailStructure.subject &&
+    emailStructure.subject.length >= 3
+  ) {
+    console.log(
+      "Keine Muster gefunden, versuche Betreff-Suche:",
+      emailStructure.subject,
+    );
+    extractedPatterns.add(emailStructure.subject);
+  }
+
+  // Für jedes gefundene Muster eine API-Suche durchführen
+  const allResults = [];
+  const seenIds = new Set();
+
+  for (const pattern of extractedPatterns) {
+    // API erfordert mindestens 3 Zeichen
+    if (pattern.length >= 3) {
+      try {
+        const results = await searchCasesApi(
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+          pattern,
+        );
+
+        // Ergebnisse hinzufügen, Duplikate vermeiden
+        for (const result of results) {
+          if (!seenIds.has(result.id)) {
+            seenIds.add(result.id);
+            // Prüfe ob das Aktenzeichen exakt im Betreff vorkommt (höchste Priorität)
+            const inSubject = emailStructure.subjectLower.includes(
+              result.fileNumber.toLowerCase(),
+            );
+            allResults.push({
+              item: result,
+              score: inSubject ? 100 : 50,
+              confidence: inSubject ? 95 : 70,
+              location: inSubject ? "Betreff" : "E-Mail",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Fehler bei API-Suche für Muster:", pattern, error);
+      }
+    }
+  }
+
+  // Sortiere nach Score
+  allResults.sort((a, b) => b.score - a.score);
+
+  // Begrenze auf Top 3
+  const topMatches = allResults.slice(0, 3);
+
+  console.log("Gefundene Matches:", topMatches);
 
   // Zeige Vorschläge im UI
   displaySuggestions(topMatches, loginData);
@@ -1145,28 +1215,44 @@ async function getDisplayedMessageFromActiveTab() {
   return message;
 }
 
-// Funktion zum Abrufen der Fälle / Akten
-function getCases(username, password, serverAddress) {
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
+// Funktion zum Suchen von Fällen via API
+async function searchCasesApi(
+  username,
+  password,
+  serverAddress,
+  searchString,
+  includeArchived = false,
+) {
+  // API erfordert mindestens 3 Zeichen
+  if (!searchString || searchString.length < 3) {
+    return [];
+  }
+
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/search" +
+    "?searchString=" +
+    encodeURIComponent(searchString) +
+    "&includeArchived=" +
+    includeArchived;
 
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
   );
   headers.append("Authorization", "Basic " + loginBase64Encoded);
-  // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
   headers.append("Content-Type", "application/json");
 
-  return fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headers,
-    timeout: 30000,
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return response.json();
 }
 
 // Funktion zum Abrufen der am Server gespeicherten Dokumenten-Tags
@@ -1240,116 +1326,120 @@ async function getCaseMetaData(caseId, username, password, serverAddress) {
     });
 }
 
+// Debounce-Timer für die Suche
+let searchDebounceTimer = null;
+
 // Event-Listener für die Suche
 document.getElementById("searchInput").addEventListener("input", function () {
   const query = this.value.trim();
-  if (query) {
-    searchCases(query);
+
+  // Debounce: Warte 300ms nach letzter Eingabe bevor API-Call
+  clearTimeout(searchDebounceTimer);
+
+  if (query && query.length >= 3) {
+    searchDebounceTimer = setTimeout(() => {
+      searchCases(query);
+    }, 300);
+  } else if (query.length > 0 && query.length < 3) {
+    // Zeige Hinweis bei weniger als 3 Zeichen
+    const resultsListElement = document.getElementById("resultsList");
+    resultsListElement.style.display = "block";
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: #666; font-style: italic;">Mindestens 3 Zeichen eingeben...</div>';
   } else {
     document.getElementById("resultsList").textContent = "";
+    document.getElementById("resultsList").style.display = "none";
   }
 });
 
-// Funktion zum Suchen von Fällen
+// Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
-  document.getElementById("resultsList").style.display = "block";
-  let storedData = await browser.storage.local.get("cases");
-  let casesArray = storedData.cases;
+  const resultsListElement = document.getElementById("resultsList");
+  resultsListElement.style.display = "block";
+
+  // Lade-Anzeige
+  resultsListElement.innerHTML =
+    '<div class="resultItem" style="color: #666; font-style: italic;">Suche...</div>';
+
   let loginData = await browser.storage.local.get([
     "username",
     "password",
     "serverAddress",
   ]);
 
-  query = query.toUpperCase();
+  try {
+    // API-Suche durchführen
+    const results = await searchCasesApi(
+      loginData.username,
+      loginData.password,
+      loginData.serverAddress,
+      query,
+    );
 
-  let results = casesArray.filter(
-    (item) =>
-      item.name.toUpperCase().includes(query) ||
-      item.fileNumber.toUpperCase().includes(query) ||
-      (item.reason && item.reason.toUpperCase().includes(query)), // Neue Bedingung für reason
-  );
-
-  // Ergebnisse bewerten und sortieren basierend auf Übereinstimmungslänge
-  results = results
-    .map((item) => {
-      let nameMatchLength = getConsecutiveMatchCount(
-        item.name.toUpperCase(),
-        query,
-      );
-      let fileNumberMatchLength = getConsecutiveMatchCount(
-        item.fileNumber.toUpperCase(),
-        query,
-      );
-      let reasonMatchLength = item.reason
-        ? getConsecutiveMatchCount(item.reason.toUpperCase(), query)
-        : 0;
-
-      return {
-        ...item,
-        matchLength: Math.max(
-          nameMatchLength,
-          fileNumberMatchLength,
-          reasonMatchLength,
-        ),
-      };
-    })
-    .filter((item) => item.matchLength > 0)
-    .sort((a, b) => b.matchLength - a.matchLength);
-
-  const resultsListElement = document.getElementById("resultsList");
-  while (resultsListElement.firstChild) {
-    resultsListElement.removeChild(resultsListElement.firstChild);
-  }
-
-  results.forEach((item) => {
-    const div = document.createElement("div");
-    div.className = "resultItem";
-    div.setAttribute("data-id", item.id);
-    div.setAttribute("data-file-number", item.fileNumber);
-    div.setAttribute("data-name", item.name);
-    if (item.reason) {
-      div.setAttribute("data-reason", item.reason);
+    // Ergebnisliste leeren
+    while (resultsListElement.firstChild) {
+      resultsListElement.removeChild(resultsListElement.firstChild);
     }
-    div.textContent = `${item.name} (${item.fileNumber})`;
-    if (item.reason) {
-      div.textContent += ` - ${item.reason}`;
+
+    if (results.length === 0) {
+      resultsListElement.innerHTML =
+        '<div class="resultItem" style="color: #666; font-style: italic;">Keine Ergebnisse gefunden</div>';
+      return;
     }
-    resultsListElement.appendChild(div);
-  });
 
-  // Event Handler für Suchergebnisse
-  document.querySelectorAll(".resultItem").forEach((item) => {
-    item.addEventListener("click", async function () {
-      currentSelectedCase = {
-        id: this.getAttribute("data-id"),
-        name: this.getAttribute("data-name"),
-        fileNumber: this.getAttribute("data-file-number"),
-        reason: this.getAttribute("data-reason"),
-      };
-
-      caseMetaData = await getCaseMetaData(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
-
-      caseFolders = await getCaseFolders(
-        currentSelectedCase.id,
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-      );
-      console.log("caseFolders:", caseFolders);
-      displayTreeStructure(caseFolders);
-
-      document.getElementById("resultsList").style.display = "none";
-
-      // Label aktualisieren
-      customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+    results.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "resultItem";
+      div.setAttribute("data-id", item.id);
+      div.setAttribute("data-file-number", item.fileNumber);
+      div.setAttribute("data-name", item.name);
+      if (item.reason) {
+        div.setAttribute("data-reason", item.reason);
+      }
+      div.textContent = `${item.name} (${item.fileNumber})`;
+      if (item.reason) {
+        div.textContent += ` - ${item.reason}`;
+      }
+      resultsListElement.appendChild(div);
     });
-  });
+
+    // Event Handler für Suchergebnisse
+    document.querySelectorAll(".resultItem").forEach((item) => {
+      item.addEventListener("click", async function () {
+        currentSelectedCase = {
+          id: this.getAttribute("data-id"),
+          name: this.getAttribute("data-name"),
+          fileNumber: this.getAttribute("data-file-number"),
+          reason: this.getAttribute("data-reason"),
+        };
+
+        caseMetaData = await getCaseMetaData(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
+
+        caseFolders = await getCaseFolders(
+          currentSelectedCase.id,
+          loginData.username,
+          loginData.password,
+          loginData.serverAddress,
+        );
+        console.log("caseFolders:", caseFolders);
+        displayTreeStructure(caseFolders);
+
+        document.getElementById("resultsList").style.display = "none";
+
+        // Label aktualisieren
+        customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} (${caseMetaData.reason} - ${caseMetaData.lawyer})`;
+      });
+    });
+  } catch (error) {
+    console.error("Fehler bei der Suche:", error);
+    resultsListElement.innerHTML =
+      '<div class="resultItem" style="color: red;">Fehler bei der Suche</div>';
+  }
 }
 
 // Funktion zum Ermitteln der Länge der längsten aufeinanderfolgenden Übereinstimmung

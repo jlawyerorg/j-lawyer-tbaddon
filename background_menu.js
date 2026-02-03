@@ -319,16 +319,27 @@ async function sendEmailToServerFromSelection(
 //     });
 // }
 
-async function getCasesFromSelection(username, password, serverAddress) {
-  const storageKey = "casesList";
-  const cachedData = await browser.storage.local.get(storageKey);
-
-  if (cachedData[storageKey]) {
-    console.log("Verwende zwischengespeicherte Daten für Fälle");
-    return cachedData[storageKey];
+// Funktion zum Suchen von Fällen via API
+async function searchCasesApi(
+  username,
+  password,
+  serverAddress,
+  searchString,
+  includeArchived = false,
+) {
+  // API erfordert mindestens 3 Zeichen
+  if (!searchString || searchString.length < 3) {
+    return [];
   }
 
-  const url = serverAddress + "/j-lawyer-io/rest/v1/cases/list";
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/search" +
+    "?searchString=" +
+    encodeURIComponent(searchString) +
+    "&includeArchived=" +
+    includeArchived;
+
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
@@ -345,35 +356,48 @@ async function getCasesFromSelection(username, password, serverAddress) {
     throw new Error("Network response was not ok");
   }
 
-  const data = await response.json();
-  await browser.storage.local.set({ [storageKey]: data });
-  console.log("Fälle im Speicher gespeichert");
-  return data;
+  return response.json();
 }
 
-async function getStoredCases() {
-  const storageKey = "cases";
-  const cachedData = await browser.storage.local.get(storageKey);
-
-  if (cachedData[storageKey]) {
-    console.log("Verwende zwischengespeicherte Daten für Fälle");
-    return cachedData[storageKey];
-  } else {
-    console.log("Keine zwischengespeicherten Daten gefunden");
+// Funktion zum Finden einer Case-ID anhand des Aktenzeichens via API
+async function findCaseIdByFileNumber(
+  username,
+  password,
+  serverAddress,
+  fileNumber,
+) {
+  if (!fileNumber || fileNumber.length < 3) {
+    console.log("Aktenzeichen zu kurz für API-Suche: " + fileNumber);
     return null;
   }
-}
 
-function findIdByFileNumberFromSelection(data, fileNumber) {
-  /* This function, `findIdByFileNumberFromSelection`, is used to find and return the
-    ID of an item in a data set based on a given file number.
-    */
-  for (let item of data) {
-    if (item.fileNumber === fileNumber) {
-      return item.id;
+  try {
+    const results = await searchCasesApi(
+      username,
+      password,
+      serverAddress,
+      fileNumber,
+    );
+
+    // Suche exakten Match im Ergebnis
+    for (const item of results) {
+      if (item.fileNumber === fileNumber) {
+        console.log(
+          "ID gefunden via API: " +
+            item.id +
+            " für Aktenzeichen: " +
+            fileNumber,
+        );
+        return item.id;
+      }
     }
+
+    console.log("Kein exakter Match für Aktenzeichen: " + fileNumber);
+    return null;
+  } catch (error) {
+    console.error("Fehler bei API-Suche für Aktenzeichen:", fileNumber, error);
+    return null;
   }
-  return null;
 }
 
 function findCaseBySubject(data, subject) {
@@ -617,17 +641,12 @@ browser.runtime.onMessage.addListener((message) => {
             messagesToSaveObjects.messages[key].id,
           );
 
-          let cases = await getStoredCases();
-
-          if (!cases) {
-            cases = await getCasesFromSelection(
-              result.username,
-              result.password,
-              result.serverAddress,
-            );
-          }
-
-          const caseId = findIdByFileNumberFromSelection(cases, fileNumber);
+          const caseId = await findCaseIdByFileNumber(
+            result.username,
+            result.password,
+            result.serverAddress,
+            fileNumber,
+          );
 
           if (caseId) {
             singleMessageFromSelection = messagesToSaveObjects.messages[key];
