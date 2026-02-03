@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "j-lawyer.org-Thunderbird-Extension",
-  "version": "1.7.7",
+  "version": "1.8",
   "description": "Sendet E-Mails an einen j-lawyer.org Server",
   "author": "Maximilian Steinert",
   "icons": {
@@ -9,11 +9,11 @@
   },
   "permissions": [
     "activeTab",
-    "tabs", 
+    "tabs",
     "messagesRead",
     "messagesDelete",
     "compose",
-    "storage", 
+    "storage",
     "<all_urls>",
     "messagesTags",
     "messagesUpdate",
@@ -28,7 +28,6 @@
     "open_in_tab": true
   },
   "message_display_action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "24": "icons/icon-24.png",

@@ -1,476 +1,607 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Eingabe</title>
+        <style>
+            /* Grundlegende Stilrichtlinien für das gesamte Popup */
+            html {
+                box-sizing: border-box;
+            }
 
-<head>
-    <meta charset="UTF-8">
-    <title>Eingabe</title>
-    <style>
-        /* Grundlegende Stilrichtlinien für das gesamte Popup */
-        body {
-            width: 450px;
-            height: fit-content;
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+            body {
+                width: 100%;
+                height: 100vh;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 15px;
+                background-color: #f0f2f5;
+                overflow: hidden;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+            }
 
-        /* Allgemeiner Stil für die Schaltflächen */
-        button {
-            padding: 8px 15px;
-            margin-top: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s, box-shadow 0.3s; /* Übergangseffekt für Schatten hinzufügen */
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Schatten hinzufügen */
-        }
+            /* Ensure content fills the height */
+            .columns-container {
+                display: flex;
+                gap: 15px;
+                align-items: stretch;
+                flex: 1;
+                min-height: 0;
+            }
 
-        button:hover {
-            opacity: 0.8;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3); /* Intensiveren Schatten beim Hover hinzufügen */
-        }
+            button {
+                padding: 8px 16px;
+                margin-top: 10px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
 
-        /* Unterscheidende Stile für verschiedene Schaltflächen */
-        #submitButton {
-            background-color: #4CAF50;
-            color: white;
-        }
-        #saveOnlyMessageButton {
-            background-color: #4CAF50;
-            color: white;
-        }
+            button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                filter: brightness(105%);
+            }
 
-        #saveAttachmentsButton {
-            background-color: #cb1e1e;
-            color: white;
-        }
+            button:active {
+                transform: translateY(0);
+            }
 
-        #recommendCaseButton {
-            background-color: #2196F3;
-            color: white;
-        }
+            /* Unterscheidende Stile für verschiedene Schaltflächen */
+            #submitButton,
+            #saveOnlyMessageButton {
+                background-color: #4caf50;
+                color: white;
+            }
 
-        #updateDataButton {
-            background-color: #FFC107;
-            color: black;
-            font-size: 0.8em;
-        }
+            #saveAttachmentsButton {
+                background-color: #cb1e1e;
+                color: white;
+            }
 
-        /* Feedback-Paragraphenstil */
-        #feedback {
-            color: red;
-            margin-top: 20px;
-        }
+            #recommendCaseButton {
+                background-color: #2196f3;
+                color: white;
+            }
 
-        /* Anpassung des Abstands zwischen den Elementen */
-        p {
-            margin-bottom: 10px;
-        }
+            #updateDataButton {
+                background-color: #f8f9fa;
+                color: #333;
+                border: 1px solid #ddd;
+            }
 
-        /* Stil für Container mit Schatten */
-        #inputContainer, #feedbackContainer, #tagsContainer, #treeContainer {
-            padding: 15px;
-            border-radius: 10px;
-            background-color: #f7f7f7; /* leicht grauer Hintergrund */
-            margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Schatten hinzufügen */
-        }
-      
-        #feedbackContainer {
-            border: 2px solid #2196F3; /* Blauer Rahmen */
-        }
+            /* Feedback-Paragraphenstil */
+            #feedback {
+                color: #dc3545;
+                margin-top: 15px;
+                font-weight: 500;
+                text-align: center;
+            }
 
-        #tagsContainer {
-            border: 2px solid #FFC107; /* Gelber Rahmen */
-        }
+            /* Anpassung des Abstands zwischen den Elementen */
+            p {
+                margin: 0 0 10px 0;
+            }
 
-        /* Stil für das Suchfeld */
-        #searchInput {
-            width: 100%;
-            padding: 8px 12px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
+            /* Common Card Style */
+            .card {
+                padding: 20px;
+                border-radius: 12px;
+                background-color: white;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                border: 1px solid #e1e4e8;
+            }
 
-        /* Stil für Suggestions Container */
-        #suggestionsContainer {
-            margin: 15px 0;
-            padding: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
-        }
-
-        #suggestionsContainer h4 {
-            margin: 0 0 10px 0;
-            color: white;
-            font-size: 14px;
-            font-weight: normal;
-        }
-
-        #suggestionsList {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .suggestionItem {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .suggestionItem:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .suggestionItem.selected {
-            background: #007bff;
-            color: white;
-        }
-
-        .suggestionItem.selected .confidenceBadge {
-            background: white;
-            color: #007bff;
-        }
-
-        .suggestionItem.noMatch {
-            background: #fff3cd;
-            color: #856404;
-            cursor: default;
-            justify-content: center;
-        }
-
-        .suggestionItem.noMatch:hover {
-            transform: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .caseInfo {
-            flex: 1;
-            font-size: 13px;
-            line-height: 1.4;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .caseInfo strong {
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .caseDetails {
-            font-size: 11px;
-            color: #666;
-            font-style: italic;
-        }
-
-        .suggestionItem.selected .caseDetails {
-            color: #e0e0e0;
-        }
-
-        .confidenceBadge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-            flex-shrink: 0;
-        }
-
-        .confidence-high {
-            background: #28a745;
-            color: white;
-        }
-
-        .confidence-medium {
-            background: #ffc107;
-            color: #333;
-        }
-
-        .confidence-low {
-            background: #dc3545;
-            color: white;
-        }
-
-        /* Stil für die Ergebnisliste */
-        #resultsList {
-            max-height: 170px;  /* Begrenzt die Höhe der Liste */
-            width: 100%;
-            overflow-y: auto;  /* Fügt einen Scroll-Balken hinzu, wenn die Liste die maximale Höhe überschreitet */
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        /* Stil für jedes Ergebniselement in der Liste */
-        .resultItem {
-            padding: 8px 12px;
-            cursor: pointer;  /* Ändert den Mauszeiger zu einem Zeiger, wenn er über einem Element schwebt, was anzeigt, dass es anklickbar ist */
-            border-bottom: 1px solid #eee;  /* Fügt eine Trennlinie zwischen den Elementen hinzu */
-            font-size: 13px;
-        }
-
-        /* Ändert den Hintergrund des Elements, wenn der Mauszeiger darüber schwebt */
-        .resultItem:hover {
-            background-color: #e0e0e0;
-        }
-
-        /* Entfernt die Trennlinie für das letzte Element in der Liste */
-        .resultItem:last-child {
-            border-bottom: none;
-        }
-
-        /* Stil für die Fortschrittsanzeige */
-        #progressBar {
-            width: 100%;
-            margin-top: 10px; /* Abstand zum Feedback-Container */
-            margin-bottom: 10px; /* Abstand zu den Buttons */
-        }
-
-        /* Zentriere die Speichern-Buttons */
-        .button-row {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        #recommendCaseButton, #saveOnlyMessageButton, #saveAttachmentsButton {
-            display: inline-block;
-            margin: 5px;
-        }
-
-
-    </style>
-    
-    <!-- Code für den TreeContainer -->
-
-    <style>
-        #treeContainer {
+            #inputContainer,
+            #feedbackContainer {
                 padding: 15px;
                 border-radius: 10px;
-                background-color: #f7f7f7; /* leicht grauer Hintergrund */
-                margin-bottom: 20px; /* Abstand zum Rest des Inhalts */
-                border: 2px solid #2196F3; /* Blauer Rahmen, optional */
+                background-color: #f7f7f7;
+                margin-bottom: 15px;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+                flex-shrink: 0;
             }
-            
-        #treeContainer h3 {
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 1em;
-        }
-        
-        .treeItem {
-            padding-left: 20px;
-            cursor: pointer;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: initial; /* Standardtextfarbe */
-            background-color: transparent; /* Keine Hintergrundfarbe */
-        }
 
-        .selectedItem {
-            background-color: #007bff; /* Blaue Farbe bei Auswahl */
-            color: white; /* Weißer Text bei Auswahl */
-        }
+            /* Container specific accents */
+            #feedbackContainer {
+                border-top: 4px solid #2196f3;
+                background-color: white;
+            }
 
+            #treeContainer {
+                padding: 12px;
+                border-radius: 10px;
+                background-color: white;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+                border-top: 4px solid #2196f3;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                min-height: 0;
+                overflow-y: auto;
+            }
 
-    </style>
-    
+            #tagsContainer {
+                padding: 12px;
+                border-radius: 10px;
+                background-color: white;
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+                border-top: 4px solid #ffc107;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                min-height: 0;
+                overflow-y: auto;
+            }
 
+            /* Stil für das Suchfeld */
+            #searchInput {
+                width: 100%;
+                padding: 10px 12px;
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 14px;
+                box-sizing: border-box;
+                transition: border-color 0.2s;
+            }
 
-    <!-- Code für den "Daten aktualisieren" und "Einstellungen"-Button -->
-    <style>
-        #buttonContainer {
-        position: flex;
-        right: 10px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 30px;
-        }
+            #searchInput:focus {
+                outline: none;
+                border-color: #2196f3;
+                box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+            }
 
-        #updateDataButton, #settingsButton {
-        border: none;
-        border-radius: 50%;
-        background-color: transparent;
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        transition: background-color 0.3s;
-        }
+            /* Stil für Suggestions Container */
+            #suggestionsContainer {
+                margin: 15px 0;
+                padding: 12px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 8px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            }
 
-        #updateDataButton:hover, #settingsButton:hover {
-            background-color: rgba(0, 0, 0, 0.1);
-        }
+            #suggestionsContainer h4 {
+                margin: 0 0 10px 0;
+                color: white;
+                font-size: 14px;
+                font-weight: 500;
+            }
 
-        /* Rename Dialog Styles */
-        .rename-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
+            #suggestionsList {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
 
-        .rename-dialog-content {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 500px;
-            padding: 20px;
-        }
+            .suggestionItem {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background: white;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                border: 1px solid transparent;
+            }
 
-        .rename-dialog-content h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #333;
-        }
+            .suggestionItem:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
 
-        .rename-form label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #555;
-        }
+            .suggestionItem.selected {
+                background: #e3f2fd;
+                border-color: #2196f3;
+                color: #1565c0;
+            }
 
-        .filename-input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
+            .suggestionItem.selected .confidenceBadge {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
 
-        .filename-suggestion {
-            margin-bottom: 15px;
-            color: #666;
-        }
+            .suggestionItem.noMatch {
+                background: #fff3cd;
+                color: #856404;
+                cursor: default;
+                justify-content: center;
+            }
 
-        .filename-suggestion span {
-            font-weight: bold;
-            color: #007bff;
-        }
+            .caseInfo {
+                flex: 1;
+                font-size: 13px;
+                line-height: 1.4;
+                display: flex;
+                flex-direction: column;
+            }
 
-        .rename-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
+            .caseDetails {
+                font-size: 11px;
+                color: #666;
+                margin-top: 2px;
+            }
 
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.2s;
-        }
+            .suggestionItem.selected .caseDetails {
+                color: #1565c0;
+                opacity: 0.8;
+            }
 
-        .btn-primary {
-            background-color: #007bff;
-            color: white;
-        }
+            .confidenceBadge {
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: bold;
+                margin-left: 8px;
+                flex-shrink: 0;
+            }
 
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
+            .confidence-high {
+                background: #28a745;
+                color: white;
+            }
+            .confidence-medium {
+                background: #ffc107;
+                color: #333;
+            }
+            .confidence-low {
+                background: #dc3545;
+                color: white;
+            }
 
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
+            /* Stil für die Ergebnisliste */
+            #resultsList {
+                max-height: 260px;
+                width: 100%;
+                overflow-y: auto;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                box-sizing: border-box;
+                background: white;
+            }
 
-        .btn-secondary:hover {
-            background-color: #545b62;
-        }
-    </style>
+            .resultItem {
+                padding: 10px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 13px;
+                transition: background-color 0.1s;
+            }
 
-</head>
+            .resultItem:hover {
+                background-color: #f5f5f5;
+            }
 
-<body>
-    
-    <div id="feedbackContainer">
-        <!-- Eingabefeld für die Suche und die Erbnisliste -->
-        <input type="text" id="searchInput" placeholder="Fall suchen...">
-        <div id="resultsList"></div>
+            .resultItem.selected {
+                background-color: #e3f2fd;
+                color: #1565c0;
+            }
 
-        <!-- Ausgewählte Akte -->
-        <p id="customizableLabel" style="font-weight: bold; margin: 10px 0 5px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; text-align: center;">kein Vorschlag</p>
+            .resultItem:last-child {
+                border-bottom: none;
+            }
 
-        <!-- Automatische Vorschläge -->
-        <div id="suggestionsContainer" style="display: none;">
-            <h4>Automatische Vorschläge (bitte prüfen)</h4>
-            <div id="suggestionsList"></div>
+            /* Stil für die Fortschrittsanzeige */
+            #progressBar {
+                width: 100%;
+                height: 6px;
+                margin: 15px 0;
+                border-radius: 3px;
+            }
+
+            /* Zentriere die Speichern-Buttons */
+            .button-row {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+                margin-top: 20px;
+                flex-wrap: wrap;
+            }
+
+            #recommendCaseButton,
+            #saveOnlyMessageButton,
+            #saveAttachmentsButton {
+                margin: 0;
+                flex: 1;
+                min-width: 120px;
+                white-space: nowrap;
+            }
+
+            #customizableLabel {
+                font-weight: 600;
+                margin: 10px 0 15px 0;
+                padding: 12px;
+                background: #e3f2fd;
+                color: #0d47a1;
+                border-radius: 6px;
+                text-align: center;
+                border: 1px solid #bbdefb;
+            }
+
+            /* Tree Styles */
+            #treeContainer h3 {
+                margin-top: 0;
+                margin-bottom: 15px;
+                color: #333;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .treeItem {
+                padding: 3px 0 3px 20px;
+                cursor: pointer;
+                font-size: 13px;
+                color: #333;
+                border-radius: 4px;
+                transition: background-color 0.1s;
+            }
+
+            .treeItem:hover {
+                background-color: #f0f0f0;
+            }
+
+            .selectedItem {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                font-weight: 500;
+            }
+
+            /* Tags Styles */
+            #tagsContainer p {
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 10px;
+            }
+
+            #tagsSelect {
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 5px;
+                font-family: inherit;
+                flex: 1;
+                outline: none;
+            }
+
+            #tagsSelect:focus {
+                border-color: #ffc107;
+            }
+
+            /* Footer Controls */
+            #buttonContainer {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 10px;
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid #eee;
+            }
+
+            #updateDataButton,
+            #settingsButton {
+                border: none;
+                border-radius: 50%;
+                background-color: transparent;
+                width: 32px;
+                height: 32px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                color: #666;
+                transition: all 0.2s;
+            }
+
+            #updateDataButton:hover,
+            #settingsButton:hover {
+                background-color: #e0e0e0;
+                color: #333;
+            }
+
+            /* Rename Dialog Styles */
+            .rename-dialog {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                backdrop-filter: blur(2px);
+            }
+
+            .rename-dialog-content {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                width: 90%;
+                max-width: 450px;
+                padding: 24px;
+            }
+
+            .rename-dialog-content h3 {
+                margin-top: 0;
+                margin-bottom: 15px;
+                color: #333;
+            }
+
+            .rename-form label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: bold;
+                color: #555;
+            }
+
+            .filename-input {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+                margin-bottom: 10px;
+                box-sizing: border-box;
+            }
+
+            .filename-suggestion {
+                margin-bottom: 15px;
+                color: #666;
+            }
+
+            .filename-suggestion span {
+                font-weight: bold;
+                color: #007bff;
+            }
+
+            .rename-buttons {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background-color 0.2s;
+            }
+
+            .btn-primary {
+                background-color: #007bff;
+                color: white;
+            }
+
+            .btn-primary:hover {
+                background-color: #0056b3;
+            }
+
+            .btn-secondary {
+                background-color: #6c757d;
+                color: white;
+            }
+
+            .btn-secondary:hover {
+                background-color: #545b62;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="feedbackContainer">
+            <!-- Eingabefeld für die Suche und die Erbnisliste -->
+            <input type="text" id="searchInput" placeholder="Fall suchen..." />
+            <div id="resultsList"></div>
+
+            <!-- Ausgewählte Akte -->
+            <p id="customizableLabel">kein Vorschlag</p>
+
+            <!-- Automatische Vorschläge -->
+            <div id="suggestionsContainer" style="display: none">
+                <h4>Automatische Vorschläge (bitte prüfen)</h4>
+                <div id="suggestionsList"></div>
+            </div>
+
+            <div class="button-row">
+                <button id="recommendCaseButton">Speichern</button>
+                <button id="saveOnlyMessageButton">Nur Nachricht</button>
+                <button id="saveAttachmentsButton">Nur Anhang</button>
+            </div>
+            <progress
+                id="progressBar"
+                value="0"
+                max="100"
+                style="display: none"
+            ></progress>
+
+            <p id="feedback"></p>
+            <div id="buttonContainer">
+                <button id="updateDataButton">↺</button>
+                <button id="settingsButton">&#9881;</button>
+                <label
+                    style="
+                        display: flex;
+                        align-items: center;
+                        cursor: pointer;
+                        font-size: 12px;
+                        margin-left: 15px;
+                        margin-top: 0;
+                        color: #666;
+                    "
+                >
+                    <input
+                        type="checkbox"
+                        id="imageEditToggle"
+                        style="margin-right: 5px"
+                    />
+                    <span>Bildanhänge vor Speichern bearbeiten</span>
+                </label>
+            </div>
         </div>
 
-        <div class="button-row">
-            <button id="recommendCaseButton">Speichern</button>
-            <button id="saveOnlyMessageButton">Nur Nachricht</button>
-            <button id="saveAttachmentsButton">Nur Anhang</button>
+        <div class="columns-container">
+            <div id="treeContainer">
+                <h3>Ordner</h3>
+            </div>
+
+            <div id="tagsContainer">
+                <p>Etiketten:</p>
+                <select
+                    id="tagsSelect"
+                    multiple
+                    size="20"
+                    style="width: 100%"
+                ></select>
+            </div>
         </div>
-        <progress id="progressBar" value="0" max="100" style="display: none;"></progress>
 
-        <p id="feedback"></p>
-        <div id="buttonContainer">
-            <button id="updateDataButton">↺</button>
-            <button id="settingsButton">&#9881;</button>
-            <label style="display: flex; align-items: center; cursor: pointer; font-size: 12px; margin-left: 15px; margin-top: 14px;">
-                <input type="checkbox" id="imageEditToggle" style="margin-right: 5px;">
-                <span>Bildanhänge vor Speichern bearbeiten</span>
-            </label>
-        </div>
-    </div>
-
-    <div id="treeContainer">
-        <h3>Ordner</h3>
-    </div>
-
-    <div id="tagsContainer">
-        <p>Etiketten:</p>
-        <select id="tagsSelect" multiple size="15" style="width: 100%;"></select>
-    </div>
-    
-    <!-- Rename Dialog -->
-    <div id="renameDialog" class="rename-dialog" style="display: none;">
-        <div class="rename-dialog-content">
-            <h3>Datei umbenennen</h3>
-            <div class="rename-form">
-                <label for="filenameInput">Neuer Dateiname:</label>
-                <input type="text" id="filenameInput" class="filename-input" placeholder="Dateiname eingeben">
-                <div class="filename-suggestion">
-                    <small>Vorschlag mit Zeitstempel: <span id="filenameSuggestion"></span></small>
-                </div>
-                <div class="rename-buttons">
-                    <button id="useSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
-                    <button id="cancelRenameBtn" class="btn btn-secondary">Abbrechen</button>
-                    <button id="confirmRenameBtn" class="btn btn-primary">Umbenennen</button>
+        <!-- Rename Dialog -->
+        <div id="renameDialog" class="rename-dialog" style="display: none">
+            <div class="rename-dialog-content">
+                <h3>Datei umbenennen</h3>
+                <div class="rename-form">
+                    <label for="filenameInput">Neuer Dateiname:</label>
+                    <input
+                        type="text"
+                        id="filenameInput"
+                        class="filename-input"
+                        placeholder="Dateiname eingeben"
+                    />
+                    <div class="filename-suggestion">
+                        <small
+                            >Vorschlag mit Zeitstempel:
+                            <span id="filenameSuggestion"></span
+                        ></small>
+                    </div>
+                    <div class="rename-buttons">
+                        <button id="useSuggestionBtn" class="btn btn-secondary">
+                            Vorschlag verwenden
+                        </button>
+                        <button id="cancelRenameBtn" class="btn btn-secondary">
+                            Abbrechen
+                        </button>
+                        <button id="confirmRenameBtn" class="btn btn-primary">
+                            Umbenennen
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="jspdf.umd.js"></script>
-    <script src="attachment-image-processor.js"></script>
-    <script src="popup.js"></script>
-</body>
-
+        <script src="jspdf.umd.js"></script>
+        <script src="attachment-image-processor.js"></script>
+        <script src="popup.js"></script>
+    </body>
 </html>
