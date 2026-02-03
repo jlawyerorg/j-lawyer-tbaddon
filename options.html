@@ -1,140 +1,188 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Optionen</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
 
-<head>
-    <meta charset="UTF-8">
-    <title>Optionen</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+            .content-wrapper {
+                background: #fff;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                width: 500px;
+            }
 
-        .content-wrapper {
-            background: #fff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 500px;
-        }
+            h2 {
+                margin-top: 0;
+                margin-bottom: 20px;
+            }
 
-        h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
+            .warning {
+                color: #d9534f;
+                font-size: 0.9em;
+                margin-bottom: 20px;
+            }
 
-        .warning {
-            color: #d9534f; 
-            font-size: 0.9em;
-            margin-bottom: 20px; 
-        }
+            label {
+                display: block;
+                margin-bottom: 10px;
+            }
 
-        label {
-            display: block;
-            margin-bottom: 10px;
-        }
+            .checkbox-row {
+                display: flex;
+                align-items: center;
+                margin-bottom: 15px;
+                font-size: 0.85em;
+            }
 
-        .checkbox-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            font-size: 0.85em;
-        }
+            .checkbox-row input[type="checkbox"] {
+                margin-right: 8px;
+                cursor: pointer;
+            }
 
-        .checkbox-row input[type="checkbox"] {
-            margin-right: 8px;
-            cursor: pointer;
-        }
+            .checkbox-row label {
+                margin: 0;
+                cursor: pointer;
+                display: inline;
+            }
 
-        .checkbox-row label {
-            margin: 0;
-            cursor: pointer;
-            display: inline;
-        }
+            input[type="text"],
+            input[type="password"] {
+                width: calc(100% - 20px); /* Reduzierte Breite um 20px */
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
 
-        input[type="text"], input[type="password"] {
-            width: calc(100% - 20px); /* Reduzierte Breite um 20px */
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
+            .button-group {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                margin-top: 20px;
+            }
 
-        .button-group {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            margin-top: 20px;
-        }
+            input[type="button"] {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                background-color: #007bff;
+                color: #fff;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
 
-        input[type="button"] {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            background-color: #007bff;
-            color: #fff;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+            input[type="button"]:hover {
+                background-color: #0056b3;
+            }
 
-        input[type="button"]:hover {
-            background-color: #0056b3;
-        }
+            .copyright {
+                font-size: 0.8em;
+                color: lightgray;
+                position: absolute;
+                bottom: 10px;
+                width: 100%;
+                text-align: center;
+            }
+        </style>
+    </head>
 
-        .copyright {
-            font-size: 0.8em;
-            color: lightgray;
-            position: absolute;
-            bottom: 10px;
-            width: 100%;
-            text-align: center;
-        }
-    </style>
-</head>
+    <body>
+        <div class="content-wrapper">
+            <h2>j-Lawyer-Thunderbird-Extension - Einstellungen</h2>
+            <p class="warning">
+                Hinweis: Diese Erweiterung speichert Nachrichten auf einem
+                j-Lawyer.org-Server. Sensible Daten können übertragen werden.
+                Abhängig von der Art der Verbindung können diese Daten auch
+                unverschlüsselt sein.
+            </p>
+            <form id="settingsForm">
+                <label for="username">Benutzername:</label>
+                <input type="text" id="username" /><br /><br />
 
-<body>
-    <div class="content-wrapper">
-        <h2>j-Lawyer-Thunderbird-Extension - Einstellungen</h2>
-        <p class="warning">Hinweis: Diese Erweiterung speichert Nachrichten auf einem j-Lawyer.org-Server. Sensible Daten können übertragen werden. Abhängig von der Art der Verbindung können diese Daten auch unverschlüsselt sein.</p>
-        <form id="settingsForm">
-            <label for="username">Benutzername:</label>
-            <input type="text" id="username"><br><br>
+                <label for="password">Passwort:</label>
+                <input type="password" id="password" /><br /><br />
 
-            <label for="password">Passwort:</label>
-            <input type="password" id="password"><br><br>
+                <label for="serverAddress"
+                    >Serveradresse und Port (Bsp.
+                    http://192.168.1.1:8080):</label
+                >
+                <input type="text" id="serverAddress" /><br /><br />
 
-            <label for="serverAddress">Serveradresse und Port (Bsp. http://192.168.1.1:8080):</label>
-            <input type="text" id="serverAddress"><br><br>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="moveToTrash" />
+                    <label for="moveToTrash"
+                        >Email nach Zuordnung in Papierkorb verschieben / direkt
+                        Löschen (siehe Konto-Einstellung)</label
+                    >
+                </div>
 
-            <div class="checkbox-row">
-                <input type="checkbox" id="moveToTrash">
-                <label for="moveToTrash">Email nach Zuordnung in Papierkorb verschieben / direkt Löschen (siehe Konto-Einstellung)</label>
-            </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="allowRename" />
+                    <label for="allowRename"
+                        >Umbenennen erlauben (vor dem Speichern Dateinamen
+                        bearbeiten)</label
+                    >
+                </div>
 
-            <div class="checkbox-row">
-                <input type="checkbox" id="allowRename">
-                <label for="allowRename">Umbenennen erlauben (vor dem Speichern Dateinamen bearbeiten)</label>
-            </div>
+                <label for="subjectTemplate"
+                    >Betreff-Vorlage für neue E-Mails (leer = Standard):</label
+                >
+                <input
+                    type="text"
+                    id="subjectTemplate"
+                    placeholder="Unser Zeichen: {{AKTE_KURZRUBRUM}}, {{AKTE_ZEICHEN}}"
+                /><br />
+                <small style="color: #666; display: block; margin-bottom: 15px">
+                    Verfügbare Platzhalter: {{AKTE_ZEICHEN}},
+                    {{AKTE_KURZRUBRUM}}, {{AKTE_WEGEN}}, {{AKTE_ANWALT}},
+                    {{AKTE_EIGENE1}}, {{AKTE_EIGENE2}}, {{AKTE_EIGENE3}}
+                </small>
 
-            <div class="button-group">
-                <input type="button" id="saveButton" value="Speichern">
-                <input type="button" id="viewLogButton" value="Log anzeigen">
-                <input type="button" id="clearLogButton" value="Log löschen">
-                <input type="button" id="viewUpdatesButton" value="Updates">
-            </div>
-        </form>
-    </div>
+                <div class="button-group">
+                    <input type="button" id="saveButton" value="Speichern" />
+                    <input
+                        type="button"
+                        id="viewLogButton"
+                        value="Log anzeigen"
+                    />
+                    <input
+                        type="button"
+                        id="clearLogButton"
+                        value="Log löschen"
+                    />
+                    <input
+                        type="button"
+                        id="viewUpdatesButton"
+                        value="Updates"
+                    />
+                </div>
+            </form>
+        </div>
 
-    <div class="copyright">
-        &copy; 2023, Maximilian Steinert | <a href="https://www.j-lawyer.org" target="_blank">Besuchen Sie j-lawyer.org</a> | <a href="https://github.com/jlawyerorg/j-lawyer-tbaddon" target="_blank">Extension on Github</a>
-    </div>
+        <div class="copyright">
+            &copy; 2023, Maximilian Steinert |
+            <a href="https://www.j-lawyer.org" target="_blank"
+                >Besuchen Sie j-lawyer.org</a
+            >
+            |
+            <a
+                href="https://github.com/jlawyerorg/j-lawyer-tbaddon"
+                target="_blank"
+                >Extension on Github</a
+            >
+        </div>
 
-    <script src="options.js"></script>
-</body>
-
+        <script src="options.js"></script>
+    </body>
 </html>
