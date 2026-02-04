@@ -148,6 +148,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
       }
 
+      // messageId holen, um sie an background.js weiterzugeben
+      const messageData = await getDisplayedMessageFromActiveTab();
+
       browser.runtime.sendMessage({
         type: "case",
         source: "popup",
@@ -157,6 +160,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         password: settings.password,
         serverAddress: settings.serverAddress,
         customFilename: customFilename,
+        messageId: messageData.id,
       });
 
       // Setzt Feedback zurück, während auf eine Antwort gewartet wird
@@ -183,9 +187,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       ]);
       let customFilename = null;
 
+      // messageId immer holen, um sie an background.js weiterzugeben
+      const messageData = await getDisplayedMessageFromActiveTab();
+
       if (settings.allowRename) {
         // Zeige Rename-Dialog
-        const messageData = await getDisplayedMessageFromActiveTab();
         const originalSubject = messageData.subject || "nachricht";
         const originalFilename = `${originalSubject}.eml`;
 
@@ -208,6 +214,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         password: settings.password,
         serverAddress: settings.serverAddress,
         customFilename: customFilename,
+        messageId: messageData.id,
       });
 
       // Setzt Feedback zurück, während auf eine Antwort gewartet wird
@@ -284,6 +291,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               username: settings.username,
               password: settings.password,
               serverAddress: settings.serverAddress,
+              messageId: messageData.id,
             });
 
             feedback.textContent = "Speichern...";
@@ -320,6 +328,9 @@ document.addEventListener("DOMContentLoaded", async function () {
           );
         } else {
           // Bestehende Logik beibehalten
+          // messageId holen, um sie an background.js weiterzugeben
+          const messageData = await getDisplayedMessageFromActiveTab();
+
           browser.runtime.sendMessage({
             type: "saveAttachments",
             source: "popup",
@@ -328,6 +339,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             username: settings.username,
             password: settings.password,
             serverAddress: settings.serverAddress,
+            messageId: messageData.id,
           });
 
           // Setzt das Feedback zurück, während auf eine Antwort gewartet wird

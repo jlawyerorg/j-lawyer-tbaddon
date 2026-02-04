@@ -101,11 +101,18 @@ async function sendEmailToServer(
   password,
   serverAddress,
   customFilename = null,
+  messageId = null,
 ) {
   console.log("Case ID: " + caseId);
   const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
 
-  const messageData = await getDisplayedMessageFromActiveTab();
+  // Verwende übergebene messageId oder hole sie vom aktiven Tab als Fallback
+  let messageData;
+  if (messageId) {
+    messageData = await browser.messages.get(messageId);
+  } else {
+    messageData = await getDisplayedMessageFromActiveTab();
+  }
   console.log("Message Id: " + messageData.id);
 
   let rawMessage = await messenger.messages.getRaw(messageData.id, {
@@ -284,11 +291,18 @@ async function sendOnlyMessageToServer(
   password,
   serverAddress,
   customFilename = null,
+  messageId = null,
 ) {
   console.log("Case ID: " + caseId);
   const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
 
-  const messageData = await getDisplayedMessageFromActiveTab();
+  // Verwende übergebene messageId oder hole sie vom aktiven Tab als Fallback
+  let messageData;
+  if (messageId) {
+    messageData = await browser.messages.get(messageId);
+  } else {
+    messageData = await getDisplayedMessageFromActiveTab();
+  }
   console.log("Message Id: " + messageData.id);
 
   let rawMessage = await messenger.messages.getRaw(messageData.id, {
@@ -480,12 +494,18 @@ async function sendAttachmentsToServer(
   username,
   password,
   serverAddress,
+  messageId = null,
 ) {
   console.log("Case ID: " + caseId);
   const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
 
-  // Nachrichteninhalt abrufen
-  const messageData = await getDisplayedMessageFromActiveTab();
+  // Verwende übergebene messageId oder hole sie vom aktiven Tab als Fallback
+  let messageData;
+  if (messageId) {
+    messageData = await browser.messages.get(messageId);
+  } else {
+    messageData = await getDisplayedMessageFromActiveTab();
+  }
   console.log("Message Id: " + messageData.id);
 
   // Attachments holen
@@ -1563,6 +1583,7 @@ browser.runtime.onMessage.addListener((message) => {
             result.password,
             result.serverAddress,
             message.customFilename,
+            message.messageId,
           );
 
           // TODO: Move to Trash - add option in options page
@@ -1613,6 +1634,7 @@ browser.runtime.onMessage.addListener((message) => {
             result.password,
             result.serverAddress,
             message.customFilename,
+            message.messageId,
           );
         } else {
           console.log("Keine übereinstimmende ID gefunden");
@@ -1642,6 +1664,7 @@ browser.runtime.onMessage.addListener((message) => {
             result.username,
             result.password,
             result.serverAddress,
+            message.messageId,
           );
         } else {
           console.log("Keine übereinstimmende ID gefunden");
