@@ -21,6 +21,7 @@ let caseMetaData = {}; // Speichert die Metadaten des aktuell ausgewählten Case
 let caseFolders = {}; // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null; // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
 let emailTemplatesNames = {}; // Speichert die Email-Templates
+let currentDisplayedMessageId = null; // Speichert die ID der aktuell angezeigten Nachricht
 
 // Tastaturnavigation durch Suchergebnisse
 let selectedIndex = -1;
@@ -74,6 +75,69 @@ window.addEventListener("resize", function () {
 // Speichere auch beim Schließen
 window.addEventListener("beforeunload", saveWindowSize);
 
+// Setzt das UI zurück und startet die Aktensuche für eine neue Nachricht
+async function resetAndSearchForNewMessage() {
+  console.log("Nachrichtenwechsel erkannt - starte neue Aktensuche");
+
+  // UI zurücksetzen
+  currentSelectedCase = null;
+  caseMetaData = {};
+  caseFolders = {};
+  selectedCaseFolderID = null;
+  selectedIndex = -1;
+
+  // Suchergebnisse und Ordnerbaum leeren
+  const resultsContainer = document.getElementById("results");
+  if (resultsContainer) {
+    resultsContainer.innerHTML = "";
+  }
+
+  const folderTreeContainer = document.getElementById("folderTree");
+  if (folderTreeContainer) {
+    folderTreeContainer.innerHTML = "";
+  }
+
+  // Suchfeld leeren
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.value = "";
+  }
+
+  // Feedback zurücksetzen
+  const feedback = document.getElementById("feedback");
+  if (feedback) {
+    feedback.textContent = "";
+    feedback.style.color = "";
+  }
+
+  // Aktenvorschlag (blaues Feld) zurücksetzen
+  const customizableLabel = document.getElementById("customizableLabel");
+  if (customizableLabel) {
+    customizableLabel.textContent = "Suche Akte...";
+  }
+
+  // Tags zurücksetzen
+  const tagsSelect = document.getElementById("tagsSelect");
+  if (tagsSelect) {
+    tagsSelect.selectedIndex = -1;
+  }
+  await browser.storage.local.remove("selectedTags");
+
+  // Neue Aktensuche starten
+  findFileNumberInRawMessage();
+}
+
+// Event-Listener für Nachrichtenwechsel (Nachricht von background.js)
+browser.runtime.onMessage.addListener(async (message) => {
+  if (message.type === "messageDisplayChanged" && message.messageId) {
+    // Prüfe ob es wirklich eine neue Nachricht ist
+    if (message.messageId !== currentDisplayedMessageId) {
+      currentDisplayedMessageId = message.messageId;
+      await resetAndSearchForNewMessage();
+    }
+  }
+});
+
 // Event Listener für Buttons
 document.addEventListener("DOMContentLoaded", async function () {
   const recommendCaseButton = document.getElementById("recommendCaseButton");
@@ -101,6 +165,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     await browser.storage.local.set({ imageEditEnabled: this.checked });
     console.log("Image edit toggle set to:", this.checked);
   });
+
+  // Aktuelle Nachrichten-ID speichern, um Duplikate beim onMessageDisplayed Event zu vermeiden
+  try {
+    const messageData = await getDisplayedMessageFromActiveTab();
+    if (messageData) {
+      currentDisplayedMessageId = messageData.id;
+    }
+  } catch (e) {
+    // Ignorieren - wird beim ersten Nachrichtenwechsel gesetzt
+  }
 
   findFileNumberInRawMessage();
 
@@ -1183,8 +1257,16 @@ async function findFileNumberInRawMessage() {
 }
 
 // Funktion zum Abrufen der Nachrichten-ID
-// Prüft zuerst URL-Parameter (eigenständiges Fenster), dann aktiven Tab (Popup-Modus)
+// Prüft zuerst die globale Variable (bei Nachrichtenwechsel), dann URL-Parameter, dann aktiven Tab
 async function getDisplayedMessageFromActiveTab() {
+  // Prüfe zuerst ob eine aktuelle Nachrichten-ID durch Nachrichtenwechsel gesetzt wurde
+  if (currentDisplayedMessageId) {
+    const message = await browser.messages.get(currentDisplayedMessageId);
+    if (message) {
+      return message;
+    }
+  }
+
   // Prüfe ob Message-ID als URL-Parameter übergeben wurde (eigenständiges Fenster)
   const urlParams = new URLSearchParams(window.location.search);
   const messageIdFromUrl = urlParams.get("messageId");

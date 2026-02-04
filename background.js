@@ -95,6 +95,23 @@ browser.windows.onRemoved.addListener((windowId) => {
   }
 });
 
+// Nachrichtenwechsel erkennen und an das Popup-Fenster weiterleiten
+browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
+  // Nur weiterleiten, wenn ein Popup-Fenster offen ist
+  if (popupWindowId !== null && message) {
+    console.log("Nachrichtenwechsel erkannt, sende an Popup:", message.id);
+    // Sende Nachricht an alle Listener (popup.js wird darauf reagieren)
+    browser.runtime
+      .sendMessage({
+        type: "messageDisplayChanged",
+        messageId: message.id,
+      })
+      .catch(() => {
+        // Ignorieren wenn kein Listener vorhanden ist
+      });
+  }
+});
+
 async function sendEmailToServer(
   caseId,
   username,
