@@ -243,6 +243,8 @@ async function sendEmailToServerFromSelection(
         username,
         password,
         serverAddress,
+        fileName,
+        selectedCaseFolderID_bundle,
       );
       logActivity(
         "sendEmailToServerFromSelection",
@@ -588,36 +590,6 @@ async function updateDocumentFolderBundle(username, password, serverAddress) {
   });
 }
 
-// Holt die Dokument-Metadaten vom Server
-async function getDocumentMetadata(
-  documentId,
-  username,
-  password,
-  serverAddress,
-) {
-  const headers = new Headers();
-  const loginBase64Encoded = btoa(
-    unescape(encodeURIComponent(username + ":" + password)),
-  );
-  headers.append("Authorization", "Basic " + loginBase64Encoded);
-  headers.append("Content-Type", "application/json");
-
-  const url = `${serverAddress}/j-lawyer-io/rest/v1/cases/document/${documentId}/content`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      "Fehler beim Abrufen der Dokument-Metadaten: " + response.status,
-    );
-  }
-
-  return response.json();
-}
-
 // Aktualisiert das creationDate eines Dokuments auf das E-Mail-Datum
 async function updateDocumentCreationDate(
   documentId,
@@ -626,17 +598,10 @@ async function updateDocumentCreationDate(
   username,
   password,
   serverAddress,
+  fileName,
+  folderId = null,
 ) {
   try {
-    // Zuerst die aktuellen Metadaten des Dokuments abrufen
-    const docMetadata = await getDocumentMetadata(
-      documentId,
-      username,
-      password,
-      serverAddress,
-    );
-    console.log("Dokument-Metadaten abgerufen:", docMetadata);
-
     const headers = new Headers();
     const loginBase64Encoded = btoa(
       unescape(encodeURIComponent(username + ":" + password)),
@@ -651,26 +616,19 @@ async function updateDocumentCreationDate(
     const currentDateISO = new Date().toISOString();
 
     // Payload mit allen erforderlichen Feldern erstellen
-    // basierend auf dem Muster aus jLClient-JS
     const payload = {
       caseId: caseId,
       changeDate: currentDateISO,
       creationDate: emailDateISO,
-      externalId: docMetadata.externalId || null,
-      favorite: docMetadata.favorite || false,
-      folderId: docMetadata.folderId || selectedCaseFolderID_bundle || null,
-      highlight1:
-        docMetadata.highlight1 !== undefined
-          ? docMetadata.highlight1
-          : -2147483648,
-      highlight2:
-        docMetadata.highlight2 !== undefined
-          ? docMetadata.highlight2
-          : -2147483648,
+      externalId: null,
+      favorite: false,
+      folderId: folderId || selectedCaseFolderID_bundle || null,
+      highlight1: -2147483648,
+      highlight2: -2147483648,
       id: documentId,
-      name: docMetadata.name,
-      size: docMetadata.size || 0,
-      version: (docMetadata.version || 0) + 1,
+      name: fileName,
+      size: 0,
+      version: 1,
     };
 
     console.log("Update-Metadata Payload:", payload);
@@ -691,7 +649,16 @@ async function updateDocumentCreationDate(
       );
     }
 
-    const result = await response.json();
+    // Server gibt möglicherweise eine leere Antwort zurück
+    const responseText = await response.text();
+    let result = null;
+    if (responseText) {
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        // Leere oder ungültige JSON-Antwort ist ok
+      }
+    }
     console.log("creationDate erfolgreich aktualisiert auf:", emailDateISO);
     return result;
   } catch (error) {
