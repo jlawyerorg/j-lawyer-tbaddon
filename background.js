@@ -48,6 +48,7 @@ createMenuEntries();
 
 // Speichert die ID des offenen Popup-Fensters
 let popupWindowId = null;
+let lastDisplayedMessageId = null;
 
 // Message Display Action - öffnet popup.html in eigenständigem Fenster
 browser.messageDisplayAction.onClicked.addListener(async (tab) => {
@@ -69,6 +70,7 @@ browser.messageDisplayAction.onClicked.addListener(async (tab) => {
     console.error("Keine Nachricht im Tab gefunden");
     return;
   }
+  lastDisplayedMessageId = message.id;
 
   // Lade gespeicherte Fenstergröße oder verwende Standardwerte
   const savedSize = await browser.storage.local.get("popupWindowSize");
@@ -97,6 +99,10 @@ browser.windows.onRemoved.addListener((windowId) => {
 
 // Nachrichtenwechsel erkennen und an das Popup-Fenster weiterleiten
 browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
+  if (message) {
+    lastDisplayedMessageId = message.id;
+  }
+
   // Nur weiterleiten, wenn ein Popup-Fenster offen ist
   if (popupWindowId !== null && message) {
     console.log("Nachrichtenwechsel erkannt, sende an Popup:", message.id);
@@ -1556,6 +1562,10 @@ function removeAttachmentsFromRFC2822(message) {
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener((message) => {
+  if (message.type === "getLastDisplayedMessageId" && message.source === "popup") {
+    return Promise.resolve({ messageId: lastDisplayedMessageId });
+  }
+
   if (message.type === "saveMessageForCombined" && message.source === "popup") {
     console.log("Das eingegebene Aktenzeichen: " + message.content);
     selectedCaseFolderID = message.selectedCaseFolderID;

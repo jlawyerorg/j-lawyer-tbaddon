@@ -22,6 +22,7 @@ let caseFolders = {}; // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null; // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
 let emailTemplatesNames = {}; // Speichert die Email-Templates
 let currentDisplayedMessageId = null; // Speichert die ID der aktuell angezeigten Nachricht
+let messageSyncInProgress = false;
 
 // Tastaturnavigation durch Suchergebnisse
 let selectedIndex = -1;
@@ -124,17 +125,41 @@ async function resetAndSearchForNewMessage() {
   await browser.storage.local.remove("selectedTags");
 
   // Neue Aktensuche starten
-  findFileNumberInRawMessage();
+  await findFileNumberInRawMessage();
+}
+
+async function handleDisplayedMessageId(messageId) {
+  if (!messageId || messageId === currentDisplayedMessageId) {
+    return;
+  }
+
+  currentDisplayedMessageId = messageId;
+  await resetAndSearchForNewMessage();
+}
+
+async function syncDisplayedMessageFromBackground() {
+  if (messageSyncInProgress) {
+    return;
+  }
+
+  messageSyncInProgress = true;
+  try {
+    const response = await browser.runtime.sendMessage({
+      type: "getLastDisplayedMessageId",
+      source: "popup",
+    });
+    await handleDisplayedMessageId(response?.messageId);
+  } catch (error) {
+    console.warn("Failed to synchronize displayed message:", error);
+  } finally {
+    messageSyncInProgress = false;
+  }
 }
 
 // Event-Listener für Nachrichtenwechsel (Nachricht von background.js)
 browser.runtime.onMessage.addListener(async (message) => {
   if (message.type === "messageDisplayChanged" && message.messageId) {
-    // Prüfe ob es wirklich eine neue Nachricht ist
-    if (message.messageId !== currentDisplayedMessageId) {
-      currentDisplayedMessageId = message.messageId;
-      await resetAndSearchForNewMessage();
-    }
+    await handleDisplayedMessageId(message.messageId);
   }
 });
 
@@ -177,6 +202,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   findFileNumberInRawMessage();
+  window.addEventListener("focus", syncDisplayedMessageFromBackground);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+      syncDisplayedMessageFromBackground();
+    }
+  });
+  setInterval(syncDisplayedMessageFromBackground, 1500);
 
   // Setzt den Fokus auf das Suchfeld
   document.getElementById("searchInput").focus();
