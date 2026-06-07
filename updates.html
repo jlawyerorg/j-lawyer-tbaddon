@@ -1,190 +1,282 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <meta charset="UTF-8">
-    <title>Letzte Änderungen</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: #fff;
-            margin: 0;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <title>Letzte Änderungen</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background-color: #fff;
+                margin: 0;
+            }
 
-        h1 {
-            text-align: center;
-        }
+            h1 {
+                text-align: center;
+            }
 
-        ul {
-            list-style-type: disc;
-            padding-left: 20px;
-        }
+            ul {
+                list-style-type: disc;
+                padding-left: 20px;
+            }
 
-        li {
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Letzte Änderungen</h1>
-    <ul>
-        <li>
-            <strong>Version 1.9/strong>
-            <ul>
-                <li>Einige Verbesserungen und Fehlerbehebungen</li>
-                <li>Neuer Button "Nachricht & Anhang" speichert erst nur Nachricht und dann nur Anhang zur ausgewählten Akte.</li>
-                <li>Suche erweitert auf Aktenzeichen von Beteiligten einer Akte.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.8/strong>
-            <ul>
-                <li>UI Änderungen, um Platz effektiver zu nutzen. Popup nun als Fenster, Größe anpassbar. Layout Änderung auch für Bundle Save</li>
-                <li>Größe des Popups wird gespeichert.</li>
-                <li>Betreff in compose context kann selbst konfiguriert werden. Neuer Button "Betreff setzen" wenn Betreff schon vorhanden und schnell ausgetauscht werden soll</li>
-                <li>Beim Speichern von Nachrichten wird nun das Empfangsdatum als "Erstellt Datum" gesetzt.</li>
-                <li>Neue Option: "OCR für neue Dokumente ausführen"</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7.7</strong>
-            <ul>
-                <li>Fix: Veraktung scheiterte wenn ( oder ) im Kurzrubrum enthalten waren.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7.6</strong>
-            <ul>
-                <li>Bessere Zuordnung von Aktenzeichen in Emails. </li>
-                <li>Option für Dateiumbenennung</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7.5</strong>
-            <ul>
-                <li>Fixed: Kontextmenüeintrag (vor allem bei Selektion von mehreren Mails) funktioniert jetzt wieder zuverlässig.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7.4</strong>
-            <ul>
-                <li>Überspringe nicht zu speichernde Bilder und optimiere die Anzeige von PDF- und Upload-Buttons.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7.2</strong>
-            <ul>
-                <li>Verbessere die Crop-Box-Funktionalität: Crop kann nun in jede Richtung aufgezogen werden und Eckpunkte können noch verschoben werden.</li>
-            </ul>
-        </li>
+            li {
+                margin-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Letzte Änderungen</h1>
+        <ul>
+            <li>
+                <strong>Version 1.9</strong>
+                <ul>
+                    <li>Einige Verbesserungen und Fehlerbehebungen</li>
+                    <li>
+                        Neuer Button "Nachricht & Anhang" speichert erst nur
+                        Nachricht und dann nur Anhang zur ausgewählten Akte.
+                    </li>
+                    <li>
+                        Suche erweitert auf Aktenzeichen von Beteiligten einer
+                        Akte.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.8</strong>
+                <ul>
+                    <li>
+                        UI Änderungen, um Platz effektiver zu nutzen. Popup nun
+                        als Fenster, Größe anpassbar. Layout Änderung auch für
+                        Bundle Save
+                    </li>
+                    <li>Größe des Popups wird gespeichert.</li>
+                    <li>
+                        Betreff in compose context kann selbst konfiguriert
+                        werden. Neuer Button "Betreff setzen" wenn Betreff schon
+                        vorhanden und schnell ausgetauscht werden soll
+                    </li>
+                    <li>
+                        Beim Speichern von Nachrichten wird nun das
+                        Empfangsdatum als "Erstellt Datum" gesetzt.
+                    </li>
+                    <li>Neue Option: "OCR für neue Dokumente ausführen"</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7.7</strong>
+                <ul>
+                    <li>
+                        Fix: Veraktung scheiterte wenn ( oder ) im Kurzrubrum
+                        enthalten waren.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7.6</strong>
+                <ul>
+                    <li>Bessere Zuordnung von Aktenzeichen in Emails.</li>
+                    <li>Option für Dateiumbenennung</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7.5</strong>
+                <ul>
+                    <li>
+                        Fixed: Kontextmenüeintrag (vor allem bei Selektion von
+                        mehreren Mails) funktioniert jetzt wieder zuverlässig.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7.4</strong>
+                <ul>
+                    <li>
+                        Überspringe nicht zu speichernde Bilder und optimiere
+                        die Anzeige von PDF- und Upload-Buttons.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7.2</strong>
+                <ul>
+                    <li>
+                        Verbessere die Crop-Box-Funktionalität: Crop kann nun in
+                        jede Richtung aufgezogen werden und Eckpunkte können
+                        noch verschoben werden.
+                    </li>
+                </ul>
+            </li>
 
-        <li>
-            <strong>Version 1.7.1</strong>
-            <ul>
-                <li>Erfasst ist nun auch der Fall, dass die Option für das Bearbeiten von Bildanhängen gesetzt ist, die Mail aber keine Bilder im Anhang, sondern andere Dateitypen hat.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.7</strong>
-            <ul>
-                <li>Korrekte Zuordnung von Tags und Ordnern bei Nutzung des Bildbearbeitungstools</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.6</strong>
-            <ul>
-                <li>Handling für Mails ohne Bilder im Anhang verbessert</li>
-                <li>Fehlerbehebung: Anhänge die keine Bilder sind, werden korrekt gespeichert, auch wenn das neue Overlay genutzt wird</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.5</strong>
-            <ul>
-                <li>Hinzugefügt: Möglichkeit, angehängte Bilder und PDF umbenennen zu können</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.4</strong>
-            <ul>
-                <li>Hinzugefügt: Bilder in Anhängen zuschneiden und speichern</li>
-                <li>Zugeschnittene Bilder als PDF zusammenfassen und zur Akte speichern</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.3</strong>
-            <ul>
-                <li>Verbessert: Präzisere Erkennung von echten Anhängen vs. E-Mail-Haupttext, inline-Anhängen</li>
-                <li>Kleinere Fehlerbehebungen</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.2</strong>
-            <ul>
-                <li>Fixed: Speicherung der Message im richtigen Ordner.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.9</strong>
-            <ul>
-                <li>hinzugefügt: Bei Verfassen einer Mail können nun die Beteiligten abgerufen werden. Deren Mailadresse wird in "to" gesetzt und deren Zeichen dem Betreff hinzugefügt.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.7</strong>
-            <ul>
-                <li>hinzugefügt: Menüeinträge für Dokumente hinzu; Sortierung der Dokumente, Icons für Dateitypen</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.6.5</strong>
-            <ul>
-                <li>hinzugefügt: Automatische Suche nach Aktenzeichen im Betreff beim Verfassen von E-Mails</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.6.4</strong>
-            <ul>
-                <li>Fixed: Aktenupdate bei Aufruf der Erweiterung via Kontextmenü</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.6.3</strong>
-            <ul>
-                <li>Nur vollständige Nachrichten werden in Papierkorb verschoben, wenn Option aktiviert</li>
-            </ul>
-        </li><li>
-            <strong>Version 1.1.6.2</strong>
-            <ul>
-                <li>Kritischen Fehler beseitigt: nur Nachrichten / Anhänge können nun wieder gespeichert werden</li>
-                <li>Darstellung in Optionen Dialog gefixed</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.6</strong>
-            <ul>
-                <li>Fehler beseitigt: in zuletzt angelegter Akte konnte nicht gespeichert werden</li>
-                <li>Code refactored um timing Probleme zu vermeiden</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.5</strong>
-            <ul>
-                <li>Deutliche Performance-Optimierungen beim Suchen und Zuordnen</li>
-                <li>Option hinzugefügt, Mails nach der Zuordnung automatisch zu löschen / in den Papierkorb zu verschieben (je nach Konto-Einstellung)</li>
-                <li>Fixed: Nachricht wenn "Nur Anhang speichern" gewählt, aber kein Anhang vorhanden</li>
-                <li>Fixed: Speichern von "Nur Nachricht" wenn kein Anhang vorhanden funktioniert nun</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Version 1.1.4</strong>
-            <ul>
-                <li>Verbesserte Serverkommunikation</li>
-                <li>Hinzugefügt: Log-Funktionalität</li>
-                <li>Neue Funktionen: Benutzerdefinierte Benachrichtigungen und automatische Aktualisierungen</li>
-                <li>Fehlerbehebungen und Performance-Optimierungen</li>
-            </ul>
-        </li>
-        <!-- Weitere Updates hier -->
-    </ul>
-</body>
+            <li>
+                <strong>Version 1.7.1</strong>
+                <ul>
+                    <li>
+                        Erfasst ist nun auch der Fall, dass die Option für das
+                        Bearbeiten von Bildanhängen gesetzt ist, die Mail aber
+                        keine Bilder im Anhang, sondern andere Dateitypen hat.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.7</strong>
+                <ul>
+                    <li>
+                        Korrekte Zuordnung von Tags und Ordnern bei Nutzung des
+                        Bildbearbeitungstools
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.6</strong>
+                <ul>
+                    <li>Handling für Mails ohne Bilder im Anhang verbessert</li>
+                    <li>
+                        Fehlerbehebung: Anhänge die keine Bilder sind, werden
+                        korrekt gespeichert, auch wenn das neue Overlay genutzt
+                        wird
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.5</strong>
+                <ul>
+                    <li>
+                        Hinzugefügt: Möglichkeit, angehängte Bilder und PDF
+                        umbenennen zu können
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.4</strong>
+                <ul>
+                    <li>
+                        Hinzugefügt: Bilder in Anhängen zuschneiden und
+                        speichern
+                    </li>
+                    <li>
+                        Zugeschnittene Bilder als PDF zusammenfassen und zur
+                        Akte speichern
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.3</strong>
+                <ul>
+                    <li>
+                        Verbessert: Präzisere Erkennung von echten Anhängen vs.
+                        E-Mail-Haupttext, inline-Anhängen
+                    </li>
+                    <li>Kleinere Fehlerbehebungen</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.2</strong>
+                <ul>
+                    <li>Fixed: Speicherung der Message im richtigen Ordner.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.9</strong>
+                <ul>
+                    <li>
+                        hinzugefügt: Bei Verfassen einer Mail können nun die
+                        Beteiligten abgerufen werden. Deren Mailadresse wird in
+                        "to" gesetzt und deren Zeichen dem Betreff hinzugefügt.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.7</strong>
+                <ul>
+                    <li>
+                        hinzugefügt: Menüeinträge für Dokumente hinzu;
+                        Sortierung der Dokumente, Icons für Dateitypen
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.6.5</strong>
+                <ul>
+                    <li>
+                        hinzugefügt: Automatische Suche nach Aktenzeichen im
+                        Betreff beim Verfassen von E-Mails
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.6.4</strong>
+                <ul>
+                    <li>
+                        Fixed: Aktenupdate bei Aufruf der Erweiterung via
+                        Kontextmenü
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.6.3</strong>
+                <ul>
+                    <li>
+                        Nur vollständige Nachrichten werden in Papierkorb
+                        verschoben, wenn Option aktiviert
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.6.2</strong>
+                <ul>
+                    <li>
+                        Kritischen Fehler beseitigt: nur Nachrichten / Anhänge
+                        können nun wieder gespeichert werden
+                    </li>
+                    <li>Darstellung in Optionen Dialog gefixed</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.6</strong>
+                <ul>
+                    <li>
+                        Fehler beseitigt: in zuletzt angelegter Akte konnte
+                        nicht gespeichert werden
+                    </li>
+                    <li>Code refactored um timing Probleme zu vermeiden</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.5</strong>
+                <ul>
+                    <li>
+                        Deutliche Performance-Optimierungen beim Suchen und
+                        Zuordnen
+                    </li>
+                    <li>
+                        Option hinzugefügt, Mails nach der Zuordnung automatisch
+                        zu löschen / in den Papierkorb zu verschieben (je nach
+                        Konto-Einstellung)
+                    </li>
+                    <li>
+                        Fixed: Nachricht wenn "Nur Anhang speichern" gewählt,
+                        aber kein Anhang vorhanden
+                    </li>
+                    <li>
+                        Fixed: Speichern von "Nur Nachricht" wenn kein Anhang
+                        vorhanden funktioniert nun
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Version 1.1.4</strong>
+                <ul>
+                    <li>Verbesserte Serverkommunikation</li>
+                    <li>Hinzugefügt: Log-Funktionalität</li>
+                    <li>
+                        Neue Funktionen: Benutzerdefinierte Benachrichtigungen
+                        und automatische Aktualisierungen
+                    </li>
+                    <li>Fehlerbehebungen und Performance-Optimierungen</li>
+                </ul>
+            </li>
+            <!-- Weitere Updates hier -->
+        </ul>
+    </body>
 </html>
