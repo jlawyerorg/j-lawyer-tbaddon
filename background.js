@@ -121,6 +121,32 @@ browser.windows.onRemoved.addListener((windowId) => {
   }
 });
 
+async function closeMainPopupForMultiSelection(selectedMessages) {
+  const selectedCount = selectedMessages?.messages?.length || 0;
+
+  if (selectedCount <= 1 || popupWindowId === null) {
+    return;
+  }
+
+  const windowIdToClose = popupWindowId;
+  popupWindowId = null;
+
+  try {
+    await browser.windows.remove(windowIdToClose);
+    console.log("Main popup closed because multiple messages are selected");
+  } catch (error) {
+    console.error("Error closing main popup after multi selection:", error);
+  }
+}
+
+if (browser.mailTabs?.onSelectedMessagesChanged) {
+  browser.mailTabs.onSelectedMessagesChanged.addListener(
+    async (tab, selectedMessages) => {
+      await closeMainPopupForMultiSelection(selectedMessages);
+    },
+  );
+}
+
 // Nachrichtenwechsel erkennen und an das Popup-Fenster weiterleiten
 browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
   if (message) {
