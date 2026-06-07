@@ -37,11 +37,23 @@ document.addEventListener("DOMContentLoaded", function () {
   const eventOptgroup = document.getElementById("eventOptgroup");
   const followUpOptgroup = document.getElementById("followUpOptgroup");
 
-  // Lade die Nutzer aus dem Speicher und füge sie hinzu
-  browser.storage.local.get("users").then((storage) => {
-    console.log("Nutzer:", storage.users);
-    addOptionsToUserSelect(userSelect, storage.users);
-  });
+  // Load users from storage and refresh legacy entries if needed.
+  browser.storage.local
+    .get(["users", "username", "password", "serverAddress"])
+    .then(async (storage) => {
+      let users = storage.users;
+
+      if (shouldRefreshStoredUsers(users)) {
+        const refreshedUsers = await refreshStoredUsers(storage);
+
+        if (refreshedUsers.length) {
+          users = refreshedUsers;
+        }
+      }
+
+      console.log("Nutzer:", users);
+      addOptionsToUserSelect(userSelect, users);
+    });
 
   // Setze das Mindestdatum auf das heutige Datum
   datumInput.min = new Date().toISOString().split("T")[0];
@@ -169,13 +181,106 @@ document.addEventListener("DOMContentLoaded", function () {
   categorySelect.dispatchEvent(new Event("change"));
 });
 
-async function addOptionsToUserSelect(selectElement, users) {
-  users.forEach((userName) => {
+async function addOptionsToUserSelect(selectElement, users = []) {
+  if (!Array.isArray(users)) {
+    return;
+  }
+
+  users.forEach((user) => {
+    const principalId = getStoredUserPrincipalId(user);
+
+    if (!principalId) {
+      return;
+    }
+
     const option = document.createElement("option");
-    option.textContent = userName;
-    option.value = userName; // Optional
+    option.textContent = getStoredUserDisplayName(user);
+    option.value = principalId;
     selectElement.appendChild(option);
   });
+}
+
+function shouldRefreshStoredUsers(users) {
+  return !Array.isArray(users) || users.some((user) => typeof user === "string");
+}
+
+async function refreshStoredUsers(storage) {
+  if (!storage.username || !storage.password || !storage.serverAddress) {
+    return [];
+  }
+
+  try {
+    const users = await fetchUsersForCalendar(
+      storage.username,
+      storage.password,
+      storage.serverAddress,
+    );
+    const normalizedUsers = users
+      .filter((user) => user.displayName || user.principalId)
+      .map(normalizeUserForStorage);
+
+    await browser.storage.local.set({ users: normalizedUsers });
+
+    return normalizedUsers;
+  } catch (error) {
+    console.error("Fehler beim Aktualisieren der Nutzer:", error);
+    return [];
+  }
+}
+
+async function fetchUsersForCalendar(username, password, serverAddress) {
+  const url = serverAddress + "/j-lawyer-io/rest/v6/security/users";
+  const headers = new Headers();
+  const loginBase64Encoded = btoa(
+    unescape(encodeURIComponent(username + ":" + password)),
+  );
+
+  headers.append("Authorization", "Basic " + loginBase64Encoded);
+  headers.append("Content-Type", "application/json");
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return response.json();
+}
+
+function normalizeUserForStorage(user) {
+  const principalId =
+    user.principalId ||
+    user.userName ||
+    user.username ||
+    user.login ||
+    user.id ||
+    user.displayName ||
+    user.name;
+  const displayName = user.displayName || principalId;
+
+  return {
+    displayName,
+    principalId,
+  };
+}
+
+function getStoredUserDisplayName(user) {
+  if (typeof user === "string") {
+    return user;
+  }
+
+  return user.displayName || user.principalId || "";
+}
+
+function getStoredUserPrincipalId(user) {
+  if (typeof user === "string") {
+    return user;
+  }
+
+  return user.principalId || user.displayName || "";
 }
 
 async function addOptionsToOptgroup(optgroup, calendars) {

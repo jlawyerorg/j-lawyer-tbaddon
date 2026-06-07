@@ -716,9 +716,9 @@ async function updateData(feedback, progressBar) {
       (async () => {
         const users = (
           await getUsers(username, password, serverAddress)
-        ).filter((user) => user.displayName);
+        ).filter((user) => user.displayName || user.principalId);
         await browser.storage.local.set({
-          users: users.map((user) => user.displayName),
+          users: users.map(normalizeUserForStorage),
         });
         console.log("Benutzer heruntergeladen: ", users);
         updateProgress();
@@ -1911,6 +1911,23 @@ async function getUsers(username, password, serverAddress) {
   } catch (error) {
     console.error("Fehler beim Abrufen der User:", error);
   }
+}
+
+function normalizeUserForStorage(user) {
+  const principalId =
+    user.principalId ||
+    user.userName ||
+    user.username ||
+    user.login ||
+    user.id ||
+    user.displayName ||
+    user.name;
+  const displayName = user.displayName || principalId;
+
+  return {
+    displayName,
+    principalId,
+  };
 }
 
 function getEmailTemplates(username, password, serverAddress) {

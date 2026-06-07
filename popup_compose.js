@@ -1106,6 +1106,23 @@ async function getUsers(username, password, serverAddress) {
   }
 }
 
+function normalizeUserForStorage(user) {
+  const principalId =
+    user.principalId ||
+    user.userName ||
+    user.username ||
+    user.login ||
+    user.id ||
+    user.displayName ||
+    user.name;
+  const displayName = user.displayName || principalId;
+
+  return {
+    displayName,
+    principalId,
+  };
+}
+
 function getEmailTemplates(username, password, serverAddress) {
   const url = serverAddress + "/j-lawyer-io/rest/v6/templates/email";
 
@@ -1253,9 +1270,9 @@ async function updateData(feedback, progressBar) {
       (async () => {
         const users = (
           await getUsers(username, password, serverAddress)
-        ).filter((user) => user.displayName);
+        ).filter((user) => user.displayName || user.principalId);
         await browser.storage.local.set({
-          users: users.map((user) => user.displayName),
+          users: users.map(normalizeUserForStorage),
         });
         console.log("Benutzer heruntergeladen: ", users);
         updateProgress();
