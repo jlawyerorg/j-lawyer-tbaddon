@@ -287,6 +287,46 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
+async function fetchCasesByReferenceApi(
+  username,
+  password,
+  serverAddress,
+  reference,
+  headers,
+) {
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/byreference/" +
+    encodeURIComponent(reference);
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Reference search response was not ok");
+  }
+
+  return response.json();
+}
+
+function mergeCaseSearchResults(primaryResults, referenceResults) {
+  const casesById = new Map();
+
+  for (const item of primaryResults) {
+    casesById.set(item.id, item);
+  }
+
+  for (const item of referenceResults) {
+    if (!casesById.has(item.id)) {
+      casesById.set(item.id, item);
+    }
+  }
+
+  return Array.from(casesById.values());
+}
+
 // Funktion zum Suchen von Fällen via API
 async function searchCasesApi(
   username,
@@ -324,7 +364,22 @@ async function searchCasesApi(
     throw new Error("Network response was not ok");
   }
 
-  return response.json();
+  const primaryResults = await response.json();
+  let referenceResults = [];
+
+  try {
+    referenceResults = await fetchCasesByReferenceApi(
+      username,
+      password,
+      serverAddress,
+      searchString,
+      headers,
+    );
+  } catch (error) {
+    console.warn("Reference search failed:", searchString, error);
+  }
+
+  return mergeCaseSearchResults(primaryResults, referenceResults);
 }
 
 function getTags(username, password, serverAddress) {
@@ -1659,6 +1714,72 @@ function findBestMatchesInSubject(
   return topMatches;
 }
 
+async function findServerMatchesInSubject(subject, loginData) {
+  const extractedPatterns = extractFileNumberPatterns(subject);
+  const subjectLower = subject.toLowerCase();
+  const matches = [];
+  const seenIds = new Set();
+
+  for (const pattern of extractedPatterns) {
+    if (pattern.length < 3) {
+      continue;
+    }
+
+    try {
+      const results = await searchCasesApi(
+        loginData.username,
+        loginData.password,
+        loginData.serverAddress,
+        pattern,
+      );
+
+      for (const item of results) {
+        if (seenIds.has(item.id)) {
+          continue;
+        }
+
+        seenIds.add(item.id);
+        const fileNumberInSubject = subjectLower.includes(
+          item.fileNumber.toLowerCase(),
+        );
+        const score = fileNumberInSubject ? 100 : 80;
+
+        matches.push({
+          item: item,
+          score: score,
+          method: fileNumberInSubject
+            ? "Server-Aktenzeichen"
+            : "Beteiligtenzeichen",
+          confidence: calculateConfidence(score),
+        });
+      }
+    } catch (error) {
+      console.error("Fehler bei Server-Suche für Muster:", pattern, error);
+    }
+  }
+
+  return matches;
+}
+
+function mergeCaseMatches(primaryMatches, serverMatches, maxResults = 3) {
+  const matchesById = new Map();
+
+  for (const match of primaryMatches) {
+    matchesById.set(match.item.id, match);
+  }
+
+  for (const match of serverMatches) {
+    const existingMatch = matchesById.get(match.item.id);
+    if (!existingMatch || match.score > existingMatch.score) {
+      matchesById.set(match.item.id, match);
+    }
+  }
+
+  return Array.from(matchesById.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults);
+}
+
 // Funktion: Wählt einen Vorschlag aus und lädt den Case
 async function selectSuggestion(match, loginData, tabId) {
   const item = match.item;
@@ -1869,12 +1990,14 @@ async function findFileNumberInComposeMessage() {
     }
 
     // Verwende neue Matching-Funktion für Top 3 Vorschläge
-    const topMatches = findBestMatchesInSubject(
+    const localMatches = findBestMatchesInSubject(
       subject,
       casesArray,
       composeDetails,
       3,
     );
+    const serverMatches = await findServerMatchesInSubject(subject, loginData);
+    const topMatches = mergeCaseMatches(localMatches, serverMatches, 3);
 
     // Zeige Vorschläge im UI
     await displaySuggestions(topMatches, loginData, tabId);

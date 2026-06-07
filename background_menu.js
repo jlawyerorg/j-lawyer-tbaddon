@@ -341,6 +341,46 @@ async function sendEmailToServerFromSelection(
 //     });
 // }
 
+async function fetchCasesByReferenceApi(
+  username,
+  password,
+  serverAddress,
+  reference,
+  headers,
+) {
+  const url =
+    serverAddress +
+    "/j-lawyer-io/rest/v7/cases/byreference/" +
+    encodeURIComponent(reference);
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Reference search response was not ok");
+  }
+
+  return response.json();
+}
+
+function mergeCaseSearchResults(primaryResults, referenceResults) {
+  const casesById = new Map();
+
+  for (const item of primaryResults) {
+    casesById.set(item.id, item);
+  }
+
+  for (const item of referenceResults) {
+    if (!casesById.has(item.id)) {
+      casesById.set(item.id, item);
+    }
+  }
+
+  return Array.from(casesById.values());
+}
+
 // Funktion zum Suchen von Fällen via API
 async function searchCasesApi(
   username,
@@ -378,7 +418,22 @@ async function searchCasesApi(
     throw new Error("Network response was not ok");
   }
 
-  return response.json();
+  const primaryResults = await response.json();
+  let referenceResults = [];
+
+  try {
+    referenceResults = await fetchCasesByReferenceApi(
+      username,
+      password,
+      serverAddress,
+      searchString,
+      headers,
+    );
+  } catch (error) {
+    console.warn("Reference search failed:", searchString, error);
+  }
+
+  return mergeCaseSearchResults(primaryResults, referenceResults);
 }
 
 // Funktion zum Finden einer Case-ID anhand des Aktenzeichens via API
