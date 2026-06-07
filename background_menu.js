@@ -225,7 +225,7 @@ async function sendEmailToServerFromSelection(
     });
 
     if (!response.ok) {
-      throw new Error("Datei existiert eventuell schon");
+      throw await buildDocumentUploadError(response, fileName);
     }
 
     const data = await response.json();
@@ -535,6 +535,18 @@ async function readOptionalJsonResponse(response) {
   } catch (error) {
     return null;
   }
+}
+
+async function buildDocumentUploadError(response, fileName) {
+  const errorText = await response.text();
+  const details = [
+    `Upload fehlgeschlagen: HTTP ${response.status} ${response.statusText}`,
+    fileName ? `Datei: ${fileName}` : null,
+    fileName ? `Dateiname-Länge: ${fileName.length}` : null,
+    errorText ? `Serverantwort: ${errorText}` : "Serverantwort: leer",
+  ].filter(Boolean);
+
+  return new Error(details.join(" | "));
 }
 
 async function setDocumentTagFromSelection(
