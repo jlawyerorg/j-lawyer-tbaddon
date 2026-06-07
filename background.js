@@ -311,7 +311,10 @@ async function sendOnlyMessageToServer(
   serverAddress,
   customFilename = null,
   messageId = null,
+  options = {},
 ) {
+  const shouldNotify = options.notify !== false;
+  const shouldClearSelectedTags = options.clearSelectedTags !== false;
   console.log("Case ID: " + caseId);
   const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
 
@@ -383,11 +386,14 @@ async function sendOnlyMessageToServer(
   // check if fileName already exists
   if (fileNamesArray.includes(fileName)) {
     console.log("Datei existiert schon in der Akte");
-    browser.runtime.sendMessage({
-      type: "error",
-      content: "Datei existiert schon in der Akte",
-    });
-    return;
+    const errorMessage = "Datei existiert schon in der Akte";
+    if (shouldNotify) {
+      browser.runtime.sendMessage({
+        type: "error",
+        content: errorMessage,
+      });
+    }
+    return { ok: false, error: errorMessage };
   } else {
     // den Payload erstellen
     const payload = {
@@ -464,7 +470,9 @@ async function sendOnlyMessageToServer(
         "Email gespeichert: " + fileName,
       );
 
-      browser.runtime.sendMessage({ type: "success" });
+      if (shouldNotify) {
+        browser.runtime.sendMessage({ type: "success" });
+      }
 
       // Der Nachricht wird der Tag "veraktet" hinzugefügt
       await addTagToMessage(messageData, "veraktet", "#000080");
@@ -498,13 +506,19 @@ async function sendOnlyMessageToServer(
       //     await logActivity("sendOnlyMessageToServer", "Email in Papierkorb verschoben");
       // }
 
-      await browser.storage.local.remove("selectedTags");
-      const selectedTagsResult =
-        await browser.storage.local.get("selectedTags");
-      console.log("selectedTags: " + selectedTagsResult.selectedTags);
+      if (shouldClearSelectedTags) {
+        await browser.storage.local.remove("selectedTags");
+        const selectedTagsResult =
+          await browser.storage.local.get("selectedTags");
+        console.log("selectedTags: " + selectedTagsResult.selectedTags);
+      }
+      return { ok: true, documentId: data.id, fileName: fileName };
     } catch (error) {
       console.log("Error:", error);
-      browser.runtime.sendMessage({ type: "error", content: error.message });
+      if (shouldNotify) {
+        browser.runtime.sendMessage({ type: "error", content: error.message });
+      }
+      return { ok: false, error: error.message };
     }
   }
   logActivity("sendOnlyMessageToServer", { caseId, fileName });
@@ -1542,6 +1556,45 @@ function removeAttachmentsFromRFC2822(message) {
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener((message) => {
+  if (message.type === "saveMessageForCombined" && message.source === "popup") {
+    console.log("Das eingegebene Aktenzeichen: " + message.content);
+    selectedCaseFolderID = message.selectedCaseFolderID;
+
+    return browser.storage.local
+      .get(["username", "password", "serverAddress"])
+      .then(async (result) => {
+        const fileNumber = String(message.content);
+
+        const caseId = await findCaseIdByFileNumber(
+          result.username,
+          result.password,
+          result.serverAddress,
+          fileNumber,
+        );
+
+        if (!caseId) {
+          return {
+            ok: false,
+            error: "Keine übereinstimmende ID gefunden",
+          };
+        }
+
+        return sendOnlyMessageToServer(
+          caseId,
+          result.username,
+          result.password,
+          result.serverAddress,
+          message.customFilename,
+          message.messageId,
+          { notify: false, clearSelectedTags: false },
+        );
+      })
+      .catch((error) => {
+        console.error("Fehler beim Speichern der Nachricht:", error);
+        return { ok: false, error: error.message };
+      });
+  }
+
   if (
     (message.type === "fileNumber" || message.type === "case") &&
     message.source === "popup"

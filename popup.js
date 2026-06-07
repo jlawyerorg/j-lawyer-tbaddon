@@ -314,17 +314,24 @@ document.addEventListener("DOMContentLoaded", async function () {
           "password",
           "serverAddress",
         ]);
+        const messageData = await getDisplayedMessageFromActiveTab();
+        const attachments = await browser.messages.listAttachments(
+          messageData.id,
+        );
+
+        if (attachments.length === 0) {
+          feedback.textContent =
+            "Kein Anhang verfügbar, die Nachricht enthält keine Anhänge.";
+          feedback.style.color = "red";
+          return;
+        }
+
         const toggleState = await browser.storage.local.get("imageEditEnabled");
 
         if (toggleState.imageEditEnabled) {
           // Überprüfung auf Bildanhänge vor der Bildbearbeitungslogik
           feedback.textContent = "Überprüfe Anhänge...";
           feedback.style.color = "blue";
-
-          const messageData = await getDisplayedMessageFromActiveTab();
-          const attachments = await browser.messages.listAttachments(
-            messageData.id,
-          );
 
           // Filtert Bild- und Nicht-Bildanhänge
           const imageTypes = [
@@ -401,10 +408,6 @@ document.addEventListener("DOMContentLoaded", async function () {
             selectedCaseFolderID,
           );
         } else {
-          // Bestehende Logik beibehalten
-          // messageId holen, um sie an background.js weiterzugeben
-          const messageData = await getDisplayedMessageFromActiveTab();
-
           browser.runtime.sendMessage({
             type: "saveAttachments",
             source: "popup",
@@ -422,6 +425,137 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
       } catch (error) {
         console.error("Fehler beim Verarbeiten der Anhänge:", error);
+        feedback.textContent = "Fehler: " + error.message;
+        feedback.style.color = "red";
+      }
+    });
+  }
+
+  // Event Listener für den kombinierten "Nachricht & Anhang speichern" Button
+  const saveBothButton = document.getElementById("saveBothButton");
+  if (saveBothButton) {
+    saveBothButton.addEventListener("click", async function () {
+      if (!currentSelectedCase) {
+        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.style.color = "red";
+        return;
+      }
+
+      try {
+        const settings = await browser.storage.local.get([
+          "username",
+          "password",
+          "serverAddress",
+          "allowRename",
+        ]);
+        const messageData = await getDisplayedMessageFromActiveTab();
+        let customFilename = null;
+
+        if (settings.allowRename) {
+          const originalSubject = messageData.subject || "nachricht";
+          customFilename = await showRenameDialog(`${originalSubject}.eml`);
+          if (customFilename === null) {
+            feedback.textContent = "Speichern abgebrochen";
+            feedback.style.color = "orange";
+            return;
+          }
+        }
+
+        feedback.textContent = "Speichere Nachricht...";
+        feedback.style.color = "blue";
+
+        const messageResult = await browser.runtime.sendMessage({
+          type: "saveMessageForCombined",
+          source: "popup",
+          content: currentSelectedCase.fileNumber,
+          selectedCaseFolderID: selectedCaseFolderID,
+          username: settings.username,
+          password: settings.password,
+          serverAddress: settings.serverAddress,
+          customFilename: customFilename,
+          messageId: messageData.id,
+        });
+
+        if (!messageResult || !messageResult.ok) {
+          throw new Error(
+            messageResult?.error || "Nachricht konnte nicht gespeichert werden",
+          );
+        }
+
+        // Anhänge prüfen
+        const attachments = await browser.messages.listAttachments(
+          messageData.id,
+        );
+
+        if (attachments.length === 0) {
+          feedback.textContent =
+            "Kein Anhang verfügbar, die Nachricht wurde allerdings ohne Anhang gespeichert.";
+          feedback.style.color = "goldenrod";
+        } else {
+          // Anhänge speichern (mit Bildbearbeitung falls aktiviert)
+          const toggleState =
+            await browser.storage.local.get("imageEditEnabled");
+          if (toggleState.imageEditEnabled) {
+            const imageTypes = [
+              "image/jpeg",
+              "image/jpg",
+              "image/png",
+              "image/gif",
+              "image/bmp",
+              "image/webp",
+            ];
+            const imageAttachments = attachments.filter(
+              (a) =>
+                imageTypes.includes(a.contentType.toLowerCase()) ||
+                a.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/),
+            );
+
+            if (imageAttachments.length === 0) {
+              browser.runtime.sendMessage({
+                type: "saveAttachments",
+                source: "popup",
+                content: currentSelectedCase.fileNumber,
+                selectedCaseFolderID: selectedCaseFolderID,
+                username: settings.username,
+                password: settings.password,
+                serverAddress: settings.serverAddress,
+                messageId: messageData.id,
+              });
+            } else {
+              let attempts = 0;
+              while (!window.AttachmentImageProcessor && attempts < 50) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                attempts++;
+              }
+              if (!window.AttachmentImageProcessor) {
+                throw new Error(
+                  "AttachmentImageProcessor konnte nicht geladen werden",
+                );
+              }
+              const processor = new AttachmentImageProcessor();
+              await processor.processWithImageEditing(
+                currentSelectedCase,
+                selectedCaseFolderID,
+              );
+            }
+          } else {
+            browser.runtime.sendMessage({
+              type: "saveAttachments",
+              source: "popup",
+              content: currentSelectedCase.fileNumber,
+              selectedCaseFolderID: selectedCaseFolderID,
+              username: settings.username,
+              password: settings.password,
+              serverAddress: settings.serverAddress,
+              messageId: messageData.id,
+            });
+          }
+
+          feedback.textContent = "Speichern...";
+          feedback.style.color = "blue";
+        }
+      } catch (error) {
+        console.error("Fehler beim kombinierten Speichern:", error);
         feedback.textContent = "Fehler: " + error.message;
         feedback.style.color = "red";
       }
