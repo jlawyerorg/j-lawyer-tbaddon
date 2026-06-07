@@ -172,16 +172,21 @@ document.addEventListener("DOMContentLoaded", async function () {
         "allowRename",
       ]);
       let customFilename = null;
+      let composeTabId = null;
+
+      const tabs = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tabs.length > 0) {
+        composeTabId = tabs[0].id;
+      }
 
       if (settings.allowRename) {
         // Zeige Rename-Dialog
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        if (tabs.length > 0) {
-          const tabId = tabs[0].id;
-          const composeDetails = await browser.compose.getComposeDetails(tabId);
+        if (composeTabId !== null) {
+          const composeDetails =
+            await browser.compose.getComposeDetails(composeTabId);
           const originalSubject = composeDetails.subject || "nachricht";
           const originalFilename = `${originalSubject}.eml`;
 
@@ -206,6 +211,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         serverAddress: settings.serverAddress,
         currentSelectedCase: currentSelectedCase,
         customFilename: customFilename,
+        composeTabId: composeTabId,
       });
 
       feedback.textContent =
@@ -613,6 +619,7 @@ async function searchCases(query) {
               password: result.password,
               serverAddress: result.serverAddress,
               currentSelectedCase: currentSelectedCase,
+              composeTabId: tabId,
             });
 
             // Setze Feedback-Text und -Farbe
@@ -1841,6 +1848,7 @@ async function selectSuggestion(match, loginData, tabId) {
     password: loginData.password,
     serverAddress: loginData.serverAddress,
     currentSelectedCase: currentSelectedCase,
+    composeTabId: tabId,
   });
 
   // Feedback anzeigen

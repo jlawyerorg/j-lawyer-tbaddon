@@ -20,6 +20,7 @@ let documentUploadedId = null;
 let documentIdsToTag = [];
 let lastMessageData = null;
 let extensionUsed = false;
+let lastSentMessageId = null;
 let selectedCaseFolderID = null;
 let selectedCaseFolderIDAfterSend = null;
 let currentSelectedCase = null;
@@ -30,6 +31,29 @@ let isMenuClickListenerRegistered = false;
 // Track only compose-related menu item IDs we create, so we can remove them
 // without wiping unrelated menus (like the message_list context entry).
 const composeMenuIds = new Set();
+const pendingAfterSendByTabId = new Map();
+const AFTER_SEND_STORAGE_KEYS = [
+  "caseIdToSaveToAfterSend",
+  "selectedCaseFolderIDAfterSend",
+  "customFilenameToSaveAfterSend",
+];
+
+function getComposeTabKey(tabId) {
+  return tabId === undefined || tabId === null ? "legacy" : String(tabId);
+}
+
+async function clearAfterSendState(tabId) {
+  if (arguments.length === 0) {
+    pendingAfterSendByTabId.clear();
+  } else {
+    pendingAfterSendByTabId.delete(getComposeTabKey(tabId));
+  }
+
+  extensionUsed = pendingAfterSendByTabId.size > 0;
+  lastMessageData = null;
+  lastSentMessageId = null;
+  await browser.storage.local.remove(AFTER_SEND_STORAGE_KEYS);
+}
 
 async function createComposeMenuItem(opts) {
   try {
@@ -740,6 +764,7 @@ async function sendEmailToServerAfterSend(
   password,
   serverAddress,
   customFilename = null,
+  sentMessage = null,
 ) {
   console.log("Es wird versucht, die Email in der Akte zu speichern");
   console.log(
@@ -748,12 +773,17 @@ async function sendEmailToServerAfterSend(
   selectedCaseFolderID = selectedCaseFolderIDAfterSend;
 
   const url = serverAddress + "/j-lawyer-io/rest/v1/cases/document/create";
+  const messageToSave = sentMessage || lastMessageData?.messages?.[0];
 
-  rawMessage = await messenger.messages.getRaw(lastMessageData.messages[0].id, {
+  if (!messageToSave) {
+    throw new Error("Keine gesendete Nachricht zum Speichern gefunden.");
+  }
+
+  const rawMessage = await messenger.messages.getRaw(messageToSave.id, {
     decrypt: true,
   });
 
-  addTagToMessage(lastMessageData.messages[0], "veraktet", "#000080");
+  addTagToMessage(messageToSave, "veraktet", "#000080");
 
   // Der Inhalt der Message wird zu Base64 codiert
   const emailContentBase64 = await messageToBase64(rawMessage);
@@ -783,7 +813,7 @@ async function sendEmailToServerAfterSend(
     fileName = fileName.replace(/[\/\\:*?"<>|@]/g, "_");
   } else {
     // Automatischer Dateiname
-    fileName = dateString + "_" + lastMessageData.messages[0].subject + ".eml";
+    fileName = dateString + "_" + messageToSave.subject + ".eml";
     fileName = fileName.replace(/[\/\\:*?"<>|@]/g, "_");
   }
 
@@ -805,69 +835,66 @@ async function sendEmailToServerAfterSend(
   // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
   headers.append("Content-Type", "application/json");
 
-  fetch(url, {
-    method: "PUT",
-    headers: headers,
-    body: JSON.stringify(payload),
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        throw await buildDocumentUploadError(response, fileName);
-      }
-      return response.json();
-    })
-    .then((data) => {
-      documentUploadedId = data.id;
-      console.log("Dokument ID: " + data.id);
-
-      // Nur Ordner aktualisieren, wenn ein Ordner ausgewählt wurde
-      if (
-        selectedCaseFolderID &&
-        selectedCaseFolderID !== null &&
-        selectedCaseFolderID !== "null"
-      ) {
-        updateDocumentFolder(
-          username,
-          password,
-          serverAddress,
-          selectedCaseFolderID,
-        );
-      } else {
-        console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
-      }
-
-      console.log("E-Mail wurde erfolgreich gespeichert");
-
-      browser.storage.local
-        .get(["username", "password", "serverAddress", "selectedTags"])
-        .then((result) => {
-          // Überprüfen, ob documentTags nicht leer ist
-          if (result.selectedTags && result.selectedTags.length > 0) {
-            for (let documentTag of result.selectedTags) {
-              setDocumentTag(
-                result.username,
-                result.password,
-                result.serverAddress,
-                documentTag,
-              ); //
-            }
-          } else {
-            console.log("Keine Tags ausgewählt");
-          }
-        });
-      browser.storage.local.remove("selectedTags");
-      browser.storage.local.get("selectedTags").then((result) => {
-        console.log("selectedTags: " + result.selectedTags);
-      });
-    })
-    .catch((error) => {
-      console.log("Error:", error);
-      browser.runtime.sendMessage({ type: "error", content: error.message });
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify(payload),
     });
-  browser.storage.local.remove(caseIdToSaveToAfterSend);
-  console.log("caseIdToSaveToAfterSend wurde gelöscht");
-  extensionUsed = false;
-  console.log("extensionUsed wurde wieder auf false gesetzt");
+
+    if (!response.ok) {
+      throw await buildDocumentUploadError(response, fileName);
+    }
+
+    const data = await response.json();
+    documentUploadedId = data.id;
+    console.log("Dokument ID: " + data.id);
+
+    // Nur Ordner aktualisieren, wenn ein Ordner ausgewählt wurde
+    if (
+      selectedCaseFolderID &&
+      selectedCaseFolderID !== null &&
+      selectedCaseFolderID !== "null"
+    ) {
+      updateDocumentFolder(
+        username,
+        password,
+        serverAddress,
+        selectedCaseFolderID,
+      );
+    } else {
+      console.log("Kein Ordner ausgewählt, überspringe updateDocumentFolder");
+    }
+
+    console.log("E-Mail wurde erfolgreich gespeichert");
+
+    browser.storage.local
+      .get(["username", "password", "serverAddress", "selectedTags"])
+      .then((result) => {
+        // Überprüfen, ob documentTags nicht leer ist
+        if (result.selectedTags && result.selectedTags.length > 0) {
+          for (let documentTag of result.selectedTags) {
+            setDocumentTag(
+              result.username,
+              result.password,
+              result.serverAddress,
+              documentTag,
+            ); //
+          }
+        } else {
+          console.log("Keine Tags ausgewählt");
+        }
+      });
+    browser.storage.local.remove("selectedTags");
+    browser.storage.local.get("selectedTags").then((result) => {
+      console.log("selectedTags: " + result.selectedTags);
+    });
+  } catch (error) {
+    console.log("Error:", error);
+    browser.runtime.sendMessage({ type: "error", content: error.message });
+    throw error;
+  }
+
   logActivity("sendEmailToServerAfterSend", {
     caseIdToSaveToAfterSend,
     fileName,
@@ -1856,105 +1883,161 @@ browser.runtime.onMessage.addListener((message) => {
     message.type === "saveToCaseAfterSend" &&
     message.source === "popup_compose"
   ) {
+    const composeTabKey = getComposeTabKey(message.composeTabId);
     extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
-    let documentsInSelectedCase = [];
 
     console.log("Aktenzeichen: " + message.content);
 
     selectedCaseFolderID = message.selectedCaseFolderID;
     currentSelectedCase = message.currentSelectedCase;
 
+    if (currentSelectedCase?.id) {
+      const initialPendingSave = {
+        caseIdToSaveToAfterSend: currentSelectedCase.id,
+        selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
+        customFilenameToSaveAfterSend: message.customFilename || null,
+      };
+      pendingAfterSendByTabId.set(composeTabKey, initialPendingSave);
+      browser.storage.local.set(initialPendingSave).catch((error) => {
+        console.error("Fehler beim Speichern des Pending-Zustands:", error);
+      });
+    }
+
     (async () => {
+      let loginData;
       try {
-        const loginData = await browser.storage.local.get([
+        loginData = await browser.storage.local.get([
           "username",
           "password",
           "serverAddress",
         ]);
-        const documents = await getFilesInCaseToDownload(
-          currentSelectedCase.id,
-          loginData.username,
-          loginData.password,
-          loginData.serverAddress,
-        );
-        console.log("Empfangene Dateinamen für den neuen Fall:", documents);
 
-        // Speichern der Dokumente und Aktualisieren des Menüs
-        documentsInSelectedCase = documents;
-        await browser.storage.local.set({ documentsInSelectedCase: documents });
-        createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
+        // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
+        const fileNumber = String(message.content);
+        const caseIdToSaveToAfterSend =
+          currentSelectedCase?.id ||
+          (await findCaseIdByFileNumber(
+            loginData.username,
+            loginData.password,
+            loginData.serverAddress,
+            fileNumber,
+          ));
+
+        if (!caseIdToSaveToAfterSend) {
+          throw new Error("Keine Akte für das Speichern nach Versand gefunden.");
+        }
+
+        const pendingSave = {
+          caseIdToSaveToAfterSend: caseIdToSaveToAfterSend,
+          selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
+          customFilenameToSaveAfterSend: message.customFilename || null,
+        };
+
+        pendingAfterSendByTabId.set(composeTabKey, pendingSave);
+        extensionUsed = true;
+
+        await browser.storage.local.set(pendingSave);
+        console.log(
+          "caseIdToSaveToAfterSend gesetzt auf: ",
+          caseIdToSaveToAfterSend,
+        );
+        console.log(
+          "selectedCaseFolderIDAfterSend gesetzt auf: ",
+          message.selectedCaseFolderID,
+        );
+        console.log(
+          "customFilenameToSaveAfterSend gesetzt auf: ",
+          message.customFilename,
+        );
+
+        try {
+          const documents = await getFilesInCaseToDownload(
+            currentSelectedCase.id,
+            loginData.username,
+            loginData.password,
+            loginData.serverAddress,
+          );
+          console.log("Empfangene Dateinamen für den neuen Fall:", documents);
+
+          // Speichern der Dokumente und Aktualisieren des Menüs
+          await browser.storage.local.set({ documentsInSelectedCase: documents });
+          createMenuEntries(); // Menü mit den neuen Dokumenten aktualisieren
+        } catch (error) {
+          console.error(
+            "Fehler beim Laden der Dokumente für den ausgewählten Fall:",
+            error,
+          );
+        }
       } catch (error) {
-        console.error(
-          "Fehler beim Laden der Dokumente für den ausgewählten Fall:",
-          error,
-        );
+        console.error("Fehler beim Vorbereiten des Speicherns:", error);
+        await clearAfterSendState(message.composeTabId);
       }
-
-      // Aktualisieren oder Erstellen der caseIdToSaveToAfterSend im Storage
-      const fileNumber = String(message.content);
-
-      const caseIdToSaveToAfterSend = await findCaseIdByFileNumber(
-        loginData.username,
-        loginData.password,
-        loginData.serverAddress,
-        fileNumber,
-      );
-      await browser.storage.local.set({
-        caseIdToSaveToAfterSend: caseIdToSaveToAfterSend,
-        selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
-        customFilenameToSaveAfterSend: message.customFilename || null,
-      });
-      console.log(
-        "caseIdToSaveToAfterSend gesetzt auf: ",
-        caseIdToSaveToAfterSend,
-      );
-      console.log(
-        "selectedCaseFolderIDAfterSend gesetzt auf: ",
-        message.selectedCaseFolderID,
-      );
-      console.log(
-        "customFilenameToSaveAfterSend gesetzt auf: ",
-        message.customFilename,
-      );
     })(); // Sofortige Ausführung der async-Funktion
   }
 });
 
 // Das Speichern von Nachrichten, die gesendet wurden
 messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
-  if (extensionUsed == false) {
+  const composeTabId = tab?.id;
+  const composeTabKey = getComposeTabKey(composeTabId);
+  let pendingSave = pendingAfterSendByTabId.get(composeTabKey);
+
+  if (!pendingSave && composeTabId === undefined && extensionUsed) {
+    pendingSave = await browser.storage.local.get(AFTER_SEND_STORAGE_KEYS);
+  }
+
+  if (!pendingSave?.caseIdToSaveToAfterSend) {
     console.log("jLawyer-Extension wurde nicht genutzt");
     return;
-  } else {
+  }
+
+  try {
     console.log("Nachricht SendInfo:", sendInfo);
     console.log("Nachricht wurde gesendet");
 
     lastMessageData = sendInfo;
 
     // Nachrichten-ID abrufen
-    console.log("Nachrichten-Id:", sendInfo.messages[0].id);
-    lastSentMessageId = sendInfo.messages[0].id;
+    const sentMessage = sendInfo.messages?.[0];
+    if (!sentMessage) {
+      throw new Error("Keine gesendete Nachricht in sendInfo gefunden.");
+    }
+
+    console.log("Nachrichten-Id:", sentMessage.id);
+    lastSentMessageId = sentMessage.id;
 
     // speichert E-Mail nach dem Senden in der Akte
-    await browser.storage.local
-      .get([
-        "caseIdToSaveToAfterSend",
-        "selectedCaseFolderIDAfterSend",
-        "username",
-        "password",
-        "serverAddress",
-        "customFilenameToSaveAfterSend",
-      ])
-      .then((result) => {
-        sendEmailToServerAfterSend(
-          result.caseIdToSaveToAfterSend,
-          result.selectedCaseFolderIDAfterSend,
-          result.username,
-          result.password,
-          result.serverAddress,
-          result.customFilenameToSaveAfterSend,
-        );
-      });
+    const loginData = await browser.storage.local.get([
+      "username",
+      "password",
+      "serverAddress",
+    ]);
+    await sendEmailToServerAfterSend(
+      pendingSave.caseIdToSaveToAfterSend,
+      pendingSave.selectedCaseFolderIDAfterSend,
+      loginData.username,
+      loginData.password,
+      loginData.serverAddress,
+      pendingSave.customFilenameToSaveAfterSend,
+      sentMessage,
+    );
+  } catch (error) {
+    console.error("Fehler beim Speichern nach Versand:", error);
+  } finally {
+    await clearAfterSendState(composeTabId);
+    console.log("Speicherzustand nach Versand wurde zurückgesetzt");
+  }
+});
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  if (pendingAfterSendByTabId.has(getComposeTabKey(tabId))) {
+    setTimeout(() => {
+      if (pendingAfterSendByTabId.has(getComposeTabKey(tabId))) {
+        clearAfterSendState(tabId).catch((error) => {
+          console.error("Fehler beim Zurücksetzen des Speicherzustands:", error);
+        });
+      }
+    }, 30000);
   }
 });
 
