@@ -1127,6 +1127,19 @@ function formatDate(input) {
   return `${year}-${month}-${day}_${hours}-${minutes}`;
 }
 
+async function readOptionalJsonResponse(response) {
+  const responseText = await response.text();
+  if (!responseText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (error) {
+    return null;
+  }
+}
+
 async function setDocumentTag(username, password, serverAddress, documentTag) {
   const headers = new Headers();
   const loginBase64Encoded = btoa(
@@ -1146,16 +1159,17 @@ async function setDocumentTag(username, password, serverAddress, documentTag) {
     name: documentTag,
   };
 
-  fetch(url, {
+  const response = await fetch(url, {
     method: "PUT",
     headers: headers,
     body: JSON.stringify(payload),
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return readOptionalJsonResponse(response);
 }
 
 async function setDocumentTagsAndFolderForAttachments() {
@@ -1337,16 +1351,17 @@ async function updateDocumentFolder(
     folderId: selectedCaseFolderID,
   };
 
-  fetch(url, {
+  const response = await fetch(url, {
     method: "PUT",
     headers: headers,
     body: JSON.stringify(payload),
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return readOptionalJsonResponse(response);
 }
 
 // Aktualisiert das creationDate eines Dokuments auf das E-Mail-Datum
@@ -1418,7 +1433,6 @@ async function updateDocumentCreationDate(
         // Leere oder ungültige JSON-Antwort ist ok
       }
     }
-    console.log("creationDate erfolgreich aktualisiert auf:", emailDateISO);
     return result;
   } catch (error) {
     console.error("Fehler in updateDocumentCreationDate:", error);

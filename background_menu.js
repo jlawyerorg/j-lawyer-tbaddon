@@ -524,7 +524,20 @@ function formatDate(input) {
 }
 
 // adding Tag
-function setDocumentTagFromSelection(
+async function readOptionalJsonResponse(response) {
+  const responseText = await response.text();
+  if (!responseText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function setDocumentTagFromSelection(
   username,
   password,
   serverAddress,
@@ -548,16 +561,17 @@ function setDocumentTagFromSelection(
     name: documentTag,
   };
 
-  fetch(url, {
+  const response = await fetch(url, {
     method: "PUT",
     headers: headers,
     body: JSON.stringify(payload),
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network error" + response.status + response.statusText);
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network error" + response.status + response.statusText);
+  }
+
+  return readOptionalJsonResponse(response);
 }
 
 // puts document into case folder
@@ -578,16 +592,17 @@ async function updateDocumentFolderBundle(username, password, serverAddress) {
     folderId: selectedCaseFolderID_bundle,
   };
 
-  fetch(url, {
+  const response = await fetch(url, {
     method: "PUT",
     headers: headers,
     body: JSON.stringify(payload),
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json();
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return readOptionalJsonResponse(response);
 }
 
 // Aktualisiert das creationDate eines Dokuments auf das E-Mail-Datum
@@ -659,7 +674,6 @@ async function updateDocumentCreationDate(
         // Leere oder ungültige JSON-Antwort ist ok
       }
     }
-    console.log("creationDate erfolgreich aktualisiert auf:", emailDateISO);
     return result;
   } catch (error) {
     console.error("Fehler in updateDocumentCreationDate:", error);

@@ -259,16 +259,12 @@ class AttachmentImageProcessor {
     const settings = await browser.storage.local.get(["selectedTags"]);
     const selectedTags = settings.selectedTags || [];
 
-    // Daten im Storage für das Overlay speichern
-    const imageDataPromises = imageAttachments.map(async (img) => ({
+    // Store only metadata. Large image blobs are sent to the overlay on demand.
+    const images = imageAttachments.map((img) => ({
       name: img.name,
       contentType: img.contentType,
       size: img.size,
-      // Blob als ArrayBuffer speichern
-      data: await img.blob.arrayBuffer(),
     }));
-
-    const images = await Promise.all(imageDataPromises);
 
     await browser.storage.local.set({
       imageEditSession: {
@@ -281,6 +277,10 @@ class AttachmentImageProcessor {
       },
     });
 
+    // Message Listener für Overlay-Kommunikation vor dem Öffnen registrieren
+    this.messageListener = this.handleOverlayMessage.bind(this);
+    browser.runtime.onMessage.addListener(this.messageListener);
+
     const overlayUrl = browser.runtime.getURL("image-edit-overlay.html");
     this.overlayWindow = await browser.windows.create({
       url: overlayUrl,
@@ -288,15 +288,13 @@ class AttachmentImageProcessor {
       width: 1400,
       height: 1000,
     });
-
-    // Message Listener für Overlay-Kommunikation
-    this.messageListener = this.handleOverlayMessage.bind(this);
-    browser.runtime.onMessage.addListener(this.messageListener);
   }
 
   handleOverlayMessage(message, sender, sendResponse) {
     if (message.type === "overlay-ready") {
       this.initializeOverlay();
+    } else if (message.type === "request-image") {
+      this.sendImageToOverlay(message.index || 0);
     } else if (message.type === "image-cropped") {
       this.handleImageCropped(message.imageData, message.fileName);
     } else if (message.type === "skip-image") {

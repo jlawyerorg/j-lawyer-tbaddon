@@ -255,9 +255,10 @@ class ImageEditOverlay {
           "non-image attachments",
         );
 
-        // Erstes Bild laden
         if (this.sessionData.images.length > 0) {
-          await this.loadCurrentImage();
+          document.getElementById("progressText").textContent =
+            `Bild 1 von ${this.sessionData.images.length}`;
+          this.showLoading(true);
         } else {
           console.error("No images in session data");
         }
@@ -281,6 +282,15 @@ class ImageEditOverlay {
     this.currentFileName = imageData.name;
     document.getElementById("progressText").textContent =
       `Bild ${this.currentImageIndex + 1} von ${this.sessionData.images.length}`;
+
+    if (!imageData.data) {
+      this.showLoading(true);
+      browser.runtime.sendMessage({
+        type: "request-image",
+        index: this.currentImageIndex,
+      });
+      return;
+    }
 
     // ArrayBuffer zu Blob konvertieren
     const blob = new Blob([imageData.data], { type: imageData.contentType });
@@ -1775,4 +1785,5 @@ class ImageEditOverlay {
 
 document.addEventListener("DOMContentLoaded", () => {
   new ImageEditOverlay();
+  browser.runtime.sendMessage({ type: "overlay-ready" });
 });
