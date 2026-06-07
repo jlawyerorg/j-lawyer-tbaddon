@@ -22,7 +22,6 @@ let caseFolders = {}; // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null; // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
 let emailTemplatesNames = {}; // Speichert die Email-Templates
 let currentDisplayedMessageId = null; // Speichert die ID der aktuell angezeigten Nachricht
-let suppressNextSuccessMessage = false; // Unterdrückt die nächste Erfolgsmeldung (z. B. bei fehlendem Anhang)
 
 // Tastaturnavigation durch Suchergebnisse
 let selectedIndex = -1;
@@ -462,9 +461,11 @@ document.addEventListener("DOMContentLoaded", async function () {
           }
         }
 
-        // Nachricht speichern
-        browser.runtime.sendMessage({
-          type: "saveMessageOnly",
+        feedback.textContent = "Speichere Nachricht...";
+        feedback.style.color = "blue";
+
+        const messageResult = await browser.runtime.sendMessage({
+          type: "saveMessageForCombined",
           source: "popup",
           content: currentSelectedCase.fileNumber,
           selectedCaseFolderID: selectedCaseFolderID,
@@ -475,13 +476,18 @@ document.addEventListener("DOMContentLoaded", async function () {
           messageId: messageData.id,
         });
 
+        if (!messageResult || !messageResult.ok) {
+          throw new Error(
+            messageResult?.error || "Nachricht konnte nicht gespeichert werden",
+          );
+        }
+
         // Anhänge prüfen
         const attachments = await browser.messages.listAttachments(
           messageData.id,
         );
 
         if (attachments.length === 0) {
-          suppressNextSuccessMessage = true;
           feedback.textContent =
             "Kein Anhang verfügbar, die Nachricht wurde allerdings ohne Anhang gespeichert.";
           feedback.style.color = "goldenrod";
@@ -697,10 +703,6 @@ async function updateData(feedback, progressBar) {
 browser.runtime.onMessage.addListener((message) => {
   const feedback = document.getElementById("feedback");
   if (message.type === "success") {
-    if (suppressNextSuccessMessage) {
-      suppressNextSuccessMessage = false;
-      return;
-    }
     feedback.textContent = "Erfolgreich gesendet!";
     feedback.style.color = "green";
   } else if (message.type === "error") {
