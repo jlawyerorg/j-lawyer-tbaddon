@@ -6,6 +6,7 @@ document.getElementById("saveButton").addEventListener("click", function () {
   const allowRename = document.getElementById("allowRename").checked;
   const performOcr = document.getElementById("performOcr").checked;
   const subjectTemplate = document.getElementById("subjectTemplate").value;
+  const filenameTemplate = document.getElementById("filenameTemplate").value;
 
   browser.storage.local
     .set({
@@ -16,11 +17,12 @@ document.getElementById("saveButton").addEventListener("click", function () {
       allowRename: allowRename,
       performOcr: performOcr,
       subjectTemplate: subjectTemplate,
+      filenameTemplate: filenameTemplate,
     })
     .then(() => {
       // Nach dem erfolgreichen Speichern wird der Button-Text geändert => Usability
       // testServerConnection(username, password, serverAddress);
-      document.getElementById("saveButton").value = "Login gespeichert";
+      document.getElementById("saveButton").value = "gespeichert";
     });
 });
 
@@ -84,6 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "allowRename",
       "performOcr",
       "subjectTemplate",
+      "filenameTemplate",
     ])
     .then((result) => {
       document.getElementById("username").value = result.username || "";
@@ -98,5 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
         result.performOcr || false;
       document.getElementById("subjectTemplate").value =
         result.subjectTemplate || "";
+      document.getElementById("filenameTemplate").value =
+        result.filenameTemplate || "";
     });
 });

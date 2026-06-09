@@ -235,6 +235,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         "password",
         "serverAddress",
         "allowRename",
+        "filenameTemplate",
       ]);
       let customFilename = null;
 
@@ -244,7 +245,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         const originalSubject = messageData.subject || "nachricht";
         const originalFilename = `${originalSubject}.eml`;
 
-        customFilename = await showRenameDialog(originalFilename);
+        customFilename = await showRenameDialog(originalFilename, {
+          emailDate: messageData.date,
+          author: messageData.author,
+          template: settings.filenameTemplate,
+        });
 
         if (customFilename === null) {
           // Benutzer hat abgebrochen
@@ -290,6 +295,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         "password",
         "serverAddress",
         "allowRename",
+        "filenameTemplate",
       ]);
       let customFilename = null;
 
@@ -301,7 +307,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         const originalSubject = messageData.subject || "nachricht";
         const originalFilename = `${originalSubject}.eml`;
 
-        customFilename = await showRenameDialog(originalFilename);
+        customFilename = await showRenameDialog(originalFilename, {
+          emailDate: messageData.date,
+          author: messageData.author,
+          template: settings.filenameTemplate,
+        });
 
         if (customFilename === null) {
           // Benutzer hat abgebrochen
@@ -479,13 +489,18 @@ document.addEventListener("DOMContentLoaded", async function () {
           "password",
           "serverAddress",
           "allowRename",
+          "filenameTemplate",
         ]);
         const messageData = await getDisplayedMessageFromActiveTab();
         let customFilename = null;
 
         if (settings.allowRename) {
           const originalSubject = messageData.subject || "nachricht";
-          customFilename = await showRenameDialog(`${originalSubject}.eml`);
+          customFilename = await showRenameDialog(`${originalSubject}.eml`, {
+            emailDate: messageData.date,
+            author: messageData.author,
+            template: settings.filenameTemplate,
+          });
           if (customFilename === null) {
             feedback.textContent = "Speichern abgebrochen";
             feedback.style.color = "orange";
@@ -2018,7 +2033,7 @@ async function logActivity(action, details) {
 }
 
 // Funktion zum Anzeigen des Rename-Dialogs
-async function showRenameDialog(originalFilename) {
+async function showRenameDialog(originalFilename, suggestionOptions = {}) {
   return new Promise((resolve) => {
     const dialog = document.getElementById("renameDialog");
     const filenameInput = document.getElementById("filenameInput");
@@ -2027,20 +2042,10 @@ async function showRenameDialog(originalFilename) {
     const cancelRenameBtn = document.getElementById("cancelRenameBtn");
     const confirmRenameBtn = document.getElementById("confirmRenameBtn");
 
-    // Zeitstempel-basierter Vorschlag
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}`;
-
-    // Dateiendung beibehalten
-    const lastDotIndex = originalFilename.lastIndexOf(".");
-    const extension =
-      lastDotIndex > 0 ? originalFilename.substring(lastDotIndex) : "";
-    const nameWithoutExt =
-      lastDotIndex > 0
-        ? originalFilename.substring(0, lastDotIndex)
-        : originalFilename;
-
-    const suggestedFilename = `${timestamp}_${nameWithoutExt}${extension}`;
+    const suggestedFilename = window.FilenameTemplate.buildSuggestedFilename(
+      originalFilename,
+      suggestionOptions,
+    );
 
     // UI vorbereiten
     filenameInput.value = originalFilename;

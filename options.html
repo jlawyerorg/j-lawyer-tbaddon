@@ -135,6 +135,22 @@
                     >
                 </div>
 
+                <label for="filenameTemplate"
+                    >Benennungsvorlage für empfangene E-Mails (leer =
+                    Standard):</label
+                >
+                <input
+                    type="text"
+                    id="filenameTemplate"
+                    placeholder="{{CURRENT_DATETIME}}_{{ORIGINAL_NAME}}{{EXT}}"
+                /><br />
+                <small style="color: #666; display: block; margin-bottom: 15px">
+                    Verfügbare Platzhalter: {{CURRENT_DATE}}, {{CURRENT_TIME}},
+                    {{CURRENT_DATETIME}}, {{EMAIL_DATE}}, {{EMAIL_TIME}},
+                    {{EMAIL_DATETIME}}, {{ORIGINAL_NAME}}, {{SUBJECT}},
+                    {{AUTHOR}}, {{EXT}}
+                </small>
+
                 <div class="checkbox-row">
                     <input type="checkbox" id="performOcr" />
                     <label for="performOcr"
