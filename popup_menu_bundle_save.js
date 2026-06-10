@@ -81,6 +81,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           browser.runtime.sendMessage({
             type: "case",
             source: "popup_menu_bundle_save",
+            caseId: currentSelectedCase.id,
             content: currentSelectedCase.fileNumber,
             selectedCaseFolderID: selectedCaseFolderID,
             username: result.username,

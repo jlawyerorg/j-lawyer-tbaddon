@@ -204,6 +204,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       browser.runtime.sendMessage({
         type: "saveToCaseAfterSend",
         source: "popup_compose",
+        caseId: currentSelectedCase.id,
         content: currentSelectedCase.fileNumber,
         selectedCaseFolderID: selectedCaseFolderID,
         username: settings.username,
@@ -613,6 +614,7 @@ async function searchCases(query) {
             browser.runtime.sendMessage({
               type: "saveToCaseAfterSend",
               source: "popup_compose",
+              caseId: currentSelectedCase.id,
               content: currentSelectedCase.fileNumber,
               selectedCaseFolderID: selectedCaseFolderID,
               username: result.username,
@@ -1842,6 +1844,7 @@ async function selectSuggestion(match, loginData, tabId) {
   browser.runtime.sendMessage({
     type: "saveToCaseAfterSend",
     source: "popup_compose",
+    caseId: currentSelectedCase.id,
     content: currentSelectedCase.fileNumber,
     selectedCaseFolderID: selectedCaseFolderID,
     username: loginData.username,
@@ -2069,6 +2072,7 @@ async function findFileNumberInComposeMessage() {
                 browser.runtime.sendMessage({
                     type: "saveToCaseAfterSend",
                     source: "popup_compose",
+                    caseId: currentSelectedCase.id,
                     content: currentSelectedCase.fileNumber,
                     selectedCaseFolderID: selectedCaseFolderID,
                     username: result.username,

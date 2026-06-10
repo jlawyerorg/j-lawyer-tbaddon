@@ -341,140 +341,13 @@ async function sendEmailToServerFromSelection(
 //     });
 // }
 
-async function fetchCasesByReferenceApi(
-  username,
-  password,
-  serverAddress,
-  reference,
-  headers,
-) {
-  const url =
-    serverAddress +
-    "/j-lawyer-io/rest/v7/cases/byreference/" +
-    encodeURIComponent(reference);
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: headers,
-  });
-
-  if (!response.ok) {
-    throw new Error("Reference search response was not ok");
-  }
-
-  return response.json();
-}
-
-function mergeCaseSearchResults(primaryResults, referenceResults) {
-  const casesById = new Map();
-
-  for (const item of primaryResults) {
-    casesById.set(item.id, item);
-  }
-
-  for (const item of referenceResults) {
-    if (!casesById.has(item.id)) {
-      casesById.set(item.id, item);
-    }
-  }
-
-  return Array.from(casesById.values());
-}
-
-// Funktion zum Suchen von Fällen via API
-async function searchCasesApi(
-  username,
-  password,
-  serverAddress,
-  searchString,
-  includeArchived = false,
-) {
-  // API erfordert mindestens 3 Zeichen
-  if (!searchString || searchString.length < 3) {
-    return [];
-  }
-
-  const url =
-    serverAddress +
-    "/j-lawyer-io/rest/v7/cases/search" +
-    "?searchString=" +
-    encodeURIComponent(searchString) +
-    "&includeArchived=" +
-    includeArchived;
-
-  const headers = new Headers();
-  const loginBase64Encoded = btoa(
-    unescape(encodeURIComponent(username + ":" + password)),
-  );
-  headers.append("Authorization", "Basic " + loginBase64Encoded);
-  headers.append("Content-Type", "application/json");
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: headers,
-  });
-
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-
-  const primaryResults = await response.json();
-  let referenceResults = [];
-
-  try {
-    referenceResults = await fetchCasesByReferenceApi(
-      username,
-      password,
-      serverAddress,
-      searchString,
-      headers,
-    );
-  } catch (error) {
-    console.warn("Reference search failed:", searchString, error);
-  }
-
-  return mergeCaseSearchResults(primaryResults, referenceResults);
-}
-
-// Funktion zum Finden einer Case-ID anhand des Aktenzeichens via API
-async function findCaseIdByFileNumber(
-  username,
-  password,
-  serverAddress,
-  fileNumber,
-) {
-  if (!fileNumber || fileNumber.length < 3) {
-    console.log("Aktenzeichen zu kurz für API-Suche: " + fileNumber);
+function getCaseIdFromMessage(message) {
+  if (!message?.caseId) {
     return null;
   }
 
-  try {
-    const results = await searchCasesApi(
-      username,
-      password,
-      serverAddress,
-      fileNumber,
-    );
-
-    // Suche exakten Match im Ergebnis
-    for (const item of results) {
-      if (item.fileNumber === fileNumber) {
-        console.log(
-          "ID gefunden via API: " +
-            item.id +
-            " für Aktenzeichen: " +
-            fileNumber,
-        );
-        return item.id;
-      }
-    }
-
-    console.log("Kein exakter Match für Aktenzeichen: " + fileNumber);
-    return null;
-  } catch (error) {
-    console.error("Fehler bei API-Suche für Aktenzeichen:", fileNumber, error);
-    return null;
-  }
+  const caseId = String(message.caseId).trim();
+  return caseId || null;
 }
 
 function findCaseBySubject(data, subject) {
@@ -813,7 +686,6 @@ browser.runtime.onMessage.addListener((message) => {
       browser.storage.local
         .get(["username", "password", "serverAddress"])
         .then(async (result) => {
-          const fileNumber = String(message.content);
           console.log(
             "Single Selected Message Key:",
             key,
@@ -821,12 +693,7 @@ browser.runtime.onMessage.addListener((message) => {
             messagesToSaveObjects.messages[key].id,
           );
 
-          const caseId = await findCaseIdByFileNumber(
-            result.username,
-            result.password,
-            result.serverAddress,
-            fileNumber,
-          );
+          const caseId = getCaseIdFromMessage(message);
 
           if (caseId) {
             singleMessageFromSelection = messagesToSaveObjects.messages[key];
@@ -838,7 +705,11 @@ browser.runtime.onMessage.addListener((message) => {
               result.serverAddress,
             );
           } else {
-            console.log("Keine übereinstimmende ID gefunden");
+            console.log("Keine Akten-ID übergeben");
+            browser.runtime.sendMessage({
+              type: "error",
+              content: "Keine Akten-ID übergeben",
+            });
           }
         });
     }

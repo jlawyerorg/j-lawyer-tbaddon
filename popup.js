@@ -265,6 +265,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       browser.runtime.sendMessage({
         type: "case",
         source: "popup",
+        caseId: currentSelectedCase.id,
         content: currentSelectedCase.fileNumber,
         selectedCaseFolderID: selectedCaseFolderID,
         username: settings.username,
@@ -324,6 +325,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       browser.runtime.sendMessage({
         type: "saveMessageOnly",
         source: "popup",
+        caseId: currentSelectedCase.id,
         content: currentSelectedCase.fileNumber,
         selectedCaseFolderID: selectedCaseFolderID,
         username: settings.username,
@@ -409,6 +411,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             browser.runtime.sendMessage({
               type: "saveAttachments",
               source: "popup",
+              caseId: currentSelectedCase.id,
               content: currentSelectedCase.fileNumber,
               selectedCaseFolderID: selectedCaseFolderID,
               username: settings.username,
@@ -453,6 +456,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           browser.runtime.sendMessage({
             type: "saveAttachments",
             source: "popup",
+            caseId: currentSelectedCase.id,
             content: currentSelectedCase.fileNumber,
             selectedCaseFolderID: selectedCaseFolderID,
             username: settings.username,
@@ -514,6 +518,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const messageResult = await browser.runtime.sendMessage({
           type: "saveMessageForCombined",
           source: "popup",
+          caseId: currentSelectedCase.id,
           content: currentSelectedCase.fileNumber,
           selectedCaseFolderID: selectedCaseFolderID,
           username: settings.username,
@@ -561,6 +566,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               browser.runtime.sendMessage({
                 type: "saveAttachments",
                 source: "popup",
+                caseId: currentSelectedCase.id,
                 content: currentSelectedCase.fileNumber,
                 selectedCaseFolderID: selectedCaseFolderID,
                 username: settings.username,
@@ -589,6 +595,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             browser.runtime.sendMessage({
               type: "saveAttachments",
               source: "popup",
+              caseId: currentSelectedCase.id,
               content: currentSelectedCase.fileNumber,
               selectedCaseFolderID: selectedCaseFolderID,
               username: settings.username,
