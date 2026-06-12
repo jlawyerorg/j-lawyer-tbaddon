@@ -31,9 +31,11 @@ class ImageEditOverlay {
     this.initialCropBox = { left: 0, top: 0, width: 0, height: 0 };
     this.imageScale = 1;
     this.imageOffset = { x: 0, y: 0 };
+    this.rotationDegrees = 0;
 
     // Session-Daten
     this.sessionData = null;
+    this.sessionId = null;
     this.currentImageIndex = 0;
     this.editedImages = [];
     this.nonImageAttachments = [];
@@ -56,6 +58,9 @@ class ImageEditOverlay {
 
     const resetCropBtn = document.getElementById("resetCropBtn");
     const applyCropBtn = document.getElementById("applyCropBtn");
+    const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+    const rotateRightBtn = document.getElementById("rotateRightBtn");
+    const resetRotationBtn = document.getElementById("resetRotationBtn");
     const skipBtn = document.getElementById("skipBtn");
     const nextBtn = document.getElementById("nextBtn");
     const cancelBtn = document.getElementById("cancelBtn"); // Finish-Options Abbrechen Button
@@ -92,6 +97,9 @@ class ImageEditOverlay {
     this.elements = {
       resetCropBtn,
       applyCropBtn,
+      rotateLeftBtn,
+      rotateRightBtn,
+      resetRotationBtn,
       skipBtn,
       nextBtn,
       cancelBtn,
@@ -129,6 +137,15 @@ class ImageEditOverlay {
     });
     this.elements.applyCropBtn.addEventListener("click", () =>
       this.applyCrop(),
+    );
+    this.elements.rotateLeftBtn.addEventListener("click", () =>
+      this.rotateImage(-90),
+    );
+    this.elements.rotateRightBtn.addEventListener("click", () =>
+      this.rotateImage(90),
+    );
+    this.elements.resetRotationBtn.addEventListener("click", () =>
+      this.resetRotation(),
     );
     this.elements.skipBtn.addEventListener("click", () => this.skipImage());
     this.elements.nextBtn.addEventListener("click", () => this.nextImage());
@@ -245,6 +262,7 @@ class ImageEditOverlay {
 
       if (result.imageEditSession && result.imageEditSession.sessionActive) {
         this.sessionData = result.imageEditSession;
+        this.sessionId = this.sessionData.sessionId || null;
         this.nonImageAttachments =
           result.imageEditSession.nonImageAttachments || [];
         console.log(
@@ -259,6 +277,10 @@ class ImageEditOverlay {
           document.getElementById("progressText").textContent =
             `Bild 1 von ${this.sessionData.images.length}`;
           this.showLoading(true);
+          browser.runtime.sendMessage({
+            type: "overlay-ready",
+            sessionId: this.sessionId,
+          });
         } else {
           console.error("No images in session data");
         }
@@ -287,6 +309,7 @@ class ImageEditOverlay {
       this.showLoading(true);
       browser.runtime.sendMessage({
         type: "request-image",
+        sessionId: this.sessionId,
         index: this.currentImageIndex,
       });
       return;
@@ -300,6 +323,7 @@ class ImageEditOverlay {
     img.onload = () => {
       console.log("Image loaded successfully:", img.width, "x", img.height);
       this.currentImage = img;
+      this.rotationDegrees = 0;
       this.drawImageToCanvas();
       this.resetCrop();
       this.showLoading(false);
@@ -314,6 +338,10 @@ class ImageEditOverlay {
   }
 
   handleMessage(message) {
+    if (!this.isCurrentSessionMessage(message)) {
+      return;
+    }
+
     switch (message.type) {
       case "load-image":
         this.loadImage(
@@ -327,6 +355,16 @@ class ImageEditOverlay {
         this.showFinishOptions(message.imageCount);
         break;
     }
+  }
+
+  isCurrentSessionMessage(message) {
+    const sessionMessages = ["load-image", "show-finish-options"];
+
+    if (!sessionMessages.includes(message.type)) {
+      return true;
+    }
+
+    return Boolean(this.sessionId && message.sessionId === this.sessionId);
   }
 
   async loadImage(imageUrl, fileName, currentIndex, totalImages) {
@@ -346,6 +384,7 @@ class ImageEditOverlay {
     img.onload = () => {
       console.log("Image loaded successfully:", img.width, "x", img.height);
       this.currentImage = img;
+      this.rotationDegrees = 0;
       this.drawImageToCanvas();
       this.resetCrop();
       this.showLoading(false);
@@ -380,8 +419,14 @@ class ImageEditOverlay {
       const containerHeight = 800;
     }
 
+    const rotatedDimensions = this.getRotatedImageDimensions(
+      this.currentImage.width,
+      this.currentImage.height,
+    );
+
     // Berechne optimale Größe basierend auf Container - maximale Darstellung
-    const imgAspectRatio = this.currentImage.width / this.currentImage.height;
+    const imgAspectRatio =
+      rotatedDimensions.width / rotatedDimensions.height;
 
     // Versuche die Höhe zu maximieren
     let baseHeight = containerHeight * 0.98; // 98% der Container-Höhe
@@ -401,8 +446,8 @@ class ImageEditOverlay {
     this.canvas.height = canvasHeight;
 
     // Zoom-Faktor für Crop-Berechnungen
-    this.imageScale = canvasWidth / this.currentImage.width;
-    this.baseScale = baseWidth / this.currentImage.width; // Basis-Skalierung ohne Zoom
+    this.imageScale = canvasWidth / rotatedDimensions.width;
+    this.baseScale = baseWidth / rotatedDimensions.width; // Basis-Skalierung ohne Zoom
 
     console.log(
       "Final canvas size:",
@@ -416,7 +461,92 @@ class ImageEditOverlay {
     );
 
     this.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    this.ctx.drawImage(this.currentImage, 0, 0, canvasWidth, canvasHeight);
+    this.drawImageWithRotation(
+      this.ctx,
+      this.currentImage,
+      this.rotationDegrees,
+      canvasWidth,
+      canvasHeight,
+    );
+  }
+
+  getNormalizedRotation(degrees = this.rotationDegrees) {
+    return ((degrees % 360) + 360) % 360;
+  }
+
+  getRotatedImageDimensions(width, height, degrees = this.rotationDegrees) {
+    const normalizedRotation = this.getNormalizedRotation(degrees);
+    if (normalizedRotation === 90 || normalizedRotation === 270) {
+      return { width: height, height: width };
+    }
+
+    return { width, height };
+  }
+
+  drawImageWithRotation(ctx, image, degrees, width, height) {
+    const normalizedRotation = this.getNormalizedRotation(degrees);
+
+    ctx.save();
+    switch (normalizedRotation) {
+      case 90:
+        ctx.translate(width, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(image, 0, 0, height, width);
+        break;
+      case 180:
+        ctx.translate(width, height);
+        ctx.rotate(Math.PI);
+        ctx.drawImage(image, 0, 0, width, height);
+        break;
+      case 270:
+        ctx.translate(0, height);
+        ctx.rotate((3 * Math.PI) / 2);
+        ctx.drawImage(image, 0, 0, height, width);
+        break;
+      default:
+        ctx.drawImage(image, 0, 0, width, height);
+        break;
+    }
+    ctx.restore();
+  }
+
+  createRotatedSourceCanvas() {
+    const rotatedDimensions = this.getRotatedImageDimensions(
+      this.currentImage.width,
+      this.currentImage.height,
+    );
+    const rotatedCanvas = document.createElement("canvas");
+    const rotatedCtx = rotatedCanvas.getContext("2d");
+
+    rotatedCanvas.width = rotatedDimensions.width;
+    rotatedCanvas.height = rotatedDimensions.height;
+    this.drawImageWithRotation(
+      rotatedCtx,
+      this.currentImage,
+      this.rotationDegrees,
+      rotatedCanvas.width,
+      rotatedCanvas.height,
+    );
+
+    return rotatedCanvas;
+  }
+
+  rotateImage(deltaDegrees) {
+    if (!this.currentImage) return;
+
+    this.rotationDegrees = this.getNormalizedRotation(
+      this.rotationDegrees + deltaDegrees,
+    );
+    this.drawImageToCanvas();
+    this.resetCrop();
+  }
+
+  resetRotation() {
+    if (!this.currentImage) return;
+
+    this.rotationDegrees = 0;
+    this.drawImageToCanvas();
+    this.resetCrop();
   }
 
   onMouseDown(e) {
@@ -786,25 +916,19 @@ class ImageEditOverlay {
     }
 
     let processedImageData;
+    const sourceCanvas = this.createRotatedSourceCanvas();
 
     if (
       this.cropBox.style.display === "none" ||
       parseInt(this.cropBox.style.width) < 10 ||
       parseInt(this.cropBox.style.height) < 10
     ) {
-      // Kein Zuschnitt - original Bild verwenden
-      const originalCanvas = document.createElement("canvas");
-      const originalCtx = originalCanvas.getContext("2d");
+      // Use rotated source image without cropping.
+      processedImageData = sourceCanvas.toDataURL("image/png");
 
-      originalCanvas.width = this.currentImage.width;
-      originalCanvas.height = this.currentImage.height;
-
-      originalCtx.drawImage(this.currentImage, 0, 0);
-      processedImageData = originalCanvas.toDataURL("image/png");
-
-      console.log("Using original image - no crop applied");
+      console.log("Using rotated source image - no crop applied");
     } else {
-      // Zuschnitt anwenden - vereinfachte Berechnung
+      // Apply crop coordinates against the rotated source image.
       const canvasRect = this.canvas.getBoundingClientRect();
       const parentRect = this.canvas.parentElement.getBoundingClientRect();
 
@@ -819,33 +943,50 @@ class ImageEditOverlay {
       const canvasOffsetTop = canvasRect.top - parentRect.top;
 
       // Crop-Koordinaten auf dem Canvas
-      const cropX = (cropBoxLeft - canvasOffsetLeft) / this.imageScale;
-      const cropY = (cropBoxTop - canvasOffsetTop) / this.imageScale;
-      const cropWidth = cropBoxWidth / this.imageScale;
-      const cropHeight = cropBoxHeight / this.imageScale;
+      const cropX = Math.max(
+        0,
+        Math.round((cropBoxLeft - canvasOffsetLeft) / this.imageScale),
+      );
+      const cropY = Math.max(
+        0,
+        Math.round((cropBoxTop - canvasOffsetTop) / this.imageScale),
+      );
+      const cropWidth = Math.min(
+        sourceCanvas.width - cropX,
+        Math.round(cropBoxWidth / this.imageScale),
+      );
+      const cropHeight = Math.min(
+        sourceCanvas.height - cropY,
+        Math.round(cropBoxHeight / this.imageScale),
+      );
 
       console.log("Crop coordinates:", cropX, cropY, cropWidth, cropHeight);
 
-      const croppedCanvas = document.createElement("canvas");
-      const croppedCtx = croppedCanvas.getContext("2d");
+      if (cropWidth <= 0 || cropHeight <= 0) {
+        processedImageData = sourceCanvas.toDataURL("image/png");
+        console.warn("Invalid crop size, using rotated source image");
+      } else {
+        const croppedCanvas = document.createElement("canvas");
+        const croppedCtx = croppedCanvas.getContext("2d");
 
-      croppedCanvas.width = cropWidth;
-      croppedCanvas.height = cropHeight;
+        croppedCanvas.width = cropWidth;
+        croppedCanvas.height = cropHeight;
 
-      croppedCtx.drawImage(
-        this.currentImage,
-        cropX,
-        cropY,
-        cropWidth,
-        cropHeight,
-        0,
-        0,
-        cropWidth,
-        cropHeight,
-      );
+        croppedCtx.drawImage(
+          sourceCanvas,
+          cropX,
+          cropY,
+          cropWidth,
+          cropHeight,
+          0,
+          0,
+          cropWidth,
+          cropHeight,
+        );
 
-      processedImageData = croppedCanvas.toDataURL("image/png");
-      console.log("Crop applied successfully");
+        processedImageData = croppedCanvas.toDataURL("image/png");
+        console.log("Crop applied successfully");
+      }
     }
 
     // Verarbeitetes Bild zu editedImages hinzufügen
@@ -874,6 +1015,7 @@ class ImageEditOverlay {
 
     browser.runtime.sendMessage({
       type: "cancel-editing",
+      sessionId: this.sessionId,
     });
 
     // Overlay-Fenster schließen
@@ -918,6 +1060,10 @@ class ImageEditOverlay {
 
       // Session beenden
       await browser.storage.local.remove("imageEditSession");
+      browser.runtime.sendMessage({
+        type: "image-edit-session-ended",
+        sessionId: this.sessionId,
+      });
       console.log("Session ended, closing window");
       window.close();
     } catch (error) {
@@ -1785,5 +1931,4 @@ class ImageEditOverlay {
 
 document.addEventListener("DOMContentLoaded", () => {
   new ImageEditOverlay();
-  browser.runtime.sendMessage({ type: "overlay-ready" });
 });

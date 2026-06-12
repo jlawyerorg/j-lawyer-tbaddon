@@ -238,10 +238,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         "filenameTemplate",
       ]);
       let customFilename = null;
+      const messageData = await getDisplayedMessageFromActiveTab();
 
       if (settings.allowRename) {
         // Zeige Rename-Dialog
-        const messageData = await getDisplayedMessageFromActiveTab();
         const originalSubject = messageData.subject || "nachricht";
         const originalFilename = `${originalSubject}.eml`;
 
@@ -260,8 +260,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
 
       // messageId holen, um sie an background.js weiterzugeben
-      const messageData = await getDisplayedMessageFromActiveTab();
-
       browser.runtime.sendMessage({
         type: "case",
         source: "popup",
@@ -451,6 +449,8 @@ document.addEventListener("DOMContentLoaded", async function () {
           await processor.processWithImageEditing(
             currentSelectedCase,
             selectedCaseFolderID,
+            messageData,
+            attachments,
           );
         } else {
           browser.runtime.sendMessage({
@@ -589,6 +589,8 @@ document.addEventListener("DOMContentLoaded", async function () {
               await processor.processWithImageEditing(
                 currentSelectedCase,
                 selectedCaseFolderID,
+                messageData,
+                attachments,
               );
             }
           } else {

@@ -20,22 +20,29 @@ class AttachmentImageProcessor {
     this.currentImageIndex = 0;
     this.originalImages = [];
     this.overlayWindow = null;
+    this.sessionId = null;
   }
 
-  async processWithImageEditing(caseData, selectedCaseFolderID) {
+  async processWithImageEditing(
+    caseData,
+    selectedCaseFolderID,
+    messageData = null,
+    attachments = null,
+  ) {
     try {
-      const messageData = await this.getDisplayedMessageFromActiveTab();
-      const attachments = await browser.messages.listAttachments(
-        messageData.id,
-      );
+      const targetMessageData =
+        messageData || (await this.getDisplayedMessageFromActiveTab());
+      const targetAttachments =
+        attachments ||
+        (await browser.messages.listAttachments(targetMessageData.id));
 
       const imageAttachments = await this.filterImageAttachments(
-        attachments,
-        messageData.id,
+        targetAttachments,
+        targetMessageData.id,
       );
       const nonImageAttachments = await this.filterNonImageAttachments(
-        attachments,
-        messageData.id,
+        targetAttachments,
+        targetMessageData.id,
       );
 
       if (imageAttachments.length === 0) {
@@ -254,6 +261,7 @@ class AttachmentImageProcessor {
     this.currentImageIndex = 0;
     this.caseData = caseData;
     this.selectedCaseFolderID = selectedCaseFolderID;
+    this.sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     // Tags aus dem Storage laden
     const settings = await browser.storage.local.get(["selectedTags"]);
@@ -268,6 +276,7 @@ class AttachmentImageProcessor {
 
     await browser.storage.local.set({
       imageEditSession: {
+        sessionId: this.sessionId,
         images: images,
         nonImageAttachments: nonImageAttachments,
         caseData: caseData,
@@ -291,6 +300,10 @@ class AttachmentImageProcessor {
   }
 
   handleOverlayMessage(message, sender, sendResponse) {
+    if (!this.isCurrentSessionMessage(message)) {
+      return;
+    }
+
     if (message.type === "overlay-ready") {
       this.initializeOverlay();
     } else if (message.type === "request-image") {
@@ -303,7 +316,27 @@ class AttachmentImageProcessor {
       this.finishEditing(message.createPDF);
     } else if (message.type === "cancel-editing") {
       this.cancelEditing();
+    } else if (message.type === "image-edit-session-ended") {
+      this.cleanupMessageListener();
     }
+  }
+
+  isCurrentSessionMessage(message) {
+    const sessionMessages = [
+      "overlay-ready",
+      "request-image",
+      "image-cropped",
+      "skip-image",
+      "finish-editing",
+      "cancel-editing",
+      "image-edit-session-ended",
+    ];
+
+    if (!sessionMessages.includes(message.type)) {
+      return false;
+    }
+
+    return Boolean(this.sessionId && message.sessionId === this.sessionId);
   }
 
   initializeOverlay() {
@@ -344,6 +377,7 @@ class AttachmentImageProcessor {
 
     browser.runtime.sendMessage({
       type: "load-image",
+      sessionId: this.sessionId,
       imageUrl: imageUrl,
       fileName: image.name,
       currentIndex: index + 1,
@@ -378,6 +412,7 @@ class AttachmentImageProcessor {
   showFinishOptions() {
     browser.runtime.sendMessage({
       type: "show-finish-options",
+      sessionId: this.sessionId,
       imageCount: this.editedImages.length,
     });
   }
@@ -388,9 +423,7 @@ class AttachmentImageProcessor {
     }
 
     // Message Listener entfernen
-    if (this.messageListener) {
-      browser.runtime.onMessage.removeListener(this.messageListener);
-    }
+    this.cleanupMessageListener();
 
     try {
       if (createPDF && this.editedImages.length > 0) {
@@ -414,6 +447,13 @@ class AttachmentImageProcessor {
         type: "error",
         content: "Fehler beim Hochladen: " + error.message,
       });
+    }
+  }
+
+  cleanupMessageListener() {
+    if (this.messageListener) {
+      browser.runtime.onMessage.removeListener(this.messageListener);
+      this.messageListener = null;
     }
   }
 
@@ -604,9 +644,7 @@ class AttachmentImageProcessor {
     }
 
     // Message Listener entfernen
-    if (this.messageListener) {
-      browser.runtime.onMessage.removeListener(this.messageListener);
-    }
+    this.cleanupMessageListener();
 
     // Session-Daten bereinigen
     try {
