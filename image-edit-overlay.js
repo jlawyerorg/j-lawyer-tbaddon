@@ -605,7 +605,7 @@ class ImageEditOverlay {
     this.cropBox.style.width = "0px";
     this.cropBox.style.height = "0px";
     this.cropBox.style.display = "block";
-    this.cropBox.innerHTML = ""; // Handles entfernen
+    this.cropBox.replaceChildren(); // Handles entfernen
   }
 
   onMouseMove(e) {
@@ -838,12 +838,14 @@ class ImageEditOverlay {
   }
 
   addResizeHandles() {
-    this.cropBox.innerHTML = `
-            <div class="resize-handle top-left"></div>
-            <div class="resize-handle top-right"></div>
-            <div class="resize-handle bottom-left"></div>
-            <div class="resize-handle bottom-right"></div>
-        `;
+    this.cropBox.replaceChildren();
+    ["top-left", "top-right", "bottom-left", "bottom-right"].forEach(
+      (positionClass) => {
+        const handle = document.createElement("div");
+        handle.className = `resize-handle ${positionClass}`;
+        this.cropBox.appendChild(handle);
+      },
+    );
 
     this.cropBox.querySelectorAll(".resize-handle").forEach((handle) => {
       handle.addEventListener("mousedown", (e) => this.onCornerMouseDown(e));
@@ -852,7 +854,7 @@ class ImageEditOverlay {
 
   resetCrop() {
     this.cropBox.style.display = "none";
-    this.cropBox.innerHTML = "";
+    this.cropBox.replaceChildren();
   }
 
   resetZoom() {

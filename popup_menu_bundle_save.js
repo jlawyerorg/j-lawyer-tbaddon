@@ -196,6 +196,15 @@ async function getTags(username, password, serverAddress) {
 // Debounce-Timer für die Suche
 let searchDebounceTimer = null;
 
+function createResultMessage(text, color = "#666") {
+  const div = document.createElement("div");
+  div.className = "resultItem";
+  div.style.color = color;
+  div.style.fontStyle = "italic";
+  div.textContent = text;
+  return div;
+}
+
 // Event-Listener für die Suche
 document.getElementById("searchInput").addEventListener("input", function () {
   const query = this.value.trim();
@@ -211,8 +220,9 @@ document.getElementById("searchInput").addEventListener("input", function () {
     // Zeige Hinweis bei weniger als 3 Zeichen
     const resultsListElement = document.getElementById("resultsList");
     resultsListElement.style.display = "block";
-    resultsListElement.innerHTML =
-      '<div class="resultItem" style="color: #666; font-style: italic;">Mindestens 3 Zeichen eingeben...</div>';
+    resultsListElement.replaceChildren(
+      createResultMessage("Mindestens 3 Zeichen eingeben..."),
+    );
   } else {
     document.getElementById("resultsList").textContent = "";
     document.getElementById("resultsList").style.display = "none";
@@ -225,8 +235,7 @@ async function searchCases(query) {
   resultsListElement.style.display = "block";
 
   // Lade-Anzeige
-  resultsListElement.innerHTML =
-    '<div class="resultItem" style="color: #666; font-style: italic;">Suche...</div>';
+  resultsListElement.replaceChildren(createResultMessage("Suche..."));
 
   let loginData = await browser.storage.local.get([
     "username",
@@ -249,8 +258,9 @@ async function searchCases(query) {
     }
 
     if (results.length === 0) {
-      resultsListElement.innerHTML =
-        '<div class="resultItem" style="color: #666; font-style: italic;">Keine Ergebnisse gefunden</div>';
+      resultsListElement.replaceChildren(
+        createResultMessage("Keine Ergebnisse gefunden"),
+      );
       return;
     }
 
@@ -305,8 +315,9 @@ async function searchCases(query) {
     });
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
-    resultsListElement.innerHTML =
-      '<div class="resultItem" style="color: red;">Fehler bei der Suche</div>';
+    resultsListElement.replaceChildren(
+      createResultMessage("Fehler bei der Suche", "red"),
+    );
   }
 }
 
@@ -477,7 +488,7 @@ function displayTreeStructure(folderData) {
   const treeRoot = createTreeElement(folderData);
   const treeContainer = document.getElementById("treeContainer");
   if (treeContainer) {
-    treeContainer.innerHTML = ""; // Bestehenden Inhalt löschen
+    treeContainer.replaceChildren(); // Bestehenden Inhalt löschen
     treeContainer.appendChild(treeRoot);
   }
 }

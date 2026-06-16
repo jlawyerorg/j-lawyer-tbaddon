@@ -90,12 +90,12 @@ async function resetAndSearchForNewMessage() {
   // Suchergebnisse und Ordnerbaum leeren
   const resultsContainer = document.getElementById("results");
   if (resultsContainer) {
-    resultsContainer.innerHTML = "";
+    resultsContainer.replaceChildren();
   }
 
   const folderTreeContainer = document.getElementById("folderTree");
   if (folderTreeContainer) {
-    folderTreeContainer.innerHTML = "";
+    folderTreeContainer.replaceChildren();
   }
 
   // Suchfeld leeren
@@ -1290,17 +1290,28 @@ async function selectSuggestion(match, loginData) {
 }
 
 // Funktion: Zeigt Top-N Vorschläge im UI an
+function createResultMessage(text, color = "#666") {
+  const div = document.createElement("div");
+  div.className = "resultItem";
+  div.style.color = color;
+  div.style.fontStyle = "italic";
+  div.textContent = text;
+  return div;
+}
+
 async function displaySuggestions(matches, loginData) {
   const suggestionsContainer = document.getElementById("suggestionsContainer");
   const suggestionsList = document.getElementById("suggestionsList");
 
   // Clear existing suggestions
-  suggestionsList.innerHTML = "";
+  suggestionsList.replaceChildren();
 
   if (!matches || matches.length === 0) {
     suggestionsContainer.style.display = "block";
-    suggestionsList.innerHTML =
-      '<div class="suggestionItem noMatch">❌ Keine Vorschläge gefunden (bitte manuell suchen)</div>';
+    const noMatch = document.createElement("div");
+    noMatch.className = "suggestionItem noMatch";
+    noMatch.textContent = "Keine Vorschläge gefunden (bitte manuell suchen)";
+    suggestionsList.appendChild(noMatch);
     return;
   }
 
@@ -1336,16 +1347,25 @@ async function displaySuggestions(matches, loginData) {
     if (match.confidence >= 85) confidenceClass = "confidence-high";
     else if (match.confidence >= 60) confidenceClass = "confidence-medium";
 
-    // Format (zweizeilig):
-    // CaseName (FileNumber)          [XX%]
-    // Reason - Lawyer
-    div.innerHTML = `
-            <span class="caseInfo">
-                <strong>${item.name}</strong> (${item.fileNumber})
-                <span class="caseDetails">${metadata.reason || "?"} - ${metadata.lawyer || "?"}</span>
-            </span>
-            <span class="confidenceBadge ${confidenceClass}">${match.confidence}%</span>
-        `;
+    const caseInfo = document.createElement("span");
+    caseInfo.className = "caseInfo";
+
+    const caseName = document.createElement("strong");
+    caseName.textContent = item.name;
+    caseInfo.appendChild(caseName);
+    caseInfo.appendChild(document.createTextNode(` (${item.fileNumber})`));
+
+    const caseDetails = document.createElement("span");
+    caseDetails.className = "caseDetails";
+    caseDetails.textContent = `${metadata.reason || "?"} - ${metadata.lawyer || "?"}`;
+    caseInfo.appendChild(caseDetails);
+
+    const confidenceBadge = document.createElement("span");
+    confidenceBadge.className = `confidenceBadge ${confidenceClass}`;
+    confidenceBadge.textContent = `${match.confidence}%`;
+
+    div.appendChild(caseInfo);
+    div.appendChild(confidenceBadge);
 
     // Speichere metadata im match-Objekt für später
     match.metadata = metadata;
@@ -1732,8 +1752,9 @@ document.getElementById("searchInput").addEventListener("input", function () {
     // Zeige Hinweis bei weniger als 3 Zeichen
     const resultsListElement = document.getElementById("resultsList");
     resultsListElement.style.display = "block";
-    resultsListElement.innerHTML =
-      '<div class="resultItem" style="color: #666; font-style: italic;">Mindestens 3 Zeichen eingeben...</div>';
+    resultsListElement.replaceChildren(
+      createResultMessage("Mindestens 3 Zeichen eingeben..."),
+    );
   } else {
     document.getElementById("resultsList").textContent = "";
     document.getElementById("resultsList").style.display = "none";
@@ -1746,8 +1767,7 @@ async function searchCases(query) {
   resultsListElement.style.display = "block";
 
   // Lade-Anzeige
-  resultsListElement.innerHTML =
-    '<div class="resultItem" style="color: #666; font-style: italic;">Suche...</div>';
+  resultsListElement.replaceChildren(createResultMessage("Suche..."));
 
   let loginData = await browser.storage.local.get([
     "username",
@@ -1770,8 +1790,9 @@ async function searchCases(query) {
     }
 
     if (results.length === 0) {
-      resultsListElement.innerHTML =
-        '<div class="resultItem" style="color: #666; font-style: italic;">Keine Ergebnisse gefunden</div>';
+      resultsListElement.replaceChildren(
+        createResultMessage("Keine Ergebnisse gefunden"),
+      );
       return;
     }
 
@@ -1825,8 +1846,9 @@ async function searchCases(query) {
     });
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
-    resultsListElement.innerHTML =
-      '<div class="resultItem" style="color: red;">Fehler bei der Suche</div>';
+    resultsListElement.replaceChildren(
+      createResultMessage("Fehler bei der Suche", "red"),
+    );
   }
 }
 
@@ -1963,7 +1985,7 @@ function displayTreeStructure(folderData) {
   const treeRoot = createTreeElement(folderData);
   const treeContainer = document.getElementById("treeContainer");
   if (treeContainer) {
-    treeContainer.innerHTML = ""; // Bestehenden Inhalt löschen
+    treeContainer.replaceChildren(); // Bestehenden Inhalt löschen
     treeContainer.appendChild(treeRoot);
   }
 }
