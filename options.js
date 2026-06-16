@@ -35,30 +35,57 @@ document
       alert("Keine Aktivitäten protokolliert.");
     } else {
       const logWindow = window.open("", "Activity Log", "width=600,height=400");
-      logWindow.document.write(
-        "<html><head><title>Aktivitätsprotokoll</title></head><body>",
-      );
-      logWindow.document.write("<h2>Aktivitätsprotokoll</h2>");
-      logWindow.document.write(
-        "<table border='1' style='width:100%; border-collapse: collapse;'>",
-      );
-      logWindow.document.write(
-        "<tr><th>Zeitstempel</th><th>Aktion</th><th>Details</th></tr>",
-      );
-      activityLog.forEach((entry) => {
-        logWindow.document.write("<tr>");
-        logWindow.document.write(
-          `<td>${new Date(entry.timestamp).toLocaleString()}</td>`,
-        );
-        logWindow.document.write(`<td>${entry.action}</td>`);
-        logWindow.document.write(
-          `<td>${JSON.stringify(entry.details, null, 2)}</td>`,
-        );
-        logWindow.document.write("</tr>");
+      const logDocument = logWindow.document;
+      logDocument.title = "Aktivitätsprotokoll";
+
+      logDocument.body.style.fontFamily = "Arial, sans-serif";
+      logDocument.body.style.backgroundColor = "#ffffff";
+      logDocument.body.style.color = "#000000";
+      logDocument.body.style.margin = "8px";
+
+      const heading = logDocument.createElement("h2");
+      heading.textContent = "Aktivitätsprotokoll";
+      logDocument.body.appendChild(heading);
+
+      const table = logDocument.createElement("table");
+      table.setAttribute("border", "1");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      table.style.backgroundColor = "#ffffff";
+      table.style.color = "#000000";
+
+      const headerRow = logDocument.createElement("tr");
+      ["Zeitstempel", "Aktion", "Details"].forEach((headerText) => {
+        const headerCell = logDocument.createElement("th");
+        headerCell.textContent = headerText;
+        headerCell.style.padding = "4px";
+        headerCell.style.backgroundColor = "#f2f2f2";
+        headerRow.appendChild(headerCell);
       });
-      logWindow.document.write("</table>");
-      logWindow.document.write("</body></html>");
-      logWindow.document.close();
+      table.appendChild(headerRow);
+
+      activityLog.forEach((entry) => {
+        const row = logDocument.createElement("tr");
+        const timestampCell = logDocument.createElement("td");
+        const actionCell = logDocument.createElement("td");
+        const detailsCell = logDocument.createElement("td");
+
+        timestampCell.textContent = new Date(entry.timestamp).toLocaleString();
+        actionCell.textContent = entry.action;
+        detailsCell.textContent = JSON.stringify(entry.details, null, 2);
+
+        timestampCell.style.padding = "4px";
+        actionCell.style.padding = "4px";
+        detailsCell.style.padding = "4px";
+        detailsCell.style.whiteSpace = "pre-wrap";
+
+        row.appendChild(timestampCell);
+        row.appendChild(actionCell);
+        row.appendChild(detailsCell);
+        table.appendChild(row);
+      });
+
+      logDocument.body.appendChild(table);
     }
   });
 
