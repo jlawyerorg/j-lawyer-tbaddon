@@ -993,6 +993,51 @@ function extractFileNumberPatterns(text) {
   return Array.from(extractedNumbers);
 }
 
+function decodeMimeEncodedWordCharset(bytes, charset) {
+  try {
+    return new TextDecoder(charset || "utf-8").decode(bytes);
+  } catch (error) {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+}
+
+function decodeMimeEncodedWords(text) {
+  if (!text || !text.includes("=?")) {
+    return text || "";
+  }
+
+  return text.replace(/=\?([^?]+)\?([bqBQ])\?([^?]*)\?=/g, function (
+    _match,
+    charset,
+    encoding,
+    encodedText,
+  ) {
+    try {
+      if (encoding.toUpperCase() === "B") {
+        const binary = atob(encodedText.replace(/\s/g, ""));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return decodeMimeEncodedWordCharset(bytes, charset);
+      }
+
+      const qpText = encodedText
+        .replace(/_/g, " ")
+        .replace(/=([0-9A-Fa-f]{2})/g, function (_hexMatch, hex) {
+          return String.fromCharCode(parseInt(hex, 16));
+        });
+      const bytes = new Uint8Array(qpText.length);
+      for (let i = 0; i < qpText.length; i++) {
+        bytes[i] = qpText.charCodeAt(i);
+      }
+      return decodeMimeEncodedWordCharset(bytes, charset);
+    } catch (error) {
+      return encodedText;
+    }
+  });
+}
+
 // Hilfsfunktion: Parst E-Mail in strukturierte Teile für Priorisierung
 function parseEmailStructure(rawMessage) {
   const structure = {
@@ -1014,8 +1059,8 @@ function parseEmailStructure(rawMessage) {
     // Suche nach Betreff-Header
     const subjectMatch = searchableContent.match(/^Subject:\s*(.*)$/im);
     if (subjectMatch) {
-      structure.subject = subjectMatch[1];
-      structure.subjectLower = subjectMatch[1].toLowerCase();
+      structure.subject = decodeMimeEncodedWords(subjectMatch[1]);
+      structure.subjectLower = structure.subject.toLowerCase();
     }
 
     // Extrahiere Header-Bereich (bis zur ersten Leerzeile)
@@ -1347,6 +1392,10 @@ async function findFileNumberInRawMessage() {
 
   // E-Mail-Struktur parsen für priorisierte Suche
   const emailStructure = parseEmailStructure(rawMessage);
+  if (messageData.subject) {
+    emailStructure.subject = messageData.subject;
+    emailStructure.subjectLower = messageData.subject.toLowerCase();
+  }
 
   console.log("E-Mail Betreff:", emailStructure.subject);
   console.log(

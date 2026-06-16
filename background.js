@@ -72,13 +72,40 @@ createMenuEntries();
 
 // Speichert die ID des offenen Popup-Fensters
 let popupWindowId = null;
+let popupSourceTabId = null;
 let lastDisplayedMessageId = null;
+
+function notifyPopupDisplayedMessageChanged(messageId) {
+  if (popupWindowId === null || !messageId) {
+    return;
+  }
+
+  console.log("Nachrichtenwechsel erkannt, sende an Popup:", messageId);
+  browser.runtime
+    .sendMessage({
+      type: "messageDisplayChanged",
+      messageId: messageId,
+    })
+    .catch(() => {
+      // Ignorieren wenn kein Listener vorhanden ist
+    });
+}
 
 // Message Display Action - öffnet popup.html in eigenständigem Fenster
 browser.messageDisplayAction.onClicked.addListener(async (tab) => {
+  const message = await browser.messageDisplay.getDisplayedMessage(tab.id);
+  if (!message) {
+    console.error("Keine Nachricht im Tab gefunden");
+    return;
+  }
+
+  lastDisplayedMessageId = message.id;
+  popupSourceTabId = tab.id;
+
   // Prüfe ob bereits ein Fenster offen ist
   if (popupWindowId !== null) {
     try {
+      notifyPopupDisplayedMessageChanged(message.id);
       // Versuche das existierende Fenster zu fokussieren
       await browser.windows.update(popupWindowId, { focused: true });
       return;
@@ -87,14 +114,6 @@ browser.messageDisplayAction.onClicked.addListener(async (tab) => {
       popupWindowId = null;
     }
   }
-
-  // Hole die angezeigte Nachricht
-  const message = await browser.messageDisplay.getDisplayedMessage(tab.id);
-  if (!message) {
-    console.error("Keine Nachricht im Tab gefunden");
-    return;
-  }
-  lastDisplayedMessageId = message.id;
 
   // Lade gespeicherte Fenstergröße oder verwende Standardwerte
   const savedSize = await browser.storage.local.get("popupWindowSize");
@@ -118,6 +137,7 @@ browser.messageDisplayAction.onClicked.addListener(async (tab) => {
 browser.windows.onRemoved.addListener((windowId) => {
   if (windowId === popupWindowId) {
     popupWindowId = null;
+    popupSourceTabId = null;
   }
 });
 
@@ -149,22 +169,17 @@ if (browser.mailTabs?.onSelectedMessagesChanged) {
 
 // Nachrichtenwechsel erkennen und an das Popup-Fenster weiterleiten
 browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
+  if (popupSourceTabId !== null && tab.id !== popupSourceTabId) {
+    return;
+  }
+
   if (message) {
     lastDisplayedMessageId = message.id;
   }
 
   // Nur weiterleiten, wenn ein Popup-Fenster offen ist
   if (popupWindowId !== null && message) {
-    console.log("Nachrichtenwechsel erkannt, sende an Popup:", message.id);
-    // Sende Nachricht an alle Listener (popup.js wird darauf reagieren)
-    browser.runtime
-      .sendMessage({
-        type: "messageDisplayChanged",
-        messageId: message.id,
-      })
-      .catch(() => {
-        // Ignorieren wenn kein Listener vorhanden ist
-      });
+    notifyPopupDisplayedMessageChanged(message.id);
   }
 });
 
@@ -299,6 +314,7 @@ async function sendEmailToServer(
           serverAddress,
           fileName,
           selectedCaseFolderID,
+          data,
         );
         await logActivity(
           "sendEmailToServer",
@@ -511,6 +527,7 @@ async function sendOnlyMessageToServer(
           serverAddress,
           fileName,
           selectedCaseFolderID,
+          data,
         );
         await logActivity(
           "sendOnlyMessageToServer",
@@ -1291,7 +1308,12 @@ async function setDocumentTagsAndFolderForAttachments() {
 
   // OCR für geeignete Dokumente anstoßen (wenn aktiviert)
   try {
-    const ocrSettings = await browser.storage.local.get(["performOcr"]);
+    const ocrSettings = await browser.storage.local.get([
+      "performOcr",
+      "username",
+      "password",
+      "serverAddress",
+    ]);
     if (ocrSettings.performOcr) {
       console.log("OCR ist aktiviert, prüfe Dokumente...");
       for (let docInfo of documentIdsToTag) {
@@ -1303,9 +1325,9 @@ async function setDocumentTagsAndFolderForAttachments() {
             );
             await performOcrOnDocument(
               docInfo.id,
-              result.username,
-              result.password,
-              result.serverAddress,
+              ocrSettings.username,
+              ocrSettings.password,
+              ocrSettings.serverAddress,
             );
           } else {
             console.log(
@@ -1367,6 +1389,7 @@ async function updateDocumentCreationDate(
   serverAddress,
   fileName,
   folderId = null,
+  documentMetadata = null,
 ) {
   try {
     const headers = new Headers();
@@ -1382,21 +1405,55 @@ async function updateDocumentCreationDate(
     const emailDateISO = emailDate.toISOString();
     const currentDateISO = new Date().toISOString();
 
-    // Payload mit allen erforderlichen Feldern erstellen
+    let metadata =
+      documentMetadata && typeof documentMetadata === "object"
+        ? documentMetadata
+        : {};
+    try {
+      const metadataUrl = `${serverAddress}/j-lawyer-io/rest/v1/cases/${caseId}/documents`;
+      const metadataResponse = await fetch(metadataUrl, {
+        method: "GET",
+        headers: headers,
+      });
+      if (metadataResponse.ok) {
+        const documents = await metadataResponse.json();
+        const serverMetadata = Array.isArray(documents)
+          ? documents.find((document) => document.id === documentId)
+          : null;
+        if (serverMetadata) {
+          metadata = { ...serverMetadata, ...metadata };
+        }
+      } else {
+        console.warn(
+          "Dokument-Metadaten konnten nicht geladen werden:",
+          metadataResponse.status,
+          metadataResponse.statusText,
+        );
+      }
+    } catch (metadataError) {
+      console.warn(
+        "Dokument-Metadaten konnten nicht geladen werden:",
+        metadataError,
+      );
+    }
+    const resolvedFolderId = folderId || selectedCaseFolderID || null;
+
+    // Bestehende Server-Metadaten erhalten. Geratene Werte wie size=0 oder
+    // version=1 koennen serverseitig zu 500-Fehlern fuehren.
     const payload = {
-      caseId: caseId,
-      changeDate: currentDateISO,
+      ...metadata,
+      caseId: metadata.caseId || caseId,
+      changeDate: metadata.changeDate || currentDateISO,
       creationDate: emailDateISO,
-      externalId: null,
-      favorite: false,
-      folderId: folderId || selectedCaseFolderID || null,
-      highlight1: -2147483648,
-      highlight2: -2147483648,
-      id: documentId,
-      name: fileName,
-      size: 0,
-      version: 1,
+      id: metadata.id || documentId,
+      name: metadata.name || fileName,
     };
+
+    if (resolvedFolderId && resolvedFolderId !== "null") {
+      payload.folderId = resolvedFolderId;
+    } else if (!("folderId" in payload)) {
+      payload.folderId = null;
+    }
 
     console.log("Update-Metadata Payload:", payload);
 

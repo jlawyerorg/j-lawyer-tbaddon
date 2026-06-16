@@ -245,6 +245,7 @@ async function sendEmailToServerFromSelection(
         serverAddress,
         fileName,
         selectedCaseFolderID_bundle,
+        data,
       );
       logActivity(
         "sendEmailToServerFromSelection",
@@ -555,6 +556,7 @@ async function updateDocumentCreationDate(
   serverAddress,
   fileName,
   folderId = null,
+  documentMetadata = null,
 ) {
   try {
     const headers = new Headers();
@@ -570,21 +572,55 @@ async function updateDocumentCreationDate(
     const emailDateISO = emailDate.toISOString();
     const currentDateISO = new Date().toISOString();
 
-    // Payload mit allen erforderlichen Feldern erstellen
+    let metadata =
+      documentMetadata && typeof documentMetadata === "object"
+        ? documentMetadata
+        : {};
+    try {
+      const metadataUrl = `${serverAddress}/j-lawyer-io/rest/v1/cases/${caseId}/documents`;
+      const metadataResponse = await fetch(metadataUrl, {
+        method: "GET",
+        headers: headers,
+      });
+      if (metadataResponse.ok) {
+        const documents = await metadataResponse.json();
+        const serverMetadata = Array.isArray(documents)
+          ? documents.find((document) => document.id === documentId)
+          : null;
+        if (serverMetadata) {
+          metadata = { ...serverMetadata, ...metadata };
+        }
+      } else {
+        console.warn(
+          "Dokument-Metadaten konnten nicht geladen werden:",
+          metadataResponse.status,
+          metadataResponse.statusText,
+        );
+      }
+    } catch (metadataError) {
+      console.warn(
+        "Dokument-Metadaten konnten nicht geladen werden:",
+        metadataError,
+      );
+    }
+    const resolvedFolderId = folderId || selectedCaseFolderID_bundle || null;
+
+    // Bestehende Server-Metadaten erhalten. Geratene Werte wie size=0 oder
+    // version=1 koennen serverseitig zu 500-Fehlern fuehren.
     const payload = {
-      caseId: caseId,
-      changeDate: currentDateISO,
+      ...metadata,
+      caseId: metadata.caseId || caseId,
+      changeDate: metadata.changeDate || currentDateISO,
       creationDate: emailDateISO,
-      externalId: null,
-      favorite: false,
-      folderId: folderId || selectedCaseFolderID_bundle || null,
-      highlight1: -2147483648,
-      highlight2: -2147483648,
-      id: documentId,
-      name: fileName,
-      size: 0,
-      version: 1,
+      id: metadata.id || documentId,
+      name: metadata.name || fileName,
     };
+
+    if (resolvedFolderId && resolvedFolderId !== "null") {
+      payload.folderId = resolvedFolderId;
+    } else if (!("folderId" in payload)) {
+      payload.folderId = null;
+    }
 
     console.log("Update-Metadata Payload:", payload);
 
