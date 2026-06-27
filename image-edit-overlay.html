@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Bildbearbeitung - j-Lawyer Extension</title>
+    <title data-i18n="imageEditTitle">Image editing - j-lawyer.org for Thunderbird</title>
     <link rel="stylesheet" href="image-edit-overlay.css">
     <script src="jspdf.umd.js"></script>
     <style>
@@ -18,9 +18,9 @@
 <body>
     <div class="overlay-container">
         <div class="header">
-            <h2>Bildbearbeitung</h2>
+            <h2 data-i18n="imageEditingHeading">Image editing</h2>
             <div class="progress-info">
-                <span id="progressText">Bild 1 von 1</span>
+                <span id="progressText"></span>
             </div>
         </div>
 
@@ -34,25 +34,25 @@
 
             <div class="controls">
                 <div class="crop-controls">
-                    <h3>Zuschneiden</h3>
+                    <h3 data-i18n="cropHeading">Crop</h3>
                     <div class="crop-buttons">
-                        <button id="resetCropBtn" class="btn btn-secondary">Zurücksetzen</button>
-                        <button id="applyCropBtn" class="btn btn-primary">Zuschnitt anwenden</button>
+                        <button id="resetCropBtn" class="btn btn-secondary" data-i18n="resetButton">Reset</button>
+                        <button id="applyCropBtn" class="btn btn-primary" data-i18n="applyCropButton">Apply crop</button>
                     </div>
                 </div>
 
                 <div class="rotate-controls">
-                    <h3>Drehen</h3>
+                    <h3 data-i18n="rotateHeading">Rotate</h3>
                     <div class="rotate-buttons">
-                        <button id="rotateLeftBtn" class="btn btn-secondary">Links drehen</button>
-                        <button id="rotateRightBtn" class="btn btn-secondary">Rechts drehen</button>
-                        <button id="resetRotationBtn" class="btn btn-secondary">Drehung zurücksetzen</button>
+                        <button id="rotateLeftBtn" class="btn btn-secondary" data-i18n="rotateLeftButton">Rotate left</button>
+                        <button id="rotateRightBtn" class="btn btn-secondary" data-i18n="rotateRightButton">Rotate right</button>
+                        <button id="resetRotationBtn" class="btn btn-secondary" data-i18n="resetRotationButton">Reset rotation</button>
                     </div>
                 </div>
 
                 <div class="navigation-controls">
-                    <button id="skipBtn" class="btn btn-warning">Bild überspringen</button>
-                    <button id="nextBtn" class="btn btn-success">Weiter</button>
+                    <button id="skipBtn" class="btn btn-warning" data-i18n="skipImageButton">Skip image</button>
+                    <button id="nextBtn" class="btn btn-success" data-i18n="nextButton">Next</button>
                 </div>
             </div>
         </div>
@@ -62,22 +62,22 @@
                 <div class="finish-layout-container">
                     <!-- Abbrechen Button links -->
                     <div class="cancel-section">
-                        <button id="cancelBtn" class="btn btn-danger">Abbrechen</button>
+                        <button id="cancelBtn" class="btn btn-danger" data-i18n="cancelButton">Cancel</button>
                     </div>
                     
                     <!-- Vorschau in der Mitte -->
                     <div class="preview-center-section">
-                        <h3 class="finish-title">Bearbeitung abschließen</h3>
+                        <h3 class="finish-title" data-i18n="finishEditingHeading">Finish editing</h3>
                         
                         <div id="previewSection" class="preview-section-compact">
                             <div class="preview-header">
-                                <span class="preview-title">Vorschau:</span>
-                                <span id="previewInfo" class="preview-info-compact">Bild 1 von 1</span>
-                                <button id="renameBtn" class="btn btn-secondary btn-small">Umbenennen</button>
+                                <span class="preview-title" data-i18n="previewLabel">Preview:</span>
+                                <span id="previewInfo" class="preview-info-compact"></span>
+                                <button id="renameBtn" class="btn btn-secondary btn-small" data-i18n="renameButton">Rename</button>
                             </div>
                             <div class="preview-container-compact">
                                 <button id="prevImageBtn" class="nav-btn-compact" disabled>◀</button>
-                                <img id="previewImage" class="preview-image-compact" alt="Vorschau">
+                                <img id="previewImage" class="preview-image-compact" alt="Preview" data-i18n-title="previewLabel">
                                 <button id="nextImageBtn" class="nav-btn-compact" disabled>▶</button>
                             </div>
                         </div>
@@ -86,39 +86,39 @@
                     <!-- Action Buttons rechts -->
                     <div class="action-buttons-section">
                         <div id="uploadInfo" class="upload-info" style="display: none; margin-bottom: 10px; font-size: 12px; color: #666;">
-                            <div>📄 PDF wird aus Bildern erstellt</div>
-                            <div id="additionalFilesInfo" style="display: none;">📎 Weitere Dateien werden einzeln hochgeladen</div>
+                            <div data-i18n="pdfCreatedFromImages">PDF will be created from images</div>
+                            <div id="additionalFilesInfo" style="display: none;" data-i18n="additionalFilesUploadedSeparately">Additional files will be uploaded individually</div>
                         </div>
-                        <button id="uploadIndividualBtn" class="btn btn-primary">Einzeln hochladen</button>
-                        <button id="createPdfBtn" class="btn btn-success">Als PDF zusammenfassen</button>
+                        <button id="uploadIndividualBtn" class="btn btn-primary" data-i18n="uploadIndividuallyButton">Upload individually</button>
+                        <button id="createPdfBtn" class="btn btn-success" data-i18n="combineAsPdfButton">Combine as PDF</button>
                     </div>
                 </div>
             </div>
             
             <!-- Normaler Abbrechen Button für normale Ansicht (nicht finish-options) -->
-            <button id="cancelBtnNormal" class="btn btn-danger">Abbrechen</button>
+            <button id="cancelBtnNormal" class="btn btn-danger" data-i18n="cancelButton">Cancel</button>
         </div>
     </div>
 
     <div id="loadingSpinner" class="loading-spinner" style="display: none;">
         <div class="spinner"></div>
-        <p>Bild wird verarbeitet...</p>
+        <p data-i18n="imageProcessing">Processing image...</p>
     </div>
 
     <!-- Rename Dialog -->
     <div id="renameDialog" class="rename-dialog" style="display: none;">
         <div class="rename-dialog-content">
-            <h3>Datei umbenennen</h3>
+            <h3 data-i18n="renameFileHeading">Rename file</h3>
             <div class="rename-form">
-                <label for="filenameInput">Neuer Dateiname:</label>
-                <input type="text" id="filenameInput" class="filename-input-full" placeholder="Dateiname eingeben">
+                <label for="filenameInput" data-i18n="newFilenameLabel">New file name:</label>
+                <input type="text" id="filenameInput" class="filename-input-full" placeholder="Enter file name" data-i18n-placeholder="filenameInputPlaceholder">
                 <div class="filename-suggestion">
-                    <small>Vorschlag mit Zeitstempel: <span id="filenameSuggestion"></span></small>
+                    <small><span data-i18n="timestampSuggestionLabel">Timestamp suggestion:</span> <span id="filenameSuggestion"></span></small>
                 </div>
                 <div class="rename-buttons">
-                    <button id="useSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
-                    <button id="cancelRenameBtn" class="btn btn-secondary">Abbrechen</button>
-                    <button id="confirmRenameBtn" class="btn btn-primary">Umbenennen</button>
+                    <button id="useSuggestionBtn" class="btn btn-secondary" data-i18n="useSuggestionButton">Use suggestion</button>
+                    <button id="cancelRenameBtn" class="btn btn-secondary" data-i18n="cancelButton">Cancel</button>
+                    <button id="confirmRenameBtn" class="btn btn-primary" data-i18n="renameButton">Rename</button>
                 </div>
             </div>
         </div>
@@ -127,22 +127,23 @@
     <!-- PDF Rename Dialog -->
     <div id="pdfRenameDialog" class="rename-dialog" style="display: none;">
         <div class="rename-dialog-content">
-            <h3>PDF-Dateiname festlegen</h3>
+            <h3 data-i18n="setPdfFilenameHeading">Set PDF file name</h3>
             <div class="rename-form">
-                <label for="pdfFilenameInput">PDF-Dateiname:</label>
-                <input type="text" id="pdfFilenameInput" class="filename-input-full" placeholder="PDF-Dateiname eingeben">
+                <label for="pdfFilenameInput" data-i18n="pdfFilenameLabel">PDF file name:</label>
+                <input type="text" id="pdfFilenameInput" class="filename-input-full" placeholder="Enter PDF file name" data-i18n-placeholder="pdfFilenamePlaceholder">
                 <div class="filename-suggestion">
-                    <small>Vorschlag mit Zeitstempel: <span id="pdfFilenameSuggestion"></span></small>
+                    <small><span data-i18n="timestampSuggestionLabel">Timestamp suggestion:</span> <span id="pdfFilenameSuggestion"></span></small>
                 </div>
                 <div class="rename-buttons">
-                    <button id="usePdfSuggestionBtn" class="btn btn-secondary">Vorschlag verwenden</button>
-                    <button id="cancelPdfRenameBtn" class="btn btn-secondary">Abbrechen</button>
-                    <button id="confirmPdfRenameBtn" class="btn btn-primary">PDF erstellen</button>
+                    <button id="usePdfSuggestionBtn" class="btn btn-secondary" data-i18n="useSuggestionButton">Use suggestion</button>
+                    <button id="cancelPdfRenameBtn" class="btn btn-secondary" data-i18n="cancelButton">Cancel</button>
+                    <button id="confirmPdfRenameBtn" class="btn btn-primary" data-i18n="createPdfButton">Create PDF</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="image-edit-overlay.js"></script>
 </body>
 </html>

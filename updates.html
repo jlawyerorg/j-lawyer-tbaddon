@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>Letzte Änderungen</title>
+        <title data-i18n="updatesTitle">Latest changes</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -23,11 +23,154 @@
             li {
                 margin-bottom: 10px;
             }
+
+            .locale-de {
+                display: none;
+            }
+
+            html[lang^="de"] .locale-de {
+                display: block;
+            }
+
+            html[lang^="de"] .locale-en {
+                display: none;
+            }
         </style>
     </head>
     <body>
+        <div class="locale-en">
+            <h1 data-i18n="updatesTitle">Latest changes</h1>
+            <ul>
+                <li>
+                    <strong>Version 1.9.7</strong>
+                    <ul>
+                        <li>
+                            Added English and German localization for the
+                            manifest, popups, options, calendar dialog,
+                            message-assignment dialog, image editing, context
+                            menus and update page.
+                        </li>
+                        <li>
+                            Adjusted the add-on name to the allowed format
+                            "j-lawyer.org for Thunderbird".
+                        </li>
+                        <li>
+                            Removed unused activeTab and tabs permissions and
+                            moved broad server access to an optional host
+                            permission.
+                        </li>
+                        <li>
+                            Migrated Thunderbird message tag handling to the
+                            current messages.tags API.
+                        </li>
+                        <li>
+                            Fixed the asynchronous runtime message listener in
+                            the message popup.
+                        </li>
+                        <li>
+                            Updated the build package so local agent files are
+                            not included in the XPI.
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Version 1.9.5</strong>
+                    <ul>
+                        <li>
+                            Fixed: The activity log no longer uses unsafe HTML
+                            writes and is readable again in the light layout.
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Version 1.9.4</strong>
+                    <ul>
+                        <li>
+                            Fixed: Creation dates for saved emails now reuse
+                            existing document metadata and avoid invalid update
+                            payloads.
+                        </li>
+                        <li>
+                            Fixed: OCR for newly saved attachments no longer
+                            fails because of an internal variable reference.
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Version 1.9.3</strong>
+                    <ul>
+                        <li>
+                            Image attachments can now be reordered in the edit
+                            dialog.
+                        </li>
+                        <li>
+                            Fixed: After changing the displayed message, image
+                            editing uses the attachment of the currently
+                            selected message.
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Version 1.9.x and earlier</strong>
+                    <ul>
+                        <li>
+                            Added rename templates, improved case lookup and
+                            added a combined message and attachment save action.
+                        </li>
+                        <li>
+                            Improved popup layout, window sizing, folder
+                            handling, attachment processing and image editing.
+                        </li>
+                        <li>
+                            Added OCR options, document tagging, context menu
+                            fixes, compose-window case detection and email
+                            template insertion.
+                        </li>
+                        <li>
+                            Added calendar integration, logging, automatic data
+                            updates and multiple performance and stability
+                            fixes.
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="locale-de">
         <h1>Letzte Änderungen</h1>
         <ul>
+            <li>
+                <strong>Version 1.9.7</strong>
+                <ul>
+                    <li>
+                        Englische und deutsche Lokalisierung für Manifest,
+                        Popups, Optionen, Kalenderdialog,
+                        Nachrichten-Zuordnung, Bildbearbeitung, Kontextmenüs
+                        und Update-Seite ergänzt.
+                    </li>
+                    <li>
+                        Add-on-Name auf das zulässige Format "j-lawyer.org for
+                        Thunderbird" angepasst.
+                    </li>
+                    <li>
+                        Nicht genutzte Berechtigungen activeTab und tabs
+                        entfernt und den breiten Serverzugriff als optionale
+                        Host-Berechtigung umgesetzt.
+                    </li>
+                    <li>
+                        Thunderbird-Nachrichtenetiketten auf die aktuelle
+                        messages.tags API migriert.
+                    </li>
+                    <li>
+                        Asynchronen runtime.onMessage Listener im Nachrichten-
+                        Popup korrigiert.
+                    </li>
+                    <li>
+                        Paket-Erstellung angepasst, damit lokale Agent-Dateien
+                        nicht mehr in das XPI aufgenommen werden.
+                    </li>
+                </ul>
+            </li>
             <li>
                 <strong>Version 1.9.5</strong>
                 <ul>
@@ -323,5 +466,7 @@
             </li>
             <!-- Weitere Updates hier -->
         </ul>
+        </div>
+        <script src="i18n.js"></script>
     </body>
 </html>

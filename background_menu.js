@@ -32,7 +32,7 @@ async function ensureMessageListMenu() {
   try {
     await browser.menus.create({
       id: "mehrere_messages_zuordnen",
-      title: "Nachrichten an j-Lawyer senden...",
+      title: i18nMessage("sendMessagesToJLawyerMenu"),
       contexts: ["message_list"],
       icons: {
         16: "icons/icon-16.png",
@@ -666,49 +666,16 @@ function uint8ArrayToBase64(uint8Array) {
   return btoa(binaryString);
 }
 
-// adds thunderbird tag to selected message - until TB 115
 async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
-  // Alle vorhandenen Tags abrufen
-  const existingTags = await browser.messages.listTags();
-
-  // Überprüfen, ob der Tag bereits existiert
-  let tag = existingTags.find((t) => t.tag === tagName);
-
-  // Wenn der Tag nicht existiert, wird er erstellt
-  if (!tag) {
-    tag = await browser.messages.createTag(tagName, tagName, tagColor);
+  const tag = await getOrCreateThunderbirdMessageTag(tagName, tagColor);
+  const message = await browser.messages.get(messageId);
+  const tags = message.tags || [];
+  if (!tags.includes(tag.key)) {
+    tags.push(tag.key);
   }
 
-  // Tag wird der Nachricht hinzugefügt
-  await browser.messages.update(messageId, { tags: [tag.key] });
+  await browser.messages.update(messageId, { tags });
 }
-
-/* // Adds a Thunderbird tag to a selected message - from TB 121
-async function addTagToMessageFromSelection(messageId, tagName, tagColor) {
-    // Alle vorhandenen Tags abrufen
-    const existingTags = await browser.messages.tags.list();
-
-    // Überprüfen, ob der Tag bereits existiert
-    let tag = existingTags.find(t => t.tag === tagName);
-
-    // Wenn der Tag nicht existiert, wird er erstellt
-    if (!tag) {
-        const tagKey = tagName.toLowerCase();  // Erstellen eines eindeutigen Schlüssels
-        tag = await browser.messages.tags.create(tagKey, tagName, tagColor);
-    }
-
-    // Nachricht abrufen, um die aktuellen Tags zu erhalten
-    let message = await browser.messages.get(messageId);
-
-    // Bestehende Tags abrufen und neuen Tag hinzufügen
-    let tags = message.tags || [];
-    if (!tags.includes(tag.key)) {
-        tags.push(tag.key);
-    }
-
-    // Nachricht aktualisieren mit neuen Tags
-    await browser.messages.update(messageId, { tags: tags });
-} */
 
 // Empfangen der Nachrichten vom Popup
 browser.runtime.onMessage.addListener((message) => {

@@ -1559,19 +1559,14 @@ function uint8ArrayToBase64(uint8Array) {
 }
 
 async function addTagToMessage(message, tagName, tagColor) {
-  // Alle vorhandenen Tags abrufen
-  const existingTags = await browser.messages.listTags();
-
-  // Überprüfen, ob der Tag bereits existiert
-  let tag = existingTags.find((t) => t.tag === tagName);
-
-  // Wenn der Tag nicht existiert, wird er erstellt
-  if (!tag) {
-    tag = await browser.messages.createTag(tagName, tagName, tagColor);
+  const tag = await getOrCreateThunderbirdMessageTag(tagName, tagColor);
+  const currentMessage = await browser.messages.get(message.id);
+  const tags = currentMessage.tags || [];
+  if (!tags.includes(tag.key)) {
+    tags.push(tag.key);
   }
 
-  // Tag wird der Nachricht hinzugefügt
-  await browser.messages.update(message.id, { tags: [tag.key] });
+  await browser.messages.update(message.id, { tags });
 }
 
 // TODO: remove or refactor when alternative in API is available
@@ -2006,7 +2001,7 @@ async function createMenuEntries() {
       try {
         await createComposeMenuItem({
           id: "vorlagen-menu",
-          title: "Vorlagen",
+          title: i18nMessage("templatesMenu"),
           contexts: ["compose_action"],
           type: "normal",
         });
@@ -2020,7 +2015,7 @@ async function createMenuEntries() {
           await createComposeMenuItem({
             id: `vorlage-${template.id}`,
             parentId: "vorlagen-menu",
-            title: `${displayName} einfügen`,
+            title: i18nMessage("insertTemplateMenu", [displayName]),
             contexts: ["compose_action"],
             type: "normal",
           });
@@ -2104,7 +2099,7 @@ async function createMenuEntries() {
       await createComposeMenuItem({
         id: `dokumente-folder-${id}`,
         parentId,
-        title: folder.name || "Dokumente",
+        title: folder.name || i18nMessage("documentsMenu"),
         contexts: ["compose_action"],
         type: "normal",
       });
@@ -2139,7 +2134,7 @@ async function createMenuEntries() {
       try {
         await createComposeMenuItem({
           id: "dokumente-menu",
-          title: "Dokumente",
+          title: i18nMessage("documentsMenu"),
           contexts: ["compose_action"],
           type: "normal",
         });

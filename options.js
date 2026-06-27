@@ -1,14 +1,47 @@
-document.getElementById("saveButton").addEventListener("click", function () {
+function normalizeServerAddress(serverAddress) {
+  return serverAddress.trim().replace(/\/+$/, "");
+}
+
+async function requestServerPermission(serverAddress) {
+  if (!serverAddress) {
+    return true;
+  }
+
+  const origins = getPermissionOriginsForServer(serverAddress);
+  if (origins.length === 0) {
+    return true;
+  }
+
+  const granted = await browser.permissions.request({ origins });
+  if (!granted) {
+    alert(i18nMessage("serverPermissionDenied"));
+  }
+  return granted;
+}
+
+document.getElementById("saveButton").addEventListener("click", async function () {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
-  const serverAddress = document.getElementById("serverAddress").value;
+  const serverAddress = normalizeServerAddress(
+    document.getElementById("serverAddress").value,
+  );
   const moveToTrash = document.getElementById("moveToTrash").checked;
   const allowRename = document.getElementById("allowRename").checked;
   const performOcr = document.getElementById("performOcr").checked;
   const subjectTemplate = document.getElementById("subjectTemplate").value;
   const filenameTemplate = document.getElementById("filenameTemplate").value;
 
-  browser.storage.local
+  try {
+    const hasServerPermission = await requestServerPermission(serverAddress);
+    if (!hasServerPermission) {
+      return;
+    }
+  } catch (error) {
+    alert(i18nMessage("invalidServerAddress", [error.message]));
+    return;
+  }
+
+  await browser.storage.local
     .set({
       username: username,
       password: password,
@@ -20,9 +53,8 @@ document.getElementById("saveButton").addEventListener("click", function () {
       filenameTemplate: filenameTemplate,
     })
     .then(() => {
-      // Nach dem erfolgreichen Speichern wird der Button-Text geändert => Usability
-      // testServerConnection(username, password, serverAddress);
-      document.getElementById("saveButton").value = "gespeichert";
+      document.getElementById("saveButton").value =
+        i18nMessage("savedButtonValue");
     });
 });
 
@@ -32,11 +64,11 @@ document
     let activityLog = await browser.storage.local.get("activityLog");
     activityLog = activityLog.activityLog || [];
     if (activityLog.length === 0) {
-      alert("Keine Aktivitäten protokolliert.");
+      alert(i18nMessage("noActivityLogged"));
     } else {
       const logWindow = window.open("", "Activity Log", "width=600,height=400");
       const logDocument = logWindow.document;
-      logDocument.title = "Aktivitätsprotokoll";
+      logDocument.title = i18nMessage("activityLogTitle");
 
       logDocument.body.style.fontFamily = "Arial, sans-serif";
       logDocument.body.style.backgroundColor = "#ffffff";
@@ -44,7 +76,7 @@ document
       logDocument.body.style.margin = "8px";
 
       const heading = logDocument.createElement("h2");
-      heading.textContent = "Aktivitätsprotokoll";
+      heading.textContent = i18nMessage("activityLogTitle");
       logDocument.body.appendChild(heading);
 
       const table = logDocument.createElement("table");
@@ -55,7 +87,11 @@ document
       table.style.color = "#000000";
 
       const headerRow = logDocument.createElement("tr");
-      ["Zeitstempel", "Aktion", "Details"].forEach((headerText) => {
+      [
+        i18nMessage("activityLogTimestamp"),
+        i18nMessage("activityLogAction"),
+        i18nMessage("activityLogDetails"),
+      ].forEach((headerText) => {
         const headerCell = logDocument.createElement("th");
         headerCell.textContent = headerText;
         headerCell.style.padding = "4px";
@@ -93,13 +129,15 @@ document
   .getElementById("clearLogButton")
   .addEventListener("click", async function () {
     await browser.storage.local.remove("activityLog");
-    alert("Aktivitätsprotokoll gelöscht");
+    alert(i18nMessage("activityLogCleared"));
   });
 
 document
   .getElementById("viewUpdatesButton")
-  .addEventListener("click", function () {
-    window.open("updates.html", "_blank");
+  .addEventListener("click", async function () {
+    await browser.tabs.create({
+      url: browser.runtime.getURL("updates.html"),
+    });
   });
 
 // Beim Laden der Optionen-Seite, werden die gespeicherten Werte in die Eingabefelder gesetzt

@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>Nachrichten Zuordnung - Mehrere Nachrichten</title>
+        <title data-i18n="bundlePopupTitle">Message assignment - multiple messages</title>
         <style>
             /* Grundlegende Stilrichtlinien für das gesamte Popup */
             html {
@@ -305,16 +305,17 @@
             <input
                 type="text"
                 id="searchInput"
-                placeholder="Fall suchen..."
+                placeholder="Search case..."
+                data-i18n-placeholder="searchCasePlaceholder"
                 autocomplete="off"
             />
             <div id="resultsList"></div>
 
             <!-- Ausgewählte Akte -->
-            <p id="customizableLabel">kein Vorschlag</p>
+            <p id="customizableLabel" data-i18n="noSuggestion">no suggestion</p>
 
             <div class="button-row">
-                <button id="recommendCaseButton">Speichern</button>
+                <button id="recommendCaseButton" data-i18n="saveButton">Save</button>
             </div>
             <progress
                 id="progressBar"
@@ -332,11 +333,11 @@
 
         <div class="columns-container">
             <div id="treeContainer">
-                <h3>Ordner</h3>
+                <h3 data-i18n="foldersHeading">Folders</h3>
             </div>
 
             <div id="tagsContainer">
-                <p>Etiketten:</p>
+                <p data-i18n="tagsLabel">Tags:</p>
                 <select
                     id="tagsSelect"
                     multiple
@@ -346,6 +347,7 @@
             </div>
         </div>
 
+        <script src="i18n.js"></script>
         <script src="popup_menu_bundle_save.js"></script>
     </body>
 </html>

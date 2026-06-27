@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>Eingabe</title>
+        <title data-i18n="popupTitle">Input</title>
         <style>
             /* Grundlegende Stilrichtlinien für das gesamte Popup */
             html {
@@ -511,25 +511,26 @@
             <input
                 type="text"
                 id="searchInput"
-                placeholder="Fall suchen..."
+                placeholder="Search case..."
+                data-i18n-placeholder="searchCasePlaceholder"
                 autocomplete="off"
             />
             <div id="resultsList"></div>
 
             <!-- Ausgewählte Akte -->
-            <p id="customizableLabel">kein Vorschlag</p>
+            <p id="customizableLabel" data-i18n="noSuggestion">no suggestion</p>
 
             <!-- Automatische Vorschläge -->
             <div id="suggestionsContainer" style="display: none">
-                <h4>Automatische Vorschläge (bitte prüfen)</h4>
+                <h4 data-i18n="automaticSuggestions">Automatic suggestions, please review</h4>
                 <div id="suggestionsList"></div>
             </div>
 
             <div class="button-row">
-                <button id="recommendCaseButton">Speichern</button>
-                <button id="saveOnlyMessageButton">Nur Nachricht</button>
-                <button id="saveAttachmentsButton">Nur Anhang</button>
-                <button id="saveBothButton">Nachricht &amp; Anhang</button>
+                <button id="recommendCaseButton" data-i18n="saveButton">Save</button>
+                <button id="saveOnlyMessageButton" data-i18n="saveMessageOnlyButton">Message only</button>
+                <button id="saveAttachmentsButton" data-i18n="saveAttachmentsOnlyButton">Attachments only</button>
+                <button id="saveBothButton" data-i18n="saveMessageAndAttachmentsButton">Message and attachments</button>
             </div>
             <progress
                 id="progressBar"
@@ -558,18 +559,18 @@
                         id="imageEditToggle"
                         style="margin-right: 5px"
                     />
-                    <span>Bildanhänge vor Speichern bearbeiten</span>
+                    <span data-i18n="editImageAttachmentsLabel">Edit image attachments before saving</span>
                 </label>
             </div>
         </div>
 
         <div class="columns-container">
             <div id="treeContainer">
-                <h3>Ordner</h3>
+                <h3 data-i18n="foldersHeading">Folders</h3>
             </div>
 
             <div id="tagsContainer">
-                <p>Etiketten:</p>
+                <p data-i18n="tagsLabel">Tags:</p>
                 <select
                     id="tagsSelect"
                     multiple
@@ -582,30 +583,31 @@
         <!-- Rename Dialog -->
         <div id="renameDialog" class="rename-dialog" style="display: none">
             <div class="rename-dialog-content">
-                <h3>Datei umbenennen</h3>
+                <h3 data-i18n="renameFileHeading">Rename file</h3>
                 <div class="rename-form">
-                    <label for="filenameInput">Neuer Dateiname:</label>
+                    <label for="filenameInput" data-i18n="newFilenameLabel">New file name:</label>
                     <input
                         type="text"
                         id="filenameInput"
                         class="filename-input"
-                        placeholder="Dateiname eingeben"
+                        placeholder="Enter file name"
+                        data-i18n-placeholder="filenameInputPlaceholder"
                     />
                     <div class="filename-suggestion">
                         <small
-                            >Vorschlag nach Vorlage:
+                            ><span data-i18n="templateSuggestionLabel">Template suggestion:</span>
                             <span id="filenameSuggestion"></span
                         ></small>
                     </div>
                     <div class="rename-buttons">
-                        <button id="useSuggestionBtn" class="btn btn-secondary">
-                            Vorschlag verwenden
+                        <button id="useSuggestionBtn" class="btn btn-secondary" data-i18n="useSuggestionButton">
+                            Use suggestion
                         </button>
-                        <button id="cancelRenameBtn" class="btn btn-secondary">
-                            Abbrechen
+                        <button id="cancelRenameBtn" class="btn btn-secondary" data-i18n="cancelButton">
+                            Cancel
                         </button>
-                        <button id="confirmRenameBtn" class="btn btn-primary">
-                            Umbenennen
+                        <button id="confirmRenameBtn" class="btn btn-primary" data-i18n="renameButton">
+                            Rename
                         </button>
                     </div>
                 </div>
@@ -613,6 +615,7 @@
         </div>
 
         <script src="jspdf.umd.js"></script>
+        <script src="i18n.js"></script>
         <script src="attachment-image-processor.js"></script>
         <script src="filename-template.js"></script>
         <script src="popup.js"></script>

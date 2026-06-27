@@ -275,7 +275,7 @@ class ImageEditOverlay {
 
         if (this.sessionData.images.length > 0) {
           document.getElementById("progressText").textContent =
-            `Bild 1 von ${this.sessionData.images.length}`;
+            i18nMessage("imageProgress", [1, this.sessionData.images.length]);
           this.showLoading(true);
           browser.runtime.sendMessage({
             type: "overlay-ready",
@@ -303,7 +303,10 @@ class ImageEditOverlay {
 
     this.currentFileName = imageData.name;
     document.getElementById("progressText").textContent =
-      `Bild ${this.currentImageIndex + 1} von ${this.sessionData.images.length}`;
+      i18nMessage("imageProgress", [
+        this.currentImageIndex + 1,
+        this.sessionData.images.length,
+      ]);
 
     if (!imageData.data) {
       this.showLoading(true);
@@ -378,7 +381,7 @@ class ImageEditOverlay {
     this.currentFileName = fileName;
 
     document.getElementById("progressText").textContent =
-      `Bild ${currentIndex} von ${totalImages}`;
+      i18nMessage("imageProgress", [currentIndex, totalImages]);
 
     const img = new Image();
     img.onload = () => {
@@ -1070,7 +1073,7 @@ class ImageEditOverlay {
       window.close();
     } catch (error) {
       console.error("Fehler beim Abschließen der Bearbeitung:", error);
-      alert("Fehler beim Hochladen: " + error.message);
+      alert(i18nMessage("uploadError", [error.message]));
       this.showLoading(false);
     }
   }
@@ -1082,23 +1085,33 @@ class ImageEditOverlay {
     document.getElementById("finishOptions").style.display = "block";
 
     // Status-Text mit allen Dateien
-    let statusText = `${imageCount} Bild(er) bearbeitet`;
+    let statusText = i18nMessage("imagesProcessed", [imageCount]);
     if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
-      statusText += ` + ${this.nonImageAttachments.length} weitere Datei(en)`;
+      statusText +=
+        " + " +
+        i18nMessage("additionalFilesProcessed", [
+          this.nonImageAttachments.length,
+        ]);
     }
     document.getElementById("progressText").textContent = statusText;
 
     // Button-Text anpassen
     let pdfButtonText;
     if (imageCount === 1) {
-      pdfButtonText = "Als PDF speichern";
+      pdfButtonText = i18nMessage("saveAsPdfButton");
     } else {
-      pdfButtonText = `${imageCount} Bilder als PDF zusammenfassen`;
+      pdfButtonText = i18nMessage("combineImageCountAsPdfButton", [
+        imageCount,
+      ]);
     }
 
     // Zusatz für andere Dateien hinzufügen
     if (this.nonImageAttachments && this.nonImageAttachments.length > 0) {
-      pdfButtonText += ` + ${this.nonImageAttachments.length} weitere Datei(en)`;
+      pdfButtonText +=
+        " + " +
+        i18nMessage("additionalFilesProcessed", [
+          this.nonImageAttachments.length,
+        ]);
     }
 
     // PDF-Button je nach Bildanzahl steuern
@@ -1117,15 +1130,15 @@ class ImageEditOverlay {
         ? this.nonImageAttachments.length
         : 0;
     const totalFiles = imageCount + nonImageCount;
-    let uploadText = "Einzeln hochladen";
+    let uploadText = i18nMessage("uploadIndividuallyButton");
     if (totalFiles > 0) {
       uploadText =
         nonImageCount > 0
-          ? `Alle ${totalFiles} Dateien einzeln hochladen`
-          : "Einzeln hochladen";
+          ? i18nMessage("uploadAllFilesIndividuallyButton", [totalFiles])
+          : i18nMessage("uploadIndividuallyButton");
       this.elements.uploadIndividualBtn.disabled = false;
     } else {
-      uploadText = "Keine Dateien zum Hochladen";
+      uploadText = i18nMessage("noFilesToUploadButton");
       this.elements.uploadIndividualBtn.disabled = true;
     }
     this.elements.uploadIndividualBtn.textContent = uploadText;
@@ -1166,7 +1179,7 @@ class ImageEditOverlay {
 
     if (this.editedImages.length === 0) {
       this.elements.previewImage.style.display = "none";
-      this.elements.previewInfo.textContent = "Keine Bilder verfügbar";
+      this.elements.previewInfo.textContent = i18nMessage("noImagesAvailable");
       this.elements.prevImageBtn.disabled = true;
       this.elements.nextImageBtn.disabled = true;
       if (this.elements.renameBtn) this.elements.renameBtn.disabled = true;
@@ -1341,7 +1354,7 @@ class ImageEditOverlay {
         pdfFileName = customFileName;
       } else {
         const timestampPrefix = this.generateTimestampPrefix();
-        pdfFileName = `${timestampPrefix}Bilder.pdf`;
+        pdfFileName = `${timestampPrefix}${i18nMessage("imagesPdfFilename")}`;
       }
 
       console.log("PDF file size:", pdfBlob.size, "bytes");
@@ -1847,14 +1860,14 @@ class ImageEditOverlay {
     const newFileName = this.elements.filenameInput.value.trim();
 
     if (!newFileName) {
-      alert("Bitte geben Sie einen gültigen Dateinamen ein.");
+      alert(i18nMessage("invalidFilename"));
       return;
     }
 
     // Ungültige Zeichen prüfen
     const invalidChars = /[<>:"/\\|?*]/;
     if (invalidChars.test(newFileName)) {
-      alert('Der Dateiname enthält ungültige Zeichen: < > : " / \\ | ? *');
+      alert(i18nMessage("invalidFilenameCharacters"));
       return;
     }
 
@@ -1876,7 +1889,7 @@ class ImageEditOverlay {
     const timestampPrefix = this.generateTimestampPrefix();
 
     // Vorschlag mit Zeitstempel erstellen
-    const suggestion = `${timestampPrefix}Bilder.pdf`;
+    const suggestion = `${timestampPrefix}${i18nMessage("imagesPdfFilename")}`;
     this.elements.pdfFilenameSuggestion.textContent = suggestion;
 
     // Input-Feld mit Vorschlag füllen
@@ -1904,14 +1917,14 @@ class ImageEditOverlay {
     const pdfFileName = this.elements.pdfFilenameInput.value.trim();
 
     if (!pdfFileName) {
-      alert("Bitte geben Sie einen gültigen PDF-Dateinamen ein.");
+      alert(i18nMessage("invalidPdfFilename"));
       return;
     }
 
     // Ungültige Zeichen prüfen
     const invalidChars = /[<>:"/\\|?*]/;
     if (invalidChars.test(pdfFileName)) {
-      alert('Der Dateiname enthält ungültige Zeichen: < > : " / \\ | ? *');
+      alert(i18nMessage("invalidFilenameCharacters"));
       return;
     }
 

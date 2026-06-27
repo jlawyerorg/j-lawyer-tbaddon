@@ -31,6 +31,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const endzeitLabel = document.querySelector('label[for="endzeit"]');
   const locationInput = document.getElementById("location");
   const beschreibungTextarea = document.getElementById("beschreibung");
+  const feedback = document.getElementById("feedback");
+
+  ensureStoredServerPermission(feedback);
 
   // Referenzen auf die optgroups
   const fristOptgroup = document.getElementById("fristOptgroup");
@@ -103,8 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     // aktualsiere feedback in cal.html
-    const feedback = document.getElementById("feedback");
-    feedback.textContent = "Gespeichert!";
+    feedback.textContent = i18nMessage("savedFeedback");
 
     // Gebe die Werte in der Konsole aus
     console.log("Kategorie:", categorySelect.value);
@@ -136,15 +138,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (categorySelect.value === "termin") {
       calType = "EVENT";
       if (datumInput.value === "") {
-        feedback.textContent = "Bitte ein Datum angeben!";
+        feedback.textContent = i18nMessage("requiredDateFeedback");
         return;
       }
       if (uhrzeitInput.value === "") {
-        feedback.textContent = "Bitte eine Uhrzeit/Startzeit angeben!";
+        feedback.textContent = i18nMessage("requiredStartTimeFeedback");
         return;
       }
       if (endzeitInput.value === "") {
-        feedback.textContent = "Bitte eine Endzeit angeben!";
+        feedback.textContent = i18nMessage("requiredEndTimeFeedback");
         return;
       }
       beginDateUTC = convertToUTC(datumInput.value, uhrzeitInput.value);
@@ -427,6 +429,11 @@ async function searchCasesApi(
 
 // Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
+  const feedback = document.getElementById("feedback");
+  if (!(await ensureStoredServerPermission(feedback))) {
+    return;
+  }
+
   const resultsListElement = document.getElementById("resultsList");
   resultsListElement.style.display = "block";
 
@@ -455,7 +462,7 @@ async function searchCases(query) {
 
     if (results.length === 0) {
       resultsListElement.replaceChildren(
-        createResultMessage("Keine Ergebnisse gefunden"),
+        createResultMessage(i18nMessage("noResultsFound")),
       );
       return;
     }
@@ -514,7 +521,7 @@ async function searchCases(query) {
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
     resultsListElement.replaceChildren(
-      createResultMessage("Fehler bei der Suche", "red"),
+      createResultMessage(i18nMessage("searchError"), "red"),
     );
   }
 }

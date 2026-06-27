@@ -1,26 +1,30 @@
 {
   "manifest_version": 2,
-  "name": "j-lawyer.org-Thunderbird-Extension",
-  "version": "1.9.6",
-  "description": "Sendet E-Mails an einen j-lawyer.org Server",
+  "name": "__MSG_extensionName__",
+  "version": "1.9.7",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
   "author": "Maximilian Steinert",
   "icons": {
     "64": "icons/icon-64.png"
   },
   "permissions": [
-    "activeTab",
-    "tabs",
     "messagesRead",
     "messagesDelete",
     "compose",
     "storage",
-    "<all_urls>",
     "messagesTags",
     "messagesUpdate",
     "menus"
   ],
+  "optional_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "scripts": ["background.js", "background_menu.js", "browser_action.js"],
+    "scripts": [
+      "i18n.js",
+      "background.js",
+      "background_menu.js",
+      "browser_action.js"
+    ],
     "persistent": false
   },
   "options_ui": {
@@ -33,7 +37,7 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "E-Mail an j-lawyer senden"
+    "default_title": "__MSG_messageDisplayActionTitle__"
   },
   "compose_action": {
     "default_popup": "popup_compose.html",
@@ -42,7 +46,7 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "j-lawyer"
+    "default_title": "__MSG_composeActionTitle__"
   },
   "browser_action": {
     "default_icon": {
@@ -50,13 +54,14 @@
       "24": "icons/icon-24.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "Kalendereintrag erstellen"
+    "default_title": "__MSG_browserActionTitle__"
   },
   "web_accessible_resources": [
     "image-edit-overlay.html",
     "image-edit-overlay.css",
     "image-edit-overlay.js",
     "attachment-image-processor.js",
+    "i18n.js",
     "jspdf.umd.js"
   ],
   "browser_specific_settings": {

@@ -114,7 +114,7 @@ async function resetAndSearchForNewMessage() {
   // Aktenvorschlag (blaues Feld) zurücksetzen
   const customizableLabel = document.getElementById("customizableLabel");
   if (customizableLabel) {
-    customizableLabel.textContent = "Suche Akte...";
+    customizableLabel.textContent = i18nMessage("searchingCaseFeedback");
   }
 
   // Tags zurücksetzen
@@ -156,10 +156,12 @@ async function syncDisplayedMessageFromBackground() {
   }
 }
 
-// Event-Listener für Nachrichtenwechsel (Nachricht von background.js)
-browser.runtime.onMessage.addListener(async (message) => {
+// Listen for displayed message changes from background.js.
+browser.runtime.onMessage.addListener((message) => {
   if (message.type === "messageDisplayChanged" && message.messageId) {
-    await handleDisplayedMessageId(message.messageId);
+    handleDisplayedMessageId(message.messageId).catch((error) => {
+      console.warn("Failed to handle displayed message change:", error);
+    });
   }
 });
 
@@ -177,6 +179,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   );
   const progressBar = document.getElementById("progressBar");
   const imageEditToggle = document.getElementById("imageEditToggle");
+
+  await ensureStoredServerPermission(feedback);
 
   browser.storage.local.remove("selectedTags");
   await fillTagsList();
@@ -224,7 +228,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (recommendCaseButton) {
     recommendCaseButton.addEventListener("click", async function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -253,7 +257,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (customFilename === null) {
           // Benutzer hat abgebrochen
-          feedback.textContent = "Speichern abgebrochen";
+          feedback.textContent = i18nMessage("saveCancelledFeedback");
           feedback.style.color = "orange";
           return;
         }
@@ -274,7 +278,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
 
       // Setzt Feedback zurück, während auf eine Antwort gewartet wird
-      feedback.textContent = "Speichern...";
+      feedback.textContent = i18nMessage("savingFeedback");
       feedback.style.color = "blue";
     });
   }
@@ -283,7 +287,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (saveOnlyMessageButton) {
     saveOnlyMessageButton.addEventListener("click", async function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -314,7 +318,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (customFilename === null) {
           // Benutzer hat abgebrochen
-          feedback.textContent = "Speichern abgebrochen";
+          feedback.textContent = i18nMessage("saveCancelledFeedback");
           feedback.style.color = "orange";
           return;
         }
@@ -334,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
 
       // Setzt Feedback zurück, während auf eine Antwort gewartet wird
-      feedback.textContent = "Speichern...";
+      feedback.textContent = i18nMessage("savingFeedback");
       feedback.style.color = "blue";
     });
   }
@@ -345,7 +349,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const feedback = document.getElementById("feedback");
 
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -362,8 +366,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         );
 
         if (attachments.length === 0) {
-          feedback.textContent =
-            "Kein Anhang verfügbar, die Nachricht enthält keine Anhänge.";
+          feedback.textContent = i18nMessage("noAttachmentsFeedback");
           feedback.style.color = "red";
           return;
         }
@@ -372,7 +375,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (toggleState.imageEditEnabled) {
           // Überprüfung auf Bildanhänge vor der Bildbearbeitungslogik
-          feedback.textContent = "Überprüfe Anhänge...";
+          feedback.textContent = i18nMessage("checkingAttachmentsFeedback");
           feedback.style.color = "blue";
 
           // Filtert Bild- und Nicht-Bildanhänge
@@ -401,8 +404,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
           if (imageAttachments.length === 0) {
             // Keine Bilder vorhanden - normale Attachment-Speicherung verwenden
-            feedback.textContent =
-              "Keine Bildanhänge gefunden. Speichere Anhänge normal...";
+            feedback.textContent = i18nMessage("noImageAttachmentsFeedback");
             feedback.style.color = "blue";
 
             // Normale Attachment-Speicherung wie bei deaktiviertem Toggle
@@ -418,7 +420,7 @@ document.addEventListener("DOMContentLoaded", async function () {
               messageId: messageData.id,
             });
 
-            feedback.textContent = "Speichern...";
+            feedback.textContent = i18nMessage("savingFeedback");
             feedback.style.color = "blue";
             return;
           }
@@ -466,12 +468,12 @@ document.addEventListener("DOMContentLoaded", async function () {
           });
 
           // Setzt das Feedback zurück, während auf eine Antwort gewartet wird
-          feedback.textContent = "Speichern...";
+          feedback.textContent = i18nMessage("savingFeedback");
           feedback.style.color = "blue";
         }
       } catch (error) {
         console.error("Fehler beim Verarbeiten der Anhänge:", error);
-        feedback.textContent = "Fehler: " + error.message;
+        feedback.textContent = i18nMessage("errorPrefix", [error.message]);
         feedback.style.color = "red";
       }
     });
@@ -482,7 +484,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (saveBothButton) {
     saveBothButton.addEventListener("click", async function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -506,13 +508,13 @@ document.addEventListener("DOMContentLoaded", async function () {
             template: settings.filenameTemplate,
           });
           if (customFilename === null) {
-            feedback.textContent = "Speichern abgebrochen";
+            feedback.textContent = i18nMessage("saveCancelledFeedback");
             feedback.style.color = "orange";
             return;
           }
         }
 
-        feedback.textContent = "Speichere Nachricht...";
+        feedback.textContent = i18nMessage("savingMessageFeedback");
         feedback.style.color = "blue";
 
         const messageResult = await browser.runtime.sendMessage({
@@ -530,7 +532,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (!messageResult || !messageResult.ok) {
           throw new Error(
-            messageResult?.error || "Nachricht konnte nicht gespeichert werden",
+            messageResult?.error || i18nMessage("messageCouldNotBeSaved"),
           );
         }
 
@@ -540,8 +542,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         );
 
         if (attachments.length === 0) {
-          feedback.textContent =
-            "Kein Anhang verfügbar, die Nachricht wurde allerdings ohne Anhang gespeichert.";
+          feedback.textContent = i18nMessage(
+            "noAttachmentsMessageSavedFeedback",
+          );
           feedback.style.color = "goldenrod";
         } else {
           // Anhänge speichern (mit Bildbearbeitung falls aktiviert)
@@ -607,12 +610,12 @@ document.addEventListener("DOMContentLoaded", async function () {
             });
           }
 
-          feedback.textContent = "Speichern...";
+          feedback.textContent = i18nMessage("savingFeedback");
           feedback.style.color = "blue";
         }
       } catch (error) {
         console.error("Fehler beim kombinierten Speichern:", error);
-        feedback.textContent = "Fehler: " + error.message;
+        feedback.textContent = i18nMessage("errorPrefix", [error.message]);
         feedback.style.color = "red";
       }
     });
@@ -653,13 +656,18 @@ async function updateData(feedback, progressBar) {
   progressBar.style.display = "block";
 
   try {
+    if (!(await ensureStoredServerPermission(feedback))) {
+      progressBar.style.display = "none";
+      return;
+    }
+
     const { username, password, serverAddress } =
       await browser.storage.local.get([
         "username",
         "password",
         "serverAddress",
       ]);
-    feedback.textContent = "Daten werden aktualisiert...";
+    feedback.textContent = i18nMessage("updatingDataFeedback");
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
@@ -669,7 +677,7 @@ async function updateData(feedback, progressBar) {
       tasksCompleted++;
       progressBar.value = (tasksCompleted / totalTasks) * 100;
       if (tasksCompleted === totalTasks) {
-        feedback.textContent = "Daten aktualisiert!";
+        feedback.textContent = i18nMessage("dataUpdatedFeedback");
         feedback.style.color = "green";
         const today = new Date().toISOString().split("T")[0];
         browser.storage.local.set({ lastUpdate: today });
@@ -750,7 +758,7 @@ async function updateData(feedback, progressBar) {
     ]);
   } catch (error) {
     console.error("Error during updateData:", error);
-    feedback.textContent = "Fehler: " + error.message;
+    feedback.textContent = i18nMessage("errorPrefix", [error.message]);
     feedback.style.color = "red";
   }
 }
@@ -759,10 +767,10 @@ async function updateData(feedback, progressBar) {
 browser.runtime.onMessage.addListener((message) => {
   const feedback = document.getElementById("feedback");
   if (message.type === "success") {
-    feedback.textContent = "Erfolgreich gesendet!";
+    feedback.textContent = i18nMessage("successfullySentFeedback");
     feedback.style.color = "green";
   } else if (message.type === "error") {
-    feedback.textContent = "Fehler: " + message.content;
+    feedback.textContent = i18nMessage("errorPrefix", [message.content]);
     feedback.style.color = "red";
   }
 });
@@ -1310,7 +1318,7 @@ async function displaySuggestions(matches, loginData) {
     suggestionsContainer.style.display = "block";
     const noMatch = document.createElement("div");
     noMatch.className = "suggestionItem noMatch";
-    noMatch.textContent = "Keine Vorschläge gefunden (bitte manuell suchen)";
+    noMatch.textContent = i18nMessage("noSuggestionsFound");
     suggestionsList.appendChild(noMatch);
     return;
   }
@@ -1763,6 +1771,11 @@ document.getElementById("searchInput").addEventListener("input", function () {
 
 // Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
+  const feedback = document.getElementById("feedback");
+  if (!(await ensureStoredServerPermission(feedback))) {
+    return;
+  }
+
   const resultsListElement = document.getElementById("resultsList");
   resultsListElement.style.display = "block";
 
@@ -1791,7 +1804,7 @@ async function searchCases(query) {
 
     if (results.length === 0) {
       resultsListElement.replaceChildren(
-        createResultMessage("Keine Ergebnisse gefunden"),
+        createResultMessage(i18nMessage("noResultsFound")),
       );
       return;
     }
@@ -1847,7 +1860,7 @@ async function searchCases(query) {
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
     resultsListElement.replaceChildren(
-      createResultMessage("Fehler bei der Suche", "red"),
+      createResultMessage(i18nMessage("searchError"), "red"),
     );
   }
 }

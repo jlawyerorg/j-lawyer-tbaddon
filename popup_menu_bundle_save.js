@@ -53,6 +53,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const updateDataButton = document.getElementById("updateDataButton");
   const progressBar = document.getElementById("progressBar");
 
+  await ensureStoredServerPermission(feedback);
+
   await fillTagsList();
 
   // Setzt den Fokus auf das Suchfeld
@@ -70,7 +72,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (recommendCaseButton && customizableLabel) {
     recommendCaseButton.addEventListener("click", function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -90,10 +92,10 @@ document.addEventListener("DOMContentLoaded", async function () {
           });
 
           // Setzt Feedback zurück, während auf eine Antwort gewartet wird
-          feedback.textContent = "Speichern...";
+          feedback.textContent = i18nMessage("savingFeedback");
           feedback.style.color = "blue";
         });
-      feedback.textContent = "An empfohlene Akte gesendet!";
+      feedback.textContent = i18nMessage("sentToRecommendedCaseFeedback");
       feedback.style.color = "green";
     });
   }
@@ -131,10 +133,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 browser.runtime.onMessage.addListener((message) => {
   const feedback = document.getElementById("feedback");
   if (message.type === "success") {
-    feedback.textContent = "Erfolgreich gesendet!";
+    feedback.textContent = i18nMessage("successfullySentFeedback");
     feedback.style.color = "green";
   } else if (message.type === "error") {
-    feedback.textContent = "Fehler: " + message.content;
+    feedback.textContent = i18nMessage("errorPrefix", [message.content]);
     feedback.style.color = "red";
   }
 });
@@ -231,6 +233,11 @@ document.getElementById("searchInput").addEventListener("input", function () {
 
 // Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
+  const feedback = document.getElementById("feedback");
+  if (!(await ensureStoredServerPermission(feedback))) {
+    return;
+  }
+
   const resultsListElement = document.getElementById("resultsList");
   resultsListElement.style.display = "block";
 
@@ -259,7 +266,7 @@ async function searchCases(query) {
 
     if (results.length === 0) {
       resultsListElement.replaceChildren(
-        createResultMessage("Keine Ergebnisse gefunden"),
+        createResultMessage(i18nMessage("noResultsFound")),
       );
       return;
     }
@@ -316,7 +323,7 @@ async function searchCases(query) {
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
     resultsListElement.replaceChildren(
-      createResultMessage("Fehler bei der Suche", "red"),
+      createResultMessage(i18nMessage("searchError"), "red"),
     );
   }
 }
@@ -609,13 +616,18 @@ async function updateData(feedback, progressBar) {
   progressBar.style.display = "block";
 
   try {
+    if (!(await ensureStoredServerPermission(feedback))) {
+      progressBar.style.display = "none";
+      return;
+    }
+
     const { username, password, serverAddress } =
       await browser.storage.local.get([
         "username",
         "password",
         "serverAddress",
       ]);
-    feedback.textContent = "Daten werden aktualisiert...";
+    feedback.textContent = i18nMessage("updatingDataFeedback");
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
@@ -625,7 +637,7 @@ async function updateData(feedback, progressBar) {
       tasksCompleted++;
       progressBar.value = (tasksCompleted / totalTasks) * 100;
       if (tasksCompleted === totalTasks) {
-        feedback.textContent = "Daten aktualisiert!";
+        feedback.textContent = i18nMessage("dataUpdatedFeedback");
         feedback.style.color = "green";
         const today = new Date().toISOString().split("T")[0];
         browser.storage.local.set({ lastUpdate: today });
@@ -706,7 +718,7 @@ async function updateData(feedback, progressBar) {
     ]);
   } catch (error) {
     console.error("Error during updateData:", error);
-    feedback.textContent = "Fehler: " + error.message;
+    feedback.textContent = i18nMessage("errorPrefix", [error.message]);
     feedback.style.color = "red";
   }
 }

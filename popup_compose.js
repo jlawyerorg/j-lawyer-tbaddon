@@ -65,6 +65,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const settingsButton = document.getElementById("settingsButton");
   const progressBar = document.getElementById("progressBar");
 
+  await ensureStoredServerPermission(feedback);
+
   await fillTagsList();
 
   // Automatisch nach Aktenzeichen im Betreff suchen
@@ -92,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (setSubjectButton) {
     setSubjectButton.addEventListener("click", async function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Bitte zuerst eine Akte auswählen!";
+        feedback.textContent = i18nMessage("selectCaseFirstFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -134,13 +136,13 @@ document.addEventListener("DOMContentLoaded", async function () {
             subject: newSubject,
           });
 
-          feedback.textContent = "Betreff wurde gesetzt";
+          feedback.textContent = i18nMessage("subjectSetFeedback");
           feedback.style.color = "green";
           console.log("Betreff manuell gesetzt:", newSubject);
         }
       } catch (error) {
         console.error("Fehler beim Setzen des Betreffs:", error);
-        feedback.textContent = "Fehler beim Setzen des Betreffs";
+        feedback.textContent = i18nMessage("subjectSetErrorFeedback");
         feedback.style.color = "red";
       }
     });
@@ -159,7 +161,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (recommendCaseButtonAfterSend && customizableLabel) {
     recommendCaseButtonAfterSend.addEventListener("click", async function () {
       if (!currentSelectedCase) {
-        feedback.textContent = "Kein passendes Aktenzeichen gefunden!";
+        feedback.textContent = i18nMessage("noMatchingFileNumberFeedback");
         feedback.style.color = "red";
         return;
       }
@@ -194,7 +196,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
           if (customFilename === null) {
             // Benutzer hat abgebrochen
-            feedback.textContent = "Speichern abgebrochen";
+            feedback.textContent = i18nMessage("saveCancelledFeedback");
             feedback.style.color = "orange";
             return;
           }
@@ -215,8 +217,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         composeTabId: composeTabId,
       });
 
-      feedback.textContent =
-        "E-Mail wird nach dem Senden in der Akte gespeichert";
+      feedback.textContent = i18nMessage("saveAfterSendFeedback");
       feedback.style.color = "green";
     });
   }
@@ -253,10 +254,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 browser.runtime.onMessage.addListener((message) => {
   const feedback = document.getElementById("feedback");
   if (message.type === "success") {
-    feedback.textContent = "Erfolgreich gesendet!";
+    feedback.textContent = i18nMessage("successfullySentFeedback");
     feedback.style.color = "green";
   } else if (message.type === "error") {
-    feedback.textContent = "Fehler: " + message.content;
+    feedback.textContent = i18nMessage("errorPrefix", [message.content]);
     feedback.style.color = "red";
   } else if (message.type === "updateStatus") {
     const updateIndicator = document.getElementById("updateIndicator");
@@ -459,6 +460,11 @@ document.getElementById("searchInput").addEventListener("input", function () {
 
 // Funktion zum Suchen von Fällen (via API)
 async function searchCases(query) {
+  const feedback = document.getElementById("feedback");
+  if (!(await ensureStoredServerPermission(feedback))) {
+    return;
+  }
+
   const resultsListElement = document.getElementById("resultsList");
   resultsListElement.style.display = "block";
 
@@ -487,7 +493,7 @@ async function searchCases(query) {
 
     if (results.length === 0) {
       resultsListElement.replaceChildren(
-        createResultMessage("Keine Ergebnisse gefunden"),
+        createResultMessage(i18nMessage("noResultsFound")),
       );
       return;
     }
@@ -554,7 +560,7 @@ async function searchCases(query) {
 
         // Aktualisiere das Label mit den Falldetails, einschließlich `reason`, falls vorhanden
         const customizableLabel = document.getElementById("customizableLabel");
-        customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || "kein Grund angegeben"}`;
+        customizableLabel.textContent = `${currentSelectedCase.fileNumber}: ${currentSelectedCase.name} - ${currentSelectedCase.reason || i18nMessage("noReasonGiven")}`;
 
         // Beteiligte anzeigen
         displayParties(currentSelectedCase.id);
@@ -636,8 +642,7 @@ async function searchCases(query) {
 
             // Setze Feedback-Text und -Farbe
             const feedback = document.getElementById("feedback");
-            feedback.textContent =
-              "E-Mail wird nach dem Senden in der Akte gespeichert";
+            feedback.textContent = i18nMessage("saveAfterSendFeedback");
             feedback.style.color = "green";
           });
 
@@ -648,7 +653,7 @@ async function searchCases(query) {
   } catch (error) {
     console.error("Fehler bei der Suche:", error);
     resultsListElement.replaceChildren(
-      createResultMessage("Fehler bei der Suche", "red"),
+      createResultMessage(i18nMessage("searchError"), "red"),
     );
   }
 }
@@ -852,7 +857,7 @@ async function displayParties(caseId) {
     // Wenn keine Beteiligten vorhanden sind
     if (!parties || parties.length === 0) {
       const noPartiesElement = document.createElement("div");
-      noPartiesElement.textContent = "Keine Beteiligten gefunden";
+      noPartiesElement.textContent = i18nMessage("noPartiesFound");
       partiesListElement.appendChild(noPartiesElement);
       return;
     }
@@ -1044,7 +1049,7 @@ async function displayParties(caseId) {
     partiesListElement.replaceChildren();
 
     const errorElement = document.createElement("div");
-    errorElement.textContent = "Fehler beim Laden der Beteiligten";
+    errorElement.textContent = i18nMessage("partiesLoadError");
     errorElement.style.color = "red";
     partiesListElement.appendChild(errorElement);
   }
@@ -1258,13 +1263,18 @@ async function updateData(feedback, progressBar) {
   progressBar.style.display = "block";
 
   try {
+    if (!(await ensureStoredServerPermission(feedback))) {
+      progressBar.style.display = "none";
+      return;
+    }
+
     const { username, password, serverAddress } =
       await browser.storage.local.get([
         "username",
         "password",
         "serverAddress",
       ]);
-    feedback.textContent = "Daten werden aktualisiert...";
+    feedback.textContent = i18nMessage("updatingDataFeedback");
     feedback.style.color = "blue";
 
     let tasksCompleted = 0;
@@ -1274,7 +1284,7 @@ async function updateData(feedback, progressBar) {
       tasksCompleted++;
       progressBar.value = (tasksCompleted / totalTasks) * 100;
       if (tasksCompleted === totalTasks) {
-        feedback.textContent = "Daten aktualisiert!";
+        feedback.textContent = i18nMessage("dataUpdatedFeedback");
         feedback.style.color = "green";
         const today = new Date().toISOString().split("T")[0];
         browser.storage.local.set({ lastUpdate: today });
@@ -1355,7 +1365,7 @@ async function updateData(feedback, progressBar) {
     ]);
   } catch (error) {
     console.error("Error during updateData:", error);
-    feedback.textContent = "Fehler: " + error.message;
+    feedback.textContent = i18nMessage("errorPrefix", [error.message]);
     feedback.style.color = "red";
   }
 }
@@ -1867,7 +1877,7 @@ async function selectSuggestion(match, loginData, tabId) {
 
   // Feedback anzeigen
   const feedback = document.getElementById("feedback");
-  feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+  feedback.textContent = i18nMessage("saveAfterSendFeedback");
   feedback.style.color = "green";
 
   return {
@@ -1890,7 +1900,7 @@ async function displaySuggestions(matches, loginData, tabId) {
     suggestionsContainer.style.display = "block";
     const noMatch = document.createElement("div");
     noMatch.className = "suggestionItem noMatch";
-    noMatch.textContent = "Keine Vorschläge gefunden (bitte manuell suchen)";
+    noMatch.textContent = i18nMessage("noSuggestionsFound");
     suggestionsList.appendChild(noMatch);
     return;
   }
@@ -2105,7 +2115,7 @@ async function findFileNumberInComposeMessage() {
 
                 // Feedback anzeigen
                 const feedback = document.getElementById("feedback");
-                feedback.textContent = "E-Mail wird nach dem Senden in der Akte gespeichert";
+                feedback.textContent = i18nMessage("saveAfterSendFeedback");
                 feedback.style.color = "green";
             });
 

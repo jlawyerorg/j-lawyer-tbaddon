@@ -1,0 +1,464 @@
+{
+  "extensionName": {
+    "message": "j-lawyer.org for Thunderbird"
+  },
+  "localeCode": {
+    "message": "de"
+  },
+  "extensionDescription": {
+    "message": "Sendet E-Mails an einen j-lawyer.org Server"
+  },
+  "messageDisplayActionTitle": {
+    "message": "E-Mail an j-lawyer senden"
+  },
+  "composeActionTitle": {
+    "message": "j-lawyer"
+  },
+  "browserActionTitle": {
+    "message": "Kalendereintrag erstellen"
+  },
+  "sendMessagesToJLawyerMenu": {
+    "message": "Nachrichten an j-lawyer senden..."
+  },
+  "templatesMenu": {
+    "message": "Vorlagen"
+  },
+  "documentsMenu": {
+    "message": "Dokumente"
+  },
+  "insertTemplateMenu": {
+    "message": "$TEMPLATE$ einfügen",
+    "placeholders": {
+      "template": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupTitle": {
+    "message": "Eingabe"
+  },
+  "bundlePopupTitle": {
+    "message": "Nachrichten Zuordnung - mehrere Nachrichten"
+  },
+  "calendarTitle": {
+    "message": "Kalendereintrag erstellen"
+  },
+  "optionsTitle": {
+    "message": "Optionen"
+  },
+  "updatesTitle": {
+    "message": "Letzte Änderungen"
+  },
+  "optionsHeading": {
+    "message": "j-lawyer.org for Thunderbird - Einstellungen"
+  },
+  "optionsWarning": {
+    "message": "Hinweis: Diese Erweiterung speichert Nachrichten auf einem j-lawyer.org Server. Sensible Daten können übertragen werden. Abhängig von der Art der Verbindung können diese Daten auch unverschlüsselt sein."
+  },
+  "usernameLabel": {
+    "message": "Benutzername:"
+  },
+  "passwordLabel": {
+    "message": "Passwort:"
+  },
+  "serverAddressLabel": {
+    "message": "Serveradresse und Port, zum Beispiel http://192.168.1.1:8080:"
+  },
+  "moveToTrashLabel": {
+    "message": "E-Mail nach Zuordnung in Papierkorb verschieben, oder je nach Konto-Einstellung direkt löschen"
+  },
+  "allowRenameLabel": {
+    "message": "Umbenennen vor dem Speichern von Dateien erlauben"
+  },
+  "filenameTemplateLabel": {
+    "message": "Benennungsvorlage für empfangene E-Mails, leer bedeutet Standard:"
+  },
+  "availablePlaceholders": {
+    "message": "Verfügbare Platzhalter:"
+  },
+  "performOcrLabel": {
+    "message": "OCR für neue Dokumente anstoßen, Bilder und PDFs"
+  },
+  "subjectTemplateLabel": {
+    "message": "Betreff-Vorlage für neue E-Mails, leer bedeutet Standard:"
+  },
+  "saveButton": {
+    "message": "Speichern"
+  },
+  "viewLogButton": {
+    "message": "Log anzeigen"
+  },
+  "clearLogButton": {
+    "message": "Log löschen"
+  },
+  "visitJLawyer": {
+    "message": "Besuchen Sie j-lawyer.org"
+  },
+  "searchCasePlaceholder": {
+    "message": "Fall suchen..."
+  },
+  "noSuggestion": {
+    "message": "kein Vorschlag"
+  },
+  "automaticSuggestions": {
+    "message": "Automatische Vorschläge, bitte prüfen"
+  },
+  "saveMessageOnlyButton": {
+    "message": "Nur Nachricht"
+  },
+  "saveAttachmentsOnlyButton": {
+    "message": "Nur Anhang"
+  },
+  "saveMessageAndAttachmentsButton": {
+    "message": "Nachricht und Anhang"
+  },
+  "editImageAttachmentsLabel": {
+    "message": "Bildanhänge vor Speichern bearbeiten"
+  },
+  "foldersHeading": {
+    "message": "Ordner"
+  },
+  "tagsLabel": {
+    "message": "Etiketten:"
+  },
+  "renameFileHeading": {
+    "message": "Datei umbenennen"
+  },
+  "newFilenameLabel": {
+    "message": "Neuer Dateiname:"
+  },
+  "filenameInputPlaceholder": {
+    "message": "Dateiname eingeben"
+  },
+  "templateSuggestionLabel": {
+    "message": "Vorschlag nach Vorlage:"
+  },
+  "timestampSuggestionLabel": {
+    "message": "Vorschlag mit Zeitstempel:"
+  },
+  "useSuggestionButton": {
+    "message": "Vorschlag verwenden"
+  },
+  "cancelButton": {
+    "message": "Abbrechen"
+  },
+  "renameButton": {
+    "message": "Umbenennen"
+  },
+  "saveAfterSendButton": {
+    "message": "Nach Senden speichern"
+  },
+  "setSubjectButton": {
+    "message": "Betreff setzen"
+  },
+  "partiesHeading": {
+    "message": "Beteiligte"
+  },
+  "responsibleLabel": {
+    "message": "Verantwortlicher:"
+  },
+  "categoryLabel": {
+    "message": "Kategorie:"
+  },
+  "eventCategory": {
+    "message": "Termin"
+  },
+  "deadlineCategory": {
+    "message": "Frist"
+  },
+  "followUpCategory": {
+    "message": "Wiedervorlage"
+  },
+  "dateLabel": {
+    "message": "Datum:"
+  },
+  "startTimeLabel": {
+    "message": "Startzeit:"
+  },
+  "endTimeLabel": {
+    "message": "Endzeit:"
+  },
+  "calendarLabel": {
+    "message": "Kalender:"
+  },
+  "deadlinesGroup": {
+    "message": "Fristen"
+  },
+  "appointmentsGroup": {
+    "message": "Termine"
+  },
+  "followUpsGroup": {
+    "message": "Wiedervorlagen"
+  },
+  "locationLabel": {
+    "message": "Ort:"
+  },
+  "descriptionLabel": {
+    "message": "Beschreibung:"
+  },
+  "imageEditTitle": {
+    "message": "Bildbearbeitung - j-lawyer.org for Thunderbird"
+  },
+  "imageEditingHeading": {
+    "message": "Bildbearbeitung"
+  },
+  "cropHeading": {
+    "message": "Zuschneiden"
+  },
+  "resetButton": {
+    "message": "Zurücksetzen"
+  },
+  "applyCropButton": {
+    "message": "Zuschnitt anwenden"
+  },
+  "rotateHeading": {
+    "message": "Drehen"
+  },
+  "rotateLeftButton": {
+    "message": "Links drehen"
+  },
+  "rotateRightButton": {
+    "message": "Rechts drehen"
+  },
+  "resetRotationButton": {
+    "message": "Drehung zurücksetzen"
+  },
+  "skipImageButton": {
+    "message": "Bild überspringen"
+  },
+  "nextButton": {
+    "message": "Weiter"
+  },
+  "finishEditingHeading": {
+    "message": "Bearbeitung abschließen"
+  },
+  "previewLabel": {
+    "message": "Vorschau:"
+  },
+  "pdfCreatedFromImages": {
+    "message": "PDF wird aus Bildern erstellt"
+  },
+  "additionalFilesUploadedSeparately": {
+    "message": "Weitere Dateien werden einzeln hochgeladen"
+  },
+  "uploadIndividuallyButton": {
+    "message": "Einzeln hochladen"
+  },
+  "combineAsPdfButton": {
+    "message": "Als PDF zusammenfassen"
+  },
+  "imageProcessing": {
+    "message": "Bild wird verarbeitet..."
+  },
+  "setPdfFilenameHeading": {
+    "message": "PDF-Dateiname festlegen"
+  },
+  "pdfFilenameLabel": {
+    "message": "PDF-Dateiname:"
+  },
+  "pdfFilenamePlaceholder": {
+    "message": "PDF-Dateiname eingeben"
+  },
+  "createPdfButton": {
+    "message": "PDF erstellen"
+  },
+  "savedFeedback": {
+    "message": "Gespeichert!"
+  },
+  "savingFeedback": {
+    "message": "Speichern..."
+  },
+  "saveCancelledFeedback": {
+    "message": "Speichern abgebrochen"
+  },
+  "noMatchingFileNumberFeedback": {
+    "message": "Kein passendes Aktenzeichen gefunden!"
+  },
+  "sentToRecommendedCaseFeedback": {
+    "message": "An empfohlene Akte gesendet!"
+  },
+  "successfullySentFeedback": {
+    "message": "Erfolgreich gesendet!"
+  },
+  "errorPrefix": {
+    "message": "Fehler: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "updatingDataFeedback": {
+    "message": "Daten werden aktualisiert..."
+  },
+  "dataUpdatedFeedback": {
+    "message": "Daten aktualisiert!"
+  },
+  "searchingCaseFeedback": {
+    "message": "Suche Akte..."
+  },
+  "checkingAttachmentsFeedback": {
+    "message": "Überprüfe Anhänge..."
+  },
+  "savingMessageFeedback": {
+    "message": "Speichere Nachricht..."
+  },
+  "noResultsFound": {
+    "message": "Keine Ergebnisse gefunden"
+  },
+  "searchError": {
+    "message": "Fehler bei der Suche"
+  },
+  "noAttachmentsFeedback": {
+    "message": "Kein Anhang verfügbar, die Nachricht enthält keine Anhänge."
+  },
+  "noImageAttachmentsFeedback": {
+    "message": "Keine Bildanhänge gefunden. Speichere Anhänge normal..."
+  },
+  "noAttachmentsMessageSavedFeedback": {
+    "message": "Kein Anhang verfügbar, die Nachricht wurde allerdings ohne Anhang gespeichert."
+  },
+  "messageCouldNotBeSaved": {
+    "message": "Nachricht konnte nicht gespeichert werden"
+  },
+  "noSuggestionsFound": {
+    "message": "Keine Vorschläge gefunden, bitte manuell suchen"
+  },
+  "noPartiesFound": {
+    "message": "Keine Beteiligten gefunden"
+  },
+  "partiesLoadError": {
+    "message": "Fehler beim Laden der Beteiligten"
+  },
+  "subjectSetFeedback": {
+    "message": "Betreff wurde gesetzt"
+  },
+  "subjectSetErrorFeedback": {
+    "message": "Fehler beim Setzen des Betreffs"
+  },
+  "selectCaseFirstFeedback": {
+    "message": "Bitte zuerst eine Akte auswählen!"
+  },
+  "saveAfterSendFeedback": {
+    "message": "E-Mail wird nach dem Senden in der Akte gespeichert"
+  },
+  "noReasonGiven": {
+    "message": "kein Grund angegeben"
+  },
+  "requiredDateFeedback": {
+    "message": "Bitte ein Datum angeben!"
+  },
+  "requiredStartTimeFeedback": {
+    "message": "Bitte eine Uhrzeit oder Startzeit angeben!"
+  },
+  "requiredEndTimeFeedback": {
+    "message": "Bitte eine Endzeit angeben!"
+  },
+  "serverPermissionDenied": {
+    "message": "Serverberechtigung wurde nicht erteilt."
+  },
+  "serverPermissionMissingFeedback": {
+    "message": "Serverberechtigung fehlt. Öffne die Einstellungen und speichere die Serveradresse erneut."
+  },
+  "invalidServerAddress": {
+    "message": "Ungültige Serveradresse: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "noActivityLogged": {
+    "message": "Keine Aktivitäten protokolliert."
+  },
+  "activityLogTitle": {
+    "message": "Aktivitätsprotokoll"
+  },
+  "activityLogTimestamp": {
+    "message": "Zeitstempel"
+  },
+  "activityLogAction": {
+    "message": "Aktion"
+  },
+  "activityLogDetails": {
+    "message": "Details"
+  },
+  "activityLogCleared": {
+    "message": "Aktivitätsprotokoll gelöscht"
+  },
+  "savedButtonValue": {
+    "message": "gespeichert"
+  },
+  "imageProgress": {
+    "message": "Bild $CURRENT$ von $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "imagesProcessed": {
+    "message": "$COUNT$ Bild(er) bearbeitet",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "additionalFilesProcessed": {
+    "message": "$COUNT$ weitere Datei(en)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "saveAsPdfButton": {
+    "message": "Als PDF speichern"
+  },
+  "combineImageCountAsPdfButton": {
+    "message": "$COUNT$ Bilder als PDF zusammenfassen",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "uploadAllFilesIndividuallyButton": {
+    "message": "Alle $COUNT$ Dateien einzeln hochladen",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "noFilesToUploadButton": {
+    "message": "Keine Dateien zum Hochladen"
+  },
+  "imagesPdfFilename": {
+    "message": "Bilder.pdf"
+  },
+  "noImagesAvailable": {
+    "message": "Keine Bilder verfügbar"
+  },
+  "uploadError": {
+    "message": "Fehler beim Hochladen: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFilename": {
+    "message": "Bitte geben Sie einen gültigen Dateinamen ein."
+  },
+  "invalidPdfFilename": {
+    "message": "Bitte geben Sie einen gültigen PDF-Dateinamen ein."
+  },
+  "invalidFilenameCharacters": {
+    "message": "Der Dateiname enthält ungültige Zeichen: < > : \" / \\ | ? *"
+  }
+}

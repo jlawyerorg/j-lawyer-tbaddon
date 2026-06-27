@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>Eingabe</title>
+        <title data-i18n="popupTitle">Input</title>
         <style>
             /* Grundlegende Stilrichtlinien für das gesamte Popup */
             body {
@@ -403,7 +403,8 @@
             <input
                 type="text"
                 id="searchInput"
-                placeholder="Fall suchen..."
+                placeholder="Search case..."
+                data-i18n-placeholder="searchCasePlaceholder"
                 autocomplete="off"
             />
             <div id="resultsList"></div>
@@ -419,13 +420,14 @@
                     border-radius: 5px;
                     text-align: center;
                 "
+                data-i18n="noSuggestion"
             >
-                kein Vorschlag
+                no suggestion
             </p>
 
             <!-- Automatische Vorschläge -->
             <div id="suggestionsContainer" style="display: none">
-                <h4>Automatische Vorschläge (bitte prüfen)</h4>
+                <h4 data-i18n="automaticSuggestions">Automatic suggestions, please review</h4>
                 <div id="suggestionsList"></div>
             </div>
 
@@ -448,7 +450,7 @@
                         cursor: pointer;
                     "
                 >
-                    Nach Senden speichern
+                    <span data-i18n="saveAfterSendButton">Save after sending</span>
                 </button>
                 <button
                     id="setSubjectButton"
@@ -462,7 +464,7 @@
                         display: none;
                     "
                 >
-                    Betreff setzen
+                    <span data-i18n="setSubjectButton">Set subject</span>
                 </button>
             </div>
 
@@ -480,16 +482,16 @@
         </div>
 
         <div id="treeContainer">
-            <h3>Ordner</h3>
+            <h3 data-i18n="foldersHeading">Folders</h3>
         </div>
 
         <div id="partiesContainer">
-            <h3>Beteiligte</h3>
+            <h3 data-i18n="partiesHeading">Parties</h3>
             <div id="partiesList"></div>
         </div>
 
         <div id="tagsContainer">
-            <p>Etiketten:</p>
+            <p data-i18n="tagsLabel">Tags:</p>
             <select
                 id="tagsSelect"
                 multiple
@@ -501,36 +503,38 @@
         <!-- Rename Dialog -->
         <div id="renameDialog" class="rename-dialog" style="display: none">
             <div class="rename-dialog-content">
-                <h3>Datei umbenennen</h3>
+                <h3 data-i18n="renameFileHeading">Rename file</h3>
                 <div class="rename-form">
-                    <label for="filenameInput">Neuer Dateiname:</label>
+                    <label for="filenameInput" data-i18n="newFilenameLabel">New file name:</label>
                     <input
                         type="text"
                         id="filenameInput"
                         class="filename-input"
-                        placeholder="Dateiname eingeben"
+                        placeholder="Enter file name"
+                        data-i18n-placeholder="filenameInputPlaceholder"
                     />
                     <div class="filename-suggestion">
                         <small
-                            >Vorschlag mit Zeitstempel:
+                            ><span data-i18n="timestampSuggestionLabel">Timestamp suggestion:</span>
                             <span id="filenameSuggestion"></span
                         ></small>
                     </div>
                     <div class="rename-buttons">
-                        <button id="useSuggestionBtn" class="btn btn-secondary">
-                            Vorschlag verwenden
+                        <button id="useSuggestionBtn" class="btn btn-secondary" data-i18n="useSuggestionButton">
+                            Use suggestion
                         </button>
-                        <button id="cancelRenameBtn" class="btn btn-secondary">
-                            Abbrechen
+                        <button id="cancelRenameBtn" class="btn btn-secondary" data-i18n="cancelButton">
+                            Cancel
                         </button>
-                        <button id="confirmRenameBtn" class="btn btn-primary">
-                            Umbenennen
+                        <button id="confirmRenameBtn" class="btn btn-primary" data-i18n="renameButton">
+                            Rename
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
+        <script src="i18n.js"></script>
         <script src="popup_compose.js"></script>
     </body>
 </html>
