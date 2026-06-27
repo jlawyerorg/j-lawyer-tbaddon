@@ -542,6 +542,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         );
 
         if (attachments.length === 0) {
+          await browser.storage.local.remove("selectedTags");
           feedback.textContent = i18nMessage(
             "noAttachmentsMessageSavedFeedback",
           );

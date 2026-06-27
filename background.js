@@ -37,6 +37,7 @@ const AFTER_SEND_STORAGE_KEYS = [
   "selectedCaseFolderIDAfterSend",
   "customFilenameToSaveAfterSend",
   "composeTabIdToSaveAfterSend",
+  "selectedTagsAfterSend",
 ];
 
 function getComposeTabKey(tabId) {
@@ -94,6 +95,7 @@ function mergeStoredAfterSendState(
   for (const key of [
     "selectedCaseFolderIDAfterSend",
     "customFilenameToSaveAfterSend",
+    "selectedTagsAfterSend",
   ]) {
     if (Object.prototype.hasOwnProperty.call(storedPendingSave, key)) {
       mergedPendingSave[key] = storedPendingSave[key];
@@ -706,6 +708,12 @@ async function sendAttachmentsToServer(
     return;
   }
 
+  const selectedTagsResult = await browser.storage.local.get("selectedTags");
+  const selectedTagsSnapshot = Array.isArray(selectedTagsResult.selectedTags)
+    ? selectedTagsResult.selectedTags
+    : [];
+  documentIdsToTag = [];
+
   // Datum und Zeit einmal für alle Attachments generieren
   let date = new Date(messageData.date);
   let dateString = formatDate(date);
@@ -853,8 +861,14 @@ async function sendAttachmentsToServer(
     });
 
     // Tags und Ordner setzen
-    await setDocumentTagsAndFolderForAttachments();
+    await setDocumentTagsAndFolderForAttachments(
+      selectedTagsSnapshot,
+      documentIdsToTag.slice(),
+      false,
+    );
   }
+
+  documentIdsToTag = [];
 
   // Zusätzlich alle MIME-Parts durchsuchen (für inline Attachments)
   // Übergebe bereits verarbeitete Dateien um Duplikate zu vermeiden
@@ -864,7 +878,10 @@ async function sendAttachmentsToServer(
     password,
     serverAddress,
     processedFiles,
+    selectedTagsSnapshot,
   );
+
+  await browser.storage.local.remove("selectedTags");
 
   // Logging mit allen verarbeiteten Dateien
   await logActivity("sendAttachmentsToServer", {
@@ -884,6 +901,7 @@ async function sendEmailToServerAfterSend(
   serverAddress,
   customFilename = null,
   sentMessage = null,
+  selectedTagsAfterSend = [],
 ) {
   console.log("Es wird versucht, die Email in der Akte zu speichern");
   console.log(
@@ -987,27 +1005,13 @@ async function sendEmailToServerAfterSend(
 
     console.log("E-Mail wurde erfolgreich gespeichert");
 
-    browser.storage.local
-      .get(["username", "password", "serverAddress", "selectedTags"])
-      .then((result) => {
-        // Überprüfen, ob documentTags nicht leer ist
-        if (result.selectedTags && result.selectedTags.length > 0) {
-          for (let documentTag of result.selectedTags) {
-            setDocumentTag(
-              result.username,
-              result.password,
-              result.serverAddress,
-              documentTag,
-            ); //
-          }
-        } else {
-          console.log("Keine Tags ausgewählt");
-        }
-      });
-    browser.storage.local.remove("selectedTags");
-    browser.storage.local.get("selectedTags").then((result) => {
-      console.log("selectedTags: " + result.selectedTags);
-    });
+    if (selectedTagsAfterSend.length > 0) {
+      for (let documentTag of selectedTagsAfterSend) {
+        await setDocumentTag(username, password, serverAddress, documentTag);
+      }
+    } else {
+      console.log("Keine Tags ausgewählt");
+    }
   } catch (error) {
     console.log("Error:", error);
     browser.runtime.sendMessage({ type: "error", content: error.message });
@@ -1258,8 +1262,18 @@ async function setDocumentTag(username, password, serverAddress, documentTag) {
   return readOptionalJsonResponse(response);
 }
 
-async function setDocumentTagsAndFolderForAttachments() {
+async function setDocumentTagsAndFolderForAttachments(
+  selectedTagsOverride = null,
+  documentIdsOverride = null,
+  shouldClearSelectedTags = true,
+) {
   console.log("setDocumentTags aufgerufen");
+  const selectedTags = Array.isArray(selectedTagsOverride)
+    ? selectedTagsOverride
+    : null;
+  const docsToProcess = Array.isArray(documentIdsOverride)
+    ? documentIdsOverride
+    : documentIdsToTag;
 
   try {
     let result = await browser.storage.local.get([
@@ -1269,7 +1283,7 @@ async function setDocumentTagsAndFolderForAttachments() {
       "selectedTags",
     ]);
     try {
-      console.log("selectedTags im Speicher: ", result.selectedTags);
+      console.log("selectedTags: ", selectedTags || result.selectedTags);
     } catch (error) {
       console.error(
         "Fehler beim Lesen des Speichers oder keine Etiketten ausgewählt: ",
@@ -1286,9 +1300,10 @@ async function setDocumentTagsAndFolderForAttachments() {
     headers.append("Content-Type", "application/json");
 
     // only if selectedTags is not empty
-    if (result.selectedTags && result.selectedTags.length > 0) {
-      for (let documentTag of result.selectedTags) {
-        for (let docInfo of documentIdsToTag) {
+    const tagsToApply = selectedTags || result.selectedTags || [];
+    if (tagsToApply.length > 0) {
+      for (let documentTag of tagsToApply) {
+        for (let docInfo of docsToProcess) {
           // Unterstütze sowohl alte Struktur (nur ID) als auch neue Struktur (Objekt mit id und fileName)
           const documentId = typeof docInfo === "object" ? docInfo.id : docInfo;
           console.log(
@@ -1327,7 +1342,9 @@ async function setDocumentTagsAndFolderForAttachments() {
   } catch (error) {
     console.error("Error in setDocumentTags:", error);
   }
-  await browser.storage.local.remove("selectedTags");
+  if (shouldClearSelectedTags) {
+    await browser.storage.local.remove("selectedTags");
+  }
 
   // set Folders for attachments
   try {
@@ -1351,7 +1368,7 @@ async function setDocumentTagsAndFolderForAttachments() {
     headers.append("Content-Type", "application/json");
 
     if (selectedCaseFolderID && selectedCaseFolderID.length > 0) {
-      for (let docInfo of documentIdsToTag) {
+      for (let docInfo of docsToProcess) {
         // Unterstütze sowohl alte Struktur (nur ID) als auch neue Struktur (Objekt mit id und fileName)
         const documentId = typeof docInfo === "object" ? docInfo.id : docInfo;
         const url =
@@ -1392,7 +1409,7 @@ async function setDocumentTagsAndFolderForAttachments() {
     ]);
     if (ocrSettings.performOcr) {
       console.log("OCR ist aktiviert, prüfe Dokumente...");
-      for (let docInfo of documentIdsToTag) {
+      for (let docInfo of docsToProcess) {
         // Nur bei neuer Struktur mit fileName
         if (typeof docInfo === "object" && docInfo.fileName) {
           if (isOcrEligible(docInfo.fileName)) {
@@ -1818,7 +1835,7 @@ browser.runtime.onMessage.addListener((message) => {
     selectedCaseFolderID = message.selectedCaseFolderID;
 
     browser.storage.local
-      .get(["username", "password", "serverAddress", "selectedTags"])
+      .get(["username", "password", "serverAddress"])
       .then(async (result) => {
         const caseId = getCaseIdFromMessage(message);
 
@@ -1895,12 +1912,17 @@ browser.runtime.onMessage.addListener((message) => {
     message.source === "popup_compose"
   ) {
     const composeTabKey = getComposeTabKey(message.composeTabId);
+    const existingPendingSave = pendingAfterSendByTabId.get(composeTabKey);
     extensionUsed = true; // Nachricht soll nur gespeichert werden, wenn Extension genutzt
 
     console.log("Aktenzeichen: " + message.content);
 
     selectedCaseFolderID = message.selectedCaseFolderID;
     const messageCaseId = getCaseIdFromMessage(message);
+    const existingPendingSaveForSameCase =
+      existingPendingSave?.caseIdToSaveToAfterSend === messageCaseId
+        ? existingPendingSave
+        : null;
     currentSelectedCase = message.currentSelectedCase || null;
     if (currentSelectedCase && messageCaseId) {
       currentSelectedCase.id = messageCaseId;
@@ -1910,8 +1932,17 @@ browser.runtime.onMessage.addListener((message) => {
       const initialPendingSave = {
         caseIdToSaveToAfterSend: messageCaseId,
         selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
-        customFilenameToSaveAfterSend: message.customFilename || null,
+        customFilenameToSaveAfterSend: Object.prototype.hasOwnProperty.call(
+          message,
+          "customFilename",
+        )
+          ? message.customFilename || null
+          : existingPendingSaveForSameCase?.customFilenameToSaveAfterSend ||
+            null,
         composeTabIdToSaveAfterSend: composeTabKey,
+        selectedTagsAfterSend: Array.isArray(message.selectedTags)
+          ? message.selectedTags
+          : existingPendingSaveForSameCase?.selectedTagsAfterSend || [],
       };
       pendingAfterSendByTabId.set(composeTabKey, initialPendingSave);
       browser.storage.local.set(initialPendingSave).catch((error) => {
@@ -1940,8 +1971,17 @@ browser.runtime.onMessage.addListener((message) => {
         const pendingSave = {
           caseIdToSaveToAfterSend: caseIdToSaveToAfterSend,
           selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
-          customFilenameToSaveAfterSend: message.customFilename || null,
+          customFilenameToSaveAfterSend: Object.prototype.hasOwnProperty.call(
+            message,
+            "customFilename",
+          )
+            ? message.customFilename || null
+            : existingPendingSaveForSameCase?.customFilenameToSaveAfterSend ||
+              null,
           composeTabIdToSaveAfterSend: composeTabKey,
+          selectedTagsAfterSend: Array.isArray(message.selectedTags)
+            ? message.selectedTags
+            : existingPendingSaveForSameCase?.selectedTagsAfterSend || [],
         };
 
         pendingAfterSendByTabId.set(composeTabKey, pendingSave);
@@ -2028,6 +2068,9 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
       loginData.serverAddress,
       pendingSave.customFilenameToSaveAfterSend,
       sentMessage,
+      Array.isArray(pendingSave.selectedTagsAfterSend)
+        ? pendingSave.selectedTagsAfterSend
+        : [],
     );
   } catch (error) {
     console.error("Fehler beim Speichern nach Versand:", error);
@@ -2786,6 +2829,7 @@ async function sendAllMimePartsToServer(
   password,
   serverAddress,
   alreadyProcessedFiles = [],
+  selectedTagsSnapshot = null,
 ) {
   console.log("Case ID für MIME-Parts: " + caseId);
   console.log("Bereits verarbeitete Dateien:", alreadyProcessedFiles.length);
@@ -3267,7 +3311,11 @@ nicht über verfügbare Methoden extrahiert werden konnte.`;
     });
 
     // Tags und Ordner setzen
-    await setDocumentTagsAndFolderForAttachments();
+    await setDocumentTagsAndFolderForAttachments(
+      selectedTagsSnapshot,
+      documentIdsToTag.slice(),
+      false,
+    );
   }
 
   // Logging mit allen verarbeiteten MIME-Parts

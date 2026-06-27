@@ -25,6 +25,15 @@ let caseFolders = {}; // Speichert die Ordner des aktuell ausgewählten Cases
 let selectedCaseFolderID = null; // Speichert den aktuell ausgewählten Ordner des aktuell ausgewählten Cases
 let emailTemplatesNames = {}; // Speichert die Email-Templates
 
+function getSelectedTagsForBundleSave() {
+  const tagsSelect = document.getElementById("tagsSelect");
+  if (!tagsSelect) {
+    return [];
+  }
+
+  return Array.from(tagsSelect.selectedOptions).map((option) => option.value);
+}
+
 // Fenstergröße speichern bei Änderung
 function saveWindowSize() {
   const width = window.outerWidth;
@@ -55,6 +64,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   await ensureStoredServerPermission(feedback);
 
+  await browser.storage.local.remove("selectedTags");
   await fillTagsList();
 
   // Setzt den Fokus auf das Suchfeld
@@ -86,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             caseId: currentSelectedCase.id,
             content: currentSelectedCase.fileNumber,
             selectedCaseFolderID: selectedCaseFolderID,
+            selectedTags: getSelectedTagsForBundleSave(),
             username: result.username,
             password: result.password,
             serverAddress: result.serverAddress,
@@ -100,17 +111,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
-  // Speichern der ausgewählten Etiketten in "selectedTags"
+  // Keep the tag selection local to this bundle save request.
   const tagsSelect = document.getElementById("tagsSelect");
-  let selectedTags = [];
   tagsSelect.addEventListener("change", function () {
-    selectedTags = Array.from(tagsSelect.selectedOptions).map(
-      (option) => option.value,
-    );
+    const selectedTags = getSelectedTagsForBundleSave();
     console.log("Ausgewählte Tags:", selectedTags);
-    browser.storage.local.set({
-      selectedTags: selectedTags,
-    });
   });
 
   // Event Listener für den "Daten aktualisieren" Button

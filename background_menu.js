@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 let messagesToSaveIds = null;
 let messagesToSaveObjects = null;
-let menu_documentUploadedId = null;
 let menu_lastMessageData = null;
 let documentsToTag = null;
 let documentCounter = 0;
@@ -151,6 +150,7 @@ async function sendEmailToServerFromSelection(
   username,
   password,
   serverAddress,
+  selectedTags = [],
 ) {
   /*
     This function sends an email to a server. It takes five parameters: a single message from a selection,
@@ -230,9 +230,8 @@ async function sendEmailToServerFromSelection(
 
     const data = await response.json();
     console.log("Dokument ID: " + data.id);
-    menu_documentUploadedId = data.id;
 
-    await updateDocumentFolderBundle(username, password, serverAddress);
+    await updateDocumentFolderBundle(username, password, serverAddress, data.id);
 
     // creationDate auf das E-Mail-Datum setzen (nicht den Veraktungszeitpunkt)
     try {
@@ -264,8 +263,6 @@ async function sendEmailToServerFromSelection(
     // Erfolgsnachricht senden
     await browser.runtime.sendMessage({ type: "success" });
 
-    // Tags aus localStorage abrufen
-    const { selectedTags } = await browser.storage.local.get(["selectedTags"]);
     if (selectedTags && selectedTags.length > 0) {
       for (const documentTag of selectedTags) {
         await setDocumentTagFromSelection(
@@ -273,6 +270,7 @@ async function sendEmailToServerFromSelection(
           password,
           serverAddress,
           documentTag,
+          data.id,
         );
         logActivity(
           "sendEmailToServerFromSelection",
@@ -483,6 +481,7 @@ async function setDocumentTagFromSelection(
   password,
   serverAddress,
   documentTag,
+  documentId,
 ) {
   const headers = new Headers();
   const loginBase64Encoded = btoa(
@@ -492,7 +491,7 @@ async function setDocumentTagFromSelection(
   // headers.append('Authorization', 'Basic ' + btoa('' + username + ':' + password + ''));
   headers.append("Content-Type", "application/json");
 
-  const id = menu_documentUploadedId;
+  const id = documentId;
 
   const url =
     serverAddress + "/j-lawyer-io/rest/v5/cases/documents/" + id + "/tags";
@@ -516,7 +515,12 @@ async function setDocumentTagFromSelection(
 }
 
 // puts document into case folder
-async function updateDocumentFolderBundle(username, password, serverAddress) {
+async function updateDocumentFolderBundle(
+  username,
+  password,
+  serverAddress,
+  documentId,
+) {
   const headers = new Headers();
   const loginBase64Encoded = btoa(
     unescape(encodeURIComponent(username + ":" + password)),
@@ -529,7 +533,7 @@ async function updateDocumentFolderBundle(username, password, serverAddress) {
 
   // den Payload erstellen
   const payload = {
-    id: menu_documentUploadedId,
+    id: documentId,
     folderId: selectedCaseFolderID_bundle,
   };
 
@@ -706,6 +710,7 @@ browser.runtime.onMessage.addListener((message) => {
               result.username,
               result.password,
               result.serverAddress,
+              Array.isArray(message.selectedTags) ? message.selectedTags : [],
             );
           } else {
             console.log("Keine Akten-ID übergeben");

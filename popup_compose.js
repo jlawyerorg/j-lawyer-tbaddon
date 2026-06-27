@@ -23,6 +23,47 @@ let emailTemplatesNames = {}; // Speichert die Email-Templates
 const DEFAULT_SUBJECT_TEMPLATE =
   "Unser Zeichen: {{AKTE_KURZRUBRUM}}, {{AKTE_ZEICHEN}}";
 
+function getSelectedTagsForCompose() {
+  const tagsSelect = document.getElementById("tagsSelect");
+  if (!tagsSelect) {
+    return [];
+  }
+
+  return Array.from(tagsSelect.selectedOptions).map((option) => option.value);
+}
+
+async function updateSaveAfterSendStateForComposeTab() {
+  if (!currentSelectedCase) {
+    return;
+  }
+
+  const tabs = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+  const composeTabId = tabs.length > 0 ? tabs[0].id : null;
+
+  const loginData = await browser.storage.local.get([
+    "username",
+    "password",
+    "serverAddress",
+  ]);
+
+  await browser.runtime.sendMessage({
+    type: "saveToCaseAfterSend",
+    source: "popup_compose",
+    caseId: currentSelectedCase.id,
+    content: currentSelectedCase.fileNumber,
+    selectedCaseFolderID: selectedCaseFolderID,
+    selectedTags: getSelectedTagsForCompose(),
+    username: loginData.username,
+    password: loginData.password,
+    serverAddress: loginData.serverAddress,
+    currentSelectedCase: currentSelectedCase,
+    composeTabId: composeTabId,
+  });
+}
+
 // Ersetzt Platzhalter im Betreff-Template mit Akten-Daten
 function replaceSubjectPlaceholders(template, caseData, caseMetaData) {
   let result = template;
@@ -209,6 +250,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         caseId: currentSelectedCase.id,
         content: currentSelectedCase.fileNumber,
         selectedCaseFolderID: selectedCaseFolderID,
+        selectedTags: getSelectedTagsForCompose(),
         username: settings.username,
         password: settings.password,
         serverAddress: settings.serverAddress,
@@ -222,17 +264,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
-  // Speichern der ausgewählten Etiketten in "selectedTags"
+  // Update the pending after-send state with the selected tags.
   const tagsSelect = document.getElementById("tagsSelect");
-  let selectedTags = [];
-  tagsSelect.addEventListener("change", function () {
-    selectedTags = Array.from(tagsSelect.selectedOptions).map(
-      (option) => option.value,
-    );
+  tagsSelect.addEventListener("change", async function () {
+    const selectedTags = getSelectedTagsForCompose();
     console.log("Ausgewählte Tags:", selectedTags);
-    browser.storage.local.set({
-      selectedTags: selectedTags,
-    });
+    try {
+      await updateSaveAfterSendStateForComposeTab();
+    } catch (error) {
+      console.error("Fehler beim Aktualisieren der Etikettenauswahl:", error);
+    }
   });
 
   // Event Listener für den "Daten aktualisieren" Button
@@ -633,6 +674,7 @@ async function searchCases(query) {
               caseId: currentSelectedCase.id,
               content: currentSelectedCase.fileNumber,
               selectedCaseFolderID: selectedCaseFolderID,
+              selectedTags: getSelectedTagsForCompose(),
               username: result.username,
               password: result.password,
               serverAddress: result.serverAddress,
@@ -1080,8 +1122,8 @@ function createTreeElement(obj) {
     console.log("Name des ausgewählten Ordners: " + obj.name);
     console.log("Id des ausgewählten Ordners: " + selectedCaseFolderID);
 
-    browser.storage.local.set({
-      selectedCaseFolderIDAfterSend: selectedCaseFolderID,
+    updateSaveAfterSendStateForComposeTab().catch((error) => {
+      console.error("Fehler beim Aktualisieren der Ordnerauswahl:", error);
     });
   };
 
@@ -1868,6 +1910,7 @@ async function selectSuggestion(match, loginData, tabId) {
     caseId: currentSelectedCase.id,
     content: currentSelectedCase.fileNumber,
     selectedCaseFolderID: selectedCaseFolderID,
+    selectedTags: getSelectedTagsForCompose(),
     username: loginData.username,
     password: loginData.password,
     serverAddress: loginData.serverAddress,
@@ -2107,6 +2150,7 @@ async function findFileNumberInComposeMessage() {
                     caseId: currentSelectedCase.id,
                     content: currentSelectedCase.fileNumber,
                     selectedCaseFolderID: selectedCaseFolderID,
+                    selectedTags: getSelectedTagsForCompose(),
                     username: result.username,
                     password: result.password,
                     serverAddress: result.serverAddress,
