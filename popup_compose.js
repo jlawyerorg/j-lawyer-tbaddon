@@ -606,63 +606,8 @@ async function searchCases(query) {
         // Beteiligte anzeigen
         displayParties(currentSelectedCase.id);
 
-        // Aktualisiere den Betreff im Compose-Fenster
-        try {
-          // Aktiven Tab im Compose-Fenster ermitteln
-          const tabs = await browser.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
-          if (tabs.length > 0) {
-            const tabId = tabs[0].id;
-
-            // Aktuelle Compose-Details abrufen
-            const composeDetails =
-              await browser.compose.getComposeDetails(tabId);
-
-            console.log("Compose-Details:", composeDetails);
-            console.log(
-              "currentSelectedCase für Betreff:",
-              currentSelectedCase,
-            );
-
-            // Betreff nur aktualisieren, wenn die Aktenzeichen-Nummer noch nicht im Betreff steht
-            if (
-              !composeDetails.subject ||
-              !composeDetails.subject.includes(currentSelectedCase.fileNumber)
-            ) {
-              // Betreff-Template aus Einstellungen laden oder Standard verwenden
-              const settings =
-                await browser.storage.local.get("subjectTemplate");
-              const template =
-                settings.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
-
-              // Neuen Betreff mit Template und Platzhalter-Ersetzung erstellen
-              const newSubject = replaceSubjectPlaceholders(
-                template,
-                currentSelectedCase,
-                caseMetaData,
-              );
-
-              // Compose-Details mit neuem Betreff aktualisieren
-              await browser.compose.setComposeDetails(tabId, {
-                subject: newSubject,
-              });
-
-              console.log("Betreff aktualisiert:", newSubject);
-            } else {
-              console.log(
-                "Betreff nicht aktualisiert, da die Aktenzeichen-Nummer bereits enthalten ist",
-              );
-            }
-          } else {
-            console.error(
-              "Kein aktiver Tab gefunden für Betreff-Aktualisierung",
-            );
-          }
-        } catch (error) {
-          console.error("Fehler beim Aktualisieren des Betreffs:", error);
-        }
+        // "Betreff setzen"-Button einblenden, da eine Akte ausgewählt wurde
+        document.getElementById("setSubjectButton").style.display = "block";
 
         // Führe die Aktion aus, die sonst der Button ausgelöst hätte
         browser.storage.local
@@ -1917,6 +1862,12 @@ async function selectSuggestion(match, loginData, tabId) {
     currentSelectedCase: currentSelectedCase,
     composeTabId: tabId,
   });
+
+  // "Betreff setzen"-Button einblenden, da eine Akte ausgewählt wurde
+  const setSubjectButton = document.getElementById("setSubjectButton");
+  if (setSubjectButton) {
+    setSubjectButton.style.display = "block";
+  }
 
   // Feedback anzeigen
   const feedback = document.getElementById("feedback");
