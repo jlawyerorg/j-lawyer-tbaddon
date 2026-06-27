@@ -36,6 +36,7 @@ const AFTER_SEND_STORAGE_KEYS = [
   "caseIdToSaveToAfterSend",
   "selectedCaseFolderIDAfterSend",
   "customFilenameToSaveAfterSend",
+  "composeTabIdToSaveAfterSend",
 ];
 
 function getComposeTabKey(tabId) {
@@ -53,6 +54,81 @@ async function clearAfterSendState(tabId) {
   lastMessageData = null;
   lastSentMessageId = null;
   await browser.storage.local.remove(AFTER_SEND_STORAGE_KEYS);
+}
+
+function isStoredAfterSendStateForComposeTab(storedPendingSave, composeTabKey) {
+  if (!storedPendingSave?.caseIdToSaveToAfterSend) {
+    return false;
+  }
+
+  const storedComposeTabKey = storedPendingSave.composeTabIdToSaveAfterSend;
+  if (storedComposeTabKey) {
+    return storedComposeTabKey === composeTabKey;
+  }
+
+  return composeTabKey === "legacy";
+}
+
+function mergeStoredAfterSendState(
+  pendingSave,
+  storedPendingSave,
+  composeTabKey,
+) {
+  if (!pendingSave?.caseIdToSaveToAfterSend) {
+    return pendingSave;
+  }
+
+  if (!isStoredAfterSendStateForComposeTab(storedPendingSave, composeTabKey)) {
+    return pendingSave;
+  }
+
+  if (
+    storedPendingSave?.caseIdToSaveToAfterSend !==
+    pendingSave.caseIdToSaveToAfterSend
+  ) {
+    return pendingSave;
+  }
+
+  const mergedPendingSave = { ...pendingSave };
+
+  for (const key of [
+    "selectedCaseFolderIDAfterSend",
+    "customFilenameToSaveAfterSend",
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(storedPendingSave, key)) {
+      mergedPendingSave[key] = storedPendingSave[key];
+    }
+  }
+
+  return mergedPendingSave;
+}
+
+async function resolvePendingAfterSendState(composeTabKey) {
+  let pendingSave = pendingAfterSendByTabId.get(composeTabKey);
+  let pendingTabKey = pendingSave ? composeTabKey : null;
+
+  if (!pendingSave && pendingAfterSendByTabId.has("legacy")) {
+    pendingSave = pendingAfterSendByTabId.get("legacy");
+    pendingTabKey = "legacy";
+  }
+
+  const storedPendingSave = await browser.storage.local.get(
+    AFTER_SEND_STORAGE_KEYS,
+  );
+
+  if (!pendingSave?.caseIdToSaveToAfterSend) {
+    if (isStoredAfterSendStateForComposeTab(storedPendingSave, composeTabKey)) {
+      pendingSave = storedPendingSave;
+    }
+  } else {
+    pendingSave = mergeStoredAfterSendState(
+      pendingSave,
+      storedPendingSave,
+      pendingTabKey || composeTabKey,
+    );
+  }
+
+  return { pendingSave, pendingTabKey };
 }
 
 async function createComposeMenuItem(opts) {
@@ -1835,6 +1911,7 @@ browser.runtime.onMessage.addListener((message) => {
         caseIdToSaveToAfterSend: messageCaseId,
         selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
         customFilenameToSaveAfterSend: message.customFilename || null,
+        composeTabIdToSaveAfterSend: composeTabKey,
       };
       pendingAfterSendByTabId.set(composeTabKey, initialPendingSave);
       browser.storage.local.set(initialPendingSave).catch((error) => {
@@ -1864,6 +1941,7 @@ browser.runtime.onMessage.addListener((message) => {
           caseIdToSaveToAfterSend: caseIdToSaveToAfterSend,
           selectedCaseFolderIDAfterSend: message.selectedCaseFolderID,
           customFilenameToSaveAfterSend: message.customFilename || null,
+          composeTabIdToSaveAfterSend: composeTabKey,
         };
 
         pendingAfterSendByTabId.set(composeTabKey, pendingSave);
@@ -1913,11 +1991,8 @@ browser.runtime.onMessage.addListener((message) => {
 messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
   const composeTabId = tab?.id;
   const composeTabKey = getComposeTabKey(composeTabId);
-  let pendingSave = pendingAfterSendByTabId.get(composeTabKey);
-
-  if (!pendingSave && composeTabId === undefined && extensionUsed) {
-    pendingSave = await browser.storage.local.get(AFTER_SEND_STORAGE_KEYS);
-  }
+  const { pendingSave, pendingTabKey } =
+    await resolvePendingAfterSendState(composeTabKey);
 
   if (!pendingSave?.caseIdToSaveToAfterSend) {
     console.log("jLawyer-Extension wurde nicht genutzt");
@@ -1957,6 +2032,9 @@ messenger.compose.onAfterSend.addListener(async (tab, sendInfo) => {
   } catch (error) {
     console.error("Fehler beim Speichern nach Versand:", error);
   } finally {
+    if (pendingTabKey && pendingTabKey !== composeTabKey) {
+      pendingAfterSendByTabId.delete(pendingTabKey);
+    }
     await clearAfterSendState(composeTabId);
     console.log("Speicherzustand nach Versand wurde zurückgesetzt");
   }
