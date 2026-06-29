@@ -85,20 +85,9 @@ function hasCurrentMessageTagsApi() {
   );
 }
 
-function hasLegacyMessageTagsApi() {
-  return (
-    typeof browser.messages.listTags === "function" &&
-    typeof browser.messages.createTag === "function"
-  );
-}
-
 async function listThunderbirdMessageTags() {
   if (hasCurrentMessageTagsApi()) {
     return browser.messages.tags.list();
-  }
-
-  if (hasLegacyMessageTagsApi()) {
-    return browser.messages.listTags();
   }
 
   throw new Error("No Thunderbird message tag API is available.");
@@ -111,10 +100,6 @@ async function createThunderbirdMessageTag(tagName, tagColor) {
       tagName,
       tagColor,
     );
-  }
-
-  if (hasLegacyMessageTagsApi()) {
-    return browser.messages.createTag(tagName, tagName, tagColor);
   }
 
   throw new Error("No Thunderbird message tag API is available.");

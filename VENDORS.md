@@ -1,1 +1,1 @@
-jspdf.umd.js : https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.js
+jspdf.umd.js : https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.js
